@@ -258,7 +258,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		#pmap = self.clipboard.pixmap()
 		#text = self.clipboard.text()
 		
-		self.onSetStatusSlot(("scanning", "scan"))
+		self.onSetStatusSlot(("scanning for change", "scan"))
 		
 		mimeData = self.clipboard.mimeData()
 				
