@@ -455,6 +455,7 @@ class CommonListWidget(QListWidget):
 		del clip["_id"] #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip 
 		clip.pop("starred", None) #remove it entirely, return None
 		clip.pop("friend", None)
+		return clip
 		
 	def onItemDoubleClickSlot(self, double_clicked_item):
 		
