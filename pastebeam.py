@@ -30,83 +30,12 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
 		self.setWindowTitle('PasteBeam 1.0.0')	
 		
 		self.show()	
-		
+
 	def initPanel(self):
-		
-		#self.doLockoutWidget()
-				
-		self.panel_stacked_widget = PanelStackedWidget(QtCore.QSize(PixmapThumbnail.Px,PixmapThumbnail.Px), self)
-		for each in self.panel_stacked_widget.panels:
-			each.itemDoubleClicked.connect(each.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
-		
-		self.search = QLineEdit()
-		self.search.textEdited.connect(self.onSearchEditedSlot)
-		search_tip = "Search through your items (preview text only)."
-		self.search.setStatusTip(search_tip)
-		
-		search_icon = QLabel() #http://www.iconarchive.com/show/super-mono-3d-icons-by-double-j-design/search-icon.html
-		pmap = QPixmap("images/find.png")
-		pmap = pmap.scaledToWidth(32, QtCore.Qt.SmoothTransformation)
-		search_icon.setPixmap(pmap)
-		search_icon.setStatusTip(search_tip)
-		
-		#clipboard_icon = QLabel(self.ICON_HTML.format(name="clipboard",side=32))
-		#grid = QGridLayout() #passing QApplication instance will set the QGridLayout to it, or use #self.setLayout(grid)
-		#grid.setSpacing(10)
-		
-		self.vbox = QVBoxLayout()
-		hbox_tool = QHBoxLayout()
-		hbox_list = QHBoxLayout()
-		
-		pmap = QPixmap("images/devices.png");
-		icn = QIcon(pmap);
-		btn1 = QPushButton("Devices")
-		btn1.setIcon(icn)
-		btn1.setCheckable(True)
-		btn1.setChecked(True)
-		btn1.setStatusTip('Shows clips from all of your devices.')
-		
-		pmap = QPixmap("images/star.png");
-		icn = QIcon(pmap);
-		btn2 = QPushButton("Starred")
-		btn2.setIcon(icn)
-		btn2.setCheckable(True) #from docs... if you need toggle behavior (see setCheckable()) #PART OF QABSTRACTBUTTON CLASS #BUTTONS MUST BE CHECKABLE FOR TOGGLE FUNCTION TO WORK VIA btn.setCheckable for button group toggle style functionality
-		btn2.setStatusTip('Shows clips that you saved for future use.')
-		
-		pmap = QPixmap("images/friends.png");
-		icn = QIcon(pmap);
-		btn3 = QPushButton("Friends")
-		btn3.setIcon(icn)
-		btn3.setCheckable(True)
-		btn3.setStatusTip('Shows clips your friends sent you.')
-		
-		self.btn_group = QButtonGroup() #similar to bootstrap
-		self.btn_group.addButton(btn1)
-		self.btn_group.addButton(btn2)
-		self.btn_group.addButton(btn3)
-		self.btn_group.setExclusive(True) #An PySide.QtGui.QButtonGroup.exclusive() button group switches off all checkable (toggle) buttons except the one that was clicked. 
-		self.btn_group.buttonClicked[int].connect(self.onButtonGroupClickedSlot) #self.buttonGroup.buttonClicked[int].connect(self.buttonGroupClicked) #http://nullege.com/codes/show/src@p@y@PyQt4-HEAD@examples@graphicsview@diagramscene@diagramscene.py/732/PyQt4.QtGui.QButtonGroup.addButton
-		
-		
-		hbox_tool.addWidget(btn1)
-		hbox_tool.addWidget(btn2)
-		hbox_tool.addWidget(btn3)
-				
-		hbox_tool.addStretch(1) #pushes widgets to the side after this, kind of like pull-right
-		hbox_tool.addWidget(search_icon)
-		hbox_tool.addWidget(self.search)
-		
-		hbox_list.addWidget(self.panel_stacked_widget)
-		#hbox_list.addWidget(self.star_list_widget)
-		#hbox_list.addWidget(self.lockout_widget)
-				
-		self.vbox.addLayout(hbox_tool)
-		self.vbox.addLayout(hbox_list)
-		
-		self.main_widget = QWidget() #used to be inherited by main, which will automatically display as a window, but now it is handled by setCentralWidget
-		self.main_widget.setLayout(self.vbox) #http://www.qtcentre.org/threads/5648-How-do-I-add-a-QGridlayout-in-a-QMainwindow
-		
-		self.stacked_widget.addWidget(self.main_widget)
+		self.panel_tab_widget = PanelTabWidget(QtCore.QSize(PixmapThumbnail.Px,PixmapThumbnail.Px), self)
+		#for each in self.panel_tab_widget.panels:
+		#	each.itemDoubleClicked.connect(each.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
+		self.stacked_widget.addWidget(self.panel_tab_widget)
 		
 	def initMenuBar(self):
 	
@@ -176,35 +105,6 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
 		#events process once every x milliseconds, this forces them to process... or we can use repaint isntead
 		qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
 
-	def onSearchEditedSlot(self, written):
-		items = [] #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
-		for index in xrange(self.panel_stacked_widget.main_list_widget.count()):
-			items.append(self.panel_stacked_widget.main_list_widget.item(index))
-		
-		is_blank = not bool(written) #unhide when written is blank
-				
-		for item in items:
-			if is_blank:
-				item.setHidden(False) #unhide all
-			else:
-				item_data = json.loads(item.data(QtCore.Qt.UserRole))
-				if not item_data["clip_type"] in ["text","html"]:
-					item.setHidden(True)
-					continue
-				if written.upper() in item_data["clip_display"].upper(): #TODO only search in searchable html class
-					item.setHidden(False)
-				else:
-					item.setHidden(True)
-					
-	def onButtonGroupClickedSlot(self, id):
-		print id
-		if id==-2:
-			self.panel_stacked_widget.switchToDeviceListWidget()
-		if id==-3:
-			self.panel_stacked_widget.switchToStarListWidget()
-		if id==-4:
-			self.panel_stacked_widget.switchToFriendListWidget()
-		
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 	CONTAINER_DIR = os.path.join(tempfile.gettempdir(), u".pastebeam") #tempfile.mkdtemp() #TODO- use tempfile.mkdtemp() when extracting container, as it guarantees other programs will not be able to intercept extracted file, see tempfile docs for more info
@@ -236,9 +136,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		self.ws_worker.incommingClipsSignalForMain.connect(self.onIncommingSlot)
 		self.ws_worker.setClipSignalForMain.connect(self.onSetNewClipSlot)
 		self.ws_worker.statusSignalForMain.connect(self.onSetStatusSlot)
-		self.ws_worker.deleteClipSignalForMain.connect(self.panel_stacked_widget.onIncommingDelete)
-		self.ws_worker.clearListSignalForMain.connect(self.panel_stacked_widget.clearAllLists)
-		#self.ws_worker.starClipSignalForMain.connect(self.panel_star_widget.onStarClipSlot) #connect his with my
+		self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncommingDelete)
+		self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
 		self.ws_worker.start()
 			
 	@staticmethod
@@ -467,7 +366,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		
 		prepare["hash"]= hash
 		
-		prepare["container_name"] = self.panel_stacked_widget.getMatchingContainerForHash(hash)
+		prepare["container_name"] = self.panel_tab_widget.getMatchingContainerForHash(hash)
 		
 		async_process = dict(question="Update?", data=prepare)
 				

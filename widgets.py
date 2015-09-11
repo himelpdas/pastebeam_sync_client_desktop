@@ -286,8 +286,8 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		self.contacts_list.addItem(view)
 	
 	def onOkButtonClickedSlot(self):
-		self.main.panel_stacked_widget.main_list_widget.contacts_list.extend(self.added_contacts_list)
-		self.main.panel_stacked_widget.main_list_widget.doShareSubActions()
+		self.main.panel_tab_widget.main_list_widget.contacts_list.extend(self.added_contacts_list)
+		self.main.panel_tab_widget.main_list_widget.doShareSubActions()
 		super(self.__class__,self).onOkButtonClickedSlot()
 	
 	def resizeMinWindowSizeForListWidget(self):
@@ -408,6 +408,8 @@ class CommonListWidget(QListWidget):
 		self.doUncommon() #do uncommon here
 		
 		self.doDeleteAction() #Put delete last
+		
+		self.itemDoubleClicked.connect(self.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
 
 	def doStyling(self, status="Double-click an item to copy it, or right-click it for more options."):
 		self.setIconSize(self.parent.icon_size) #http://www.qtcentre.org/threads/8733-Size-of-an-Icon #http://nullege.com/codes/search/PySide.QtGui.QListWidget.setIconSize
@@ -515,15 +517,49 @@ class MainListWidget(CommonListWidget):
 class FriendListWidget(CommonListWidget):
 	def doUncommon(self):
 		pass
-
-class PanelStackedWidget(StackedWidgetFader):
-	def __init__(self, icon_size, parent = None,):
-		super(PanelStackedWidget, self).__init__(parent)
+		
+class PanelTabWidget(QTabWidget):
+	def __init__(self, icon_size, parent):
+		super(self.__class__, self).__init__(parent)
 		self.main=parent
 		self.icon_size=icon_size
-		self.setFadeDuration(111)
+		self.doSearchWidget()
 		self.doPanels()
 		self.addPanels()
+		
+	def doSearchWidget(self):
+		self.search = QLineEdit()
+		self.search.textEdited.connect(self.onSearchEditedSlot)
+		search_tip = "Search through your items (preview text only)."
+		self.search.setStatusTip(search_tip)
+		self.search.setPlaceholderText("Filter...")
+		"""
+		search_icon = QLabel() #http://www.iconarchive.com/show/super-mono-3d-icons-by-double-j-design/search-icon.html
+		pmap = QPixmap("images/find.png")
+		pmap = pmap.scaledToWidth(32, QtCore.Qt.SmoothTransformation)
+		search_icon.setPixmap(pmap)
+		search_icon.setStatusTip(search_tip)
+		"""
+		
+	def onSearchEditedSlot(self, written):
+		items = [] #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
+		for index in xrange(self.main_list_widget.count()):
+			items.append(self.main_list_widget.item(index))
+		
+		is_blank = not bool(written) #unhide when written is blank
+				
+		for item in items:
+			if is_blank:
+				item.setHidden(False) #unhide all
+			else:
+				item_data = json.loads(item.data(QtCore.Qt.UserRole))
+				if not item_data["clip_type"] in ["text","html"]:
+					item.setHidden(True)
+					continue
+				if written.upper() in item_data["clip_display"].upper(): #TODO only search in searchable html class
+					item.setHidden(False)
+				else:
+					item.setHidden(True)
 	
 	def doPanels(self):
 			
@@ -534,21 +570,12 @@ class PanelStackedWidget(StackedWidgetFader):
 		self.friend_list_widget = FriendListWidget(self)
 				
 		self.panels = [self.main_list_widget, self.star_list_widget, self.friend_list_widget]
-		
-		#self.list_widgets = [self.main_list_widget, self.star_list_widget.self.friends_list_widget] #friend_list_widget
-	
+		#devices star friends
 	def addPanels(self):
-		for each in self.panels:
-			self.addWidget(each)
-	
-	def switchToDeviceListWidget(self):
-		self.setCurrentIndex(0)
-	
-	def switchToStarListWidget(self):
-		self.setCurrentIndex(1)
-
-	def switchToFriendListWidget(self):
-		self.setCurrentIndex(2)
+		self.addTab(self.main_list_widget, QIcon("images/devices"), "Devices")
+		self.addTab(self.star_list_widget, QIcon("images/star"), "Starred")
+		self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
+		self.setCornerWidget(self.search)
 		
 	def onIncommingDelete(self,location):
 		list_widget_name, remove_row = location

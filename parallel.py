@@ -73,9 +73,9 @@ class WebsocketWorkerMixinForMain(object):
 		itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData 
 		
 		if new_clip.get("starred")==True:
-			list_widget = self.panel_stacked_widget.star_list_widget
+			list_widget = self.panel_tab_widget.star_list_widget
 		else:
-			list_widget = self.panel_stacked_widget.main_list_widget
+			list_widget = self.panel_tab_widget.main_list_widget
 		
 		list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
 		list_widget.takeItem(5)
