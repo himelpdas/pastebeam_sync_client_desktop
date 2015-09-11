@@ -49,22 +49,33 @@ class AccountMixin(object):
 class LockoutMixin(object):
 
 	def initLockoutWidget(self):
-		self.lockout_widget = QWidget()
-		lockout_vbox = QVBoxLayout()
-		lockout_hbox = QHBoxLayout()
-		lockout_hbox.addStretch(1)
-		self.lockout_pin = QLineEdit()
-		self.lockout_pin.setAlignment(QtCore.Qt.AlignHCenter) #http://www.codeprogress.com/cpp/libraries/qt/QLineEditCenterText.php#.VcnX9M7RtyN
+		
+		self.lockout_pin = lockout_pin = QLineEdit()
+		lockout_pin.setAlignment(QtCore.Qt.AlignHCenter) #http://www.codeprogress.com/cpp/libraries/qt/QLineEditCenterText.php#.VcnX9M7RtyN
 		#self.lockout_pin.setValidator(QIntValidator(0, 9999)) #OLD# http://doc.qt.io/qt-4.8/qlineedit.html#inputMask-prop 
 		#self.lockout_pin.setMaxLength(4) #still need it despite setValidator or else you can keep typing
-		self.lockout_pin.setEchoMode(QLineEdit.Password) #hide with bullets #http://stackoverflow.com/questions/4663207/masking-qlineedit-text
-		self.lockout_pin.setStatusTip("Type your account password to unlock.")
+		lockout_pin.setEchoMode(QLineEdit.Password) #hide with bullets #http://stackoverflow.com/questions/4663207/masking-qlineedit-text
+		lockout_pin.setStatusTip("Type your account password to unlock.")
+		lockout_pin.textEdited.connect(self.onLockoutPinTypedSlot)
 		
-		self.lockout_pin.textEdited.connect(self.onLockoutPinTypedSlot)
+		get_in_label = QLabel("<a href='#'>Can't get in?</a>")
+		get_in_label.setAlignment(QtCore.Qt.AlignCenter)
 		
-		lockout_hbox.addWidget(self.lockout_pin)
+		lines_vbox = QVBoxLayout()
+		lines_vbox.addStretch(1)
+		lines_vbox.addWidget(lockout_pin)
+		lines_vbox.addWidget(get_in_label)
+		lines_vbox.addStretch(1)
+		
+		lockout_hbox = QHBoxLayout()
 		lockout_hbox.addStretch(1)
+		lockout_hbox.addLayout(lines_vbox)
+		lockout_hbox.addStretch(1)
+		
+		lockout_vbox = QVBoxLayout()
 		lockout_vbox.addLayout(lockout_hbox)
+
+		self.lockout_widget = QWidget()
 		self.lockout_widget.setLayout(lockout_vbox)
 		#self.lockout_widget.hide()
 		self.stacked_widget.addWidget(self.lockout_widget)
@@ -270,7 +281,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		self.resizeMinWindowSizeForListWidget()
 		self.exec_()
 		
-	def onAddButtonClickSlot(self):
+	def onFriendRequestButtonClickSlot(self):
 		email = self.email_line.text()
 		if not email or not validators.email(email):
 			#show error
@@ -296,42 +307,26 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		self.setMinimumHeight(new_height)
 		
 	def doAddContactWidget(self):	
-		email_label = QLabel("Friend's<br>Email:")
+		email_label = QLabel("Friend's Email:")
 		self.email_line = email_line = QLineEdit()
-		email_hbox = QHBoxLayout()
-		email_hbox.addWidget(email_label)
-		email_hbox.addWidget(email_line)
-		email_widget = QWidget()
-		email_widget.setLayout(email_hbox)
 		
-		nickname_label = QLabel("Nickname<br>(Optional):")
-		self.nickname_line = nickname_line = QLineEdit()
-		nickname_hbox = QHBoxLayout()
-		nickname_hbox.addWidget(nickname_label)
-		nickname_hbox.addWidget(nickname_line)
-		nickname_widget = QWidget()
-		nickname_widget.setLayout(nickname_hbox)
-
+		friend_request_button = QPushButton("Send friend invite")
+		friend_request_button.clicked.connect(self.onFriendRequestButtonClickSlot)
+		
 		lines_vbox = QVBoxLayout()
-		lines_vbox.addWidget(email_widget)
-		lines_vbox.addWidget(nickname_widget)
-		lines_widget = QWidget()
-		lines_widget.setLayout(lines_vbox)
+		lines_vbox.addWidget(email_label)
+		lines_vbox.addWidget(email_line)
+		lines_vbox.addWidget(friend_request_button)
 		
-		add_button = QPushButton("Add Friend")
-		add_button.clicked.connect(self.onAddButtonClickSlot)
-		add_user_hbox = QHBoxLayout()
-		add_user_hbox.addWidget(lines_widget)
-		add_user_hbox.addWidget(add_button)
 		self.add_user_widget = QWidget()
-		self.add_user_widget.setLayout(add_user_hbox)		
+		self.add_user_widget.setLayout(lines_vbox)	
 		
 	def doListWidget(self):
-		contacts_list_label = QLabel("Contact list:")
+		contacts_list_label = QLabel("Friends list:")
 		self.contacts_list = QListWidget()
 		#for letter in range(65,91):
 		#	self.contacts_list.addItem("%s@yahoo.com"%chr(letter))
-		contacts_list_delete = QPushButton("Delete")
+		contacts_list_delete = QPushButton("Delete friend")
 		contacts_list_layout = QVBoxLayout()
 		contacts_list_layout.addWidget(contacts_list_label)
 		contacts_list_layout.addWidget(self.contacts_list)
@@ -454,6 +449,13 @@ class CommonListWidget(QListWidget):
 	def onCopyActionSlot(self):
 		self.onItemDoubleClickSlot(self.currentItem())
 		
+	@staticmethod
+	def convertToDeviceClip(clip):
+		#convert back to device clip
+		del clip["_id"] #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip 
+		clip.pop("starred", None) #remove it entirely, return None
+		clip.pop("friend", None)
+		
 	def onItemDoubleClickSlot(self, double_clicked_item):
 		
 		#current_item = self.item(0)
@@ -468,11 +470,8 @@ class CommonListWidget(QListWidget):
 			return
 			
 		#container name is already in double_clicked_clip
-			
-		#convert back to device clip
-		del double_clicked_clip["_id"] #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip 
-		double_clicked_clip.pop("starred", None) 
-		double_clicked_clip.pop("friend", None) 
+		
+		double_clicked_clip = self.convertToDeviceClip(double_clicked_clip)
 		
 		self.main.onSetNewClipSlot(double_clicked_clip)
 		
@@ -575,6 +574,7 @@ class PanelTabWidget(QTabWidget):
 		self.addTab(self.main_list_widget, QIcon("images/devices"), "Devices")
 		self.addTab(self.star_list_widget, QIcon("images/star"), "Starred")
 		self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
+		self.addTab(QWidget(), QIcon("images/bulb"), "Alerts")
 		self.setCornerWidget(self.search)
 		
 	def onIncommingDelete(self,location):
