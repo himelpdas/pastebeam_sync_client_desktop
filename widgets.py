@@ -284,7 +284,11 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 	def onFriendRequestButtonClickSlot(self):
 		email = self.email_line.text()
 		if not email or not validators.email(email):
-			#show error
+			QMessageBox.warning( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+				self, 
+				"Error",
+				"Invalid email address"
+			)
 			return
 		nickname  = self.nickname_line.text()
 		if nickname:
@@ -573,7 +577,7 @@ class PanelTabWidget(QTabWidget):
 		#devices star friends
 	def addPanels(self):
 		self.addTab(self.main_list_widget, QIcon("images/devices"), "Devices")
-		self.addTab(self.star_list_widget, QIcon("images/star"), "Starred")
+		self.addTab(self.star_list_widget, QIcon("images/star"), "Bookmarks")
 		self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
 		self.addTab(QWidget(), QIcon("images/bulb"), "Alerts")
 		self.setCornerWidget(self.search)

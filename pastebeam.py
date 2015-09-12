@@ -26,7 +26,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
 		self.initStatusBar()
 		
 		self.setCentralWidget(self.stacked_widget)
-		self.setGeometry(10, 10, 800, 600)
+		self.setGeometry(50, 50, 800, 600)
 		self.setWindowTitle('PasteBeam 1.0.0')	
 		
 		self.show()	
