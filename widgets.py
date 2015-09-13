@@ -120,7 +120,7 @@ class OkCancelWidgetMixin(object):
 class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/threads/37058-modal-QWidget
 
 	@classmethod
-	def show(cls, parent):
+	def show(cls, parent): #THE CLASS ITSELF IS AN OBJECT WITH ITS OWN NAMESPACE, AND CALLING THE CLASS RETURNS (INSTANTIATES) A NEW INSTANCE OBJECT HELD IN THE CLASSES NAMESPACE
 		cls(parent)
 	
 	def __init__(self, parent = None, f = 0):
@@ -270,35 +270,57 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 	
 	def __init__(self, parent):
 		super(self.__class__, self).__init__(parent)
+
 		self.main = parent
 		self.added_contacts_list = []
+
 		self.setWindowTitle('Edit Contacts')
 		self.doAddContactWidget()
 		self.doListWidget()
 		self.doOkCancelWidget()
 		self.doContactsWidget()
+
+		#self.bindEvents()
+
 		self.setLayout(self.contacts_layout)
 		self.resizeMinWindowSizeForListWidget()
-		self.exec_()
+		
+		self.doPreExecGetContactsList()
+		if self.success:
+			self.exec_()
+			
+	def doPreExecGetContactsList(self):
+		async_process = dict(
+			question = "Contacts?",
+			data={"list":[]}
+		)
+		self.main.outgoingSignalForWorker.emit(async_process)
+		self.success =  False
+		WaitForSignalDialog(self, "getting contacts list")
+		if not self.success:
+			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+				self, 
+				"Error",
+				"Could not get contacts list!"
+			)		
 		
 	def onFriendRequestButtonClickSlot(self):
 		email = self.email_line.text()
 		if not email or not validators.email(email):
 			QMessageBox.warning( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
 				self, 
-				"Error",
-				"Invalid email address"
+				"Warning",
+				"Invalid email address!"
 			)
 			return
-		nickname  = self.nickname_line.text()
-		if nickname:
-			view = "{nickname} <{email}>".format(email=email,nickname=nickname)
-		else:
-			view = email
-
-		#view = "<b>%s</b>"%view #make it bold to differentate from the ones already there.
-		self.added_contacts_list.append(view)
-		self.contacts_list.addItem(view)
+			
+		self.added_contacts_list.append(email)
+		self.contacts_list.addItem(email)
+		WaitForSignalDialog(self, "sending friend request")
+		
+	def onFriendRequestReceivedByServerSlot(self):
+		self.friend_request_wait_dialog.done(1)
+		QMessageBox.information(self,"Success", "Friend request sent!")
 	
 	def onOkButtonClickedSlot(self):
 		self.main.panel_tab_widget.main_list_widget.contacts_list.extend(self.added_contacts_list)
@@ -624,3 +646,26 @@ class LockoutStackedWidget(StackedWidgetFader):
 	
 	def switchToLockoutWidget(self):
 		self.setCurrentIndex(1)
+		
+class WaitForSignalDialog(QDialog):
+	@classmethod
+	def show(cls, parent, label):
+		cls(parent, label)
+	def __init__(self, parent, label="please wait"):
+		self.main = parent.main
+		super(self.__class__, self).__init__(self.main, QtCore.Qt.CustomizeWindowHint) #remove the X button https://forum.qt.io/topic/4108/how-to-hide-the-dialog-window-close-button/6
+		self.parent = parent 
+		self.label = label
+		self.doLayout()
+		self.setLayout(self.layout)
+		self.bindEvents()
+		self.exec_()
+	def doLayout(self):
+		wait_label = QLabel("<h1>%s...</h1>"%self.label.capitalize())
+		self.layout = QVBoxLayout()
+		self.layout.addWidget(wait_label)
+	def bindEvents(self):
+		self.main.ws_worker.closeWaitDialogSignalForMain.connect(self.onCloseWaitDialogSlot)
+	def onCloseWaitDialogSlot(self, success):
+		self.parent.success=success
+		self.done(1)

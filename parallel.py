@@ -25,7 +25,7 @@ class WebsocketWorkerMixinForMain(object):
 
 	FILE_ICONS = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files") ) )
 
-	outgoingSignalForWorker = QtCore.Signal(dict)	
+	outgoingSignalForWorker = QtCore.Signal(dict)
 	
 	def onIncommingSlot(self, emitted):
 		#print emitted #display clips here
@@ -104,6 +104,8 @@ class WebsocketWorker(QtCore.QThread):
 	deleteClipSignalForMain = QtCore.Signal(list)
 	StarClipSignalForMain = QtCore.Signal(dict)
 	clearListSignalForMain = QtCore.Signal()
+	closeWaitDialogSignalForMain = QtCore.Signal(bool)
+	
 	session_id = uuid.uuid4()
 
 	#You can do any extra things in this init you need, but for this example
@@ -179,9 +181,9 @@ class WebsocketWorker(QtCore.QThread):
 	def workerLoopDecorator(workerGreenlet):
 		def closure(self):
 			while 1:
+				gevent.sleep(1)
 				if not self.KEEP_RUNNING: 
 					continue #needed when username/password is incorrect, to pause the loop until a new password is set
-				gevent.sleep(1)
 				if self.WSOCK:
 					try:
 						workerGreenlet(self)
@@ -251,7 +253,7 @@ class WebsocketWorker(QtCore.QThread):
 				self.statusSignalForMain.emit(("clip copied","good"))
 
 		#RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
-		elif answer in ["Upload!", "Update!", "Delete!", "Star!"]:
+		elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
 			self.RESPONDED_EVENT.set(received) #true or false	
 		
 	def sendUntilAnswered(self, send):
@@ -264,13 +266,15 @@ class WebsocketWorker(QtCore.QThread):
 			self.WSOCK.send(json.dumps(send))
 						
 			received = self.RESPONDED_EVENT.wait(timeout=5) #AsyncResult.get will block until a result is set by another greenlet, after that get will not block anymore. NOTE- get will return exception! Use wait instead 
-			
-			inspect = received["echo"]
-			
-			if received != None and expect == inspect:
-				self.RESPONDED_EVENT = AsyncResult() #setattr(self, event_name, AsyncResult()	)
-				break
 						
+			if received != None:
+			
+				inspect = received["echo"]
+				
+				if expect == inspect:
+					self.RESPONDED_EVENT = AsyncResult() #setattr(self, event_name, AsyncResult()	)
+					break
+							
 		return received["data"]
 
 	@workerLoopDecorator
@@ -336,6 +340,12 @@ class WebsocketWorker(QtCore.QThread):
 				self.statusSignalForMain.emit((data_in["reason"], "warn"))
 			
 			#self.starClipSignalForMain.emit(data_in)
+			
+		elif question=="Contacts?":
+			
+			data_in = self.sendUntilAnswered(send)
+			
+			self.closeWaitDialogSignalForMain.emit(data_in["success"])
 				
 			
 	def downloadContainerIfNotExist(self, data):
