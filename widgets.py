@@ -272,7 +272,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		super(self.__class__, self).__init__(parent)
 
 		self.main = parent
-		self.added_contacts_list = []
+		self.contacts_list = []
 
 		self.setWindowTitle('Edit Contacts')
 		self.doAddContactWidget()
@@ -296,17 +296,21 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		)
 		self.main.outgoingSignalForWorker.emit(async_process)
 		self.success =  False
-		WaitForSignalDialog(self, "getting contacts list")
+		WaitForSignalDialog(self, "getting contacts list") #EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
 		if not self.success:
 			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
 				self, 
 				"Error",
 				"Could not get contacts list!"
-			)		
+			)
+		self.contacts_list = self.success["list"]
+		for each_email in self.contacts_list:
+			self.list_widget.addItem(email)
+		
 		
 	def onFriendRequestButtonClickSlot(self):
 		email = self.email_line.text()
-		if not email or not validators.email(email):
+		if not validators.email(email):
 			QMessageBox.warning( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
 				self, 
 				"Warning",
@@ -314,16 +318,21 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			)
 			return
 			
-		self.added_contacts_list.append(email)
-		self.contacts_list.addItem(email)
+		self.success = False
 		WaitForSignalDialog(self, "sending friend request")
-		
+		if not self.success:
+			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+				self, 
+				"Error",
+				"Failed to send friend request!"
+			)
+			
 	def onFriendRequestReceivedByServerSlot(self):
 		self.friend_request_wait_dialog.done(1)
 		QMessageBox.information(self,"Success", "Friend request sent!")
 	
 	def onOkButtonClickedSlot(self):
-		self.main.panel_tab_widget.main_list_widget.contacts_list.extend(self.added_contacts_list)
+		self.main.panel_tab_widget.main_list_widget.contacts_list.extend(self.contacts_list)
 		self.main.panel_tab_widget.main_list_widget.doShareSubActions()
 		super(self.__class__,self).onOkButtonClickedSlot()
 	
@@ -349,13 +358,13 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		
 	def doListWidget(self):
 		contacts_list_label = QLabel("Friends list:")
-		self.contacts_list = QListWidget()
+		self.list_widget = QListWidget()
 		#for letter in range(65,91):
 		#	self.contacts_list.addItem("%s@yahoo.com"%chr(letter))
 		contacts_list_delete = QPushButton("Delete friend")
 		contacts_list_layout = QVBoxLayout()
 		contacts_list_layout.addWidget(contacts_list_label)
-		contacts_list_layout.addWidget(self.contacts_list)
+		contacts_list_layout.addWidget(self.list_widget)
 		contacts_list_layout.addWidget(contacts_list_delete)
 		self.contacts_list_widget = QListWidget()
 		self.contacts_list_widget.setLayout(contacts_list_layout)
@@ -667,5 +676,6 @@ class WaitForSignalDialog(QDialog):
 	def bindEvents(self):
 		self.main.ws_worker.closeWaitDialogSignalForMain.connect(self.onCloseWaitDialogSlot)
 	def onCloseWaitDialogSlot(self, success):
-		self.parent.success=success
+		result = json.loads(success)
+		self.parent.success=result
 		self.done(1)

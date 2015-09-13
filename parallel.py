@@ -104,7 +104,7 @@ class WebsocketWorker(QtCore.QThread):
 	deleteClipSignalForMain = QtCore.Signal(list)
 	StarClipSignalForMain = QtCore.Signal(dict)
 	clearListSignalForMain = QtCore.Signal()
-	closeWaitDialogSignalForMain = QtCore.Signal(bool)
+	closeWaitDialogSignalForMain = QtCore.Signal(str)
 	
 	session_id = uuid.uuid4()
 
@@ -345,8 +345,7 @@ class WebsocketWorker(QtCore.QThread):
 			
 			data_in = self.sendUntilAnswered(send)
 			
-			self.closeWaitDialogSignalForMain.emit(data_in["success"])
-				
+			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
 			
 	def downloadContainerIfNotExist(self, data):
 		container_name = data["container_name"]
