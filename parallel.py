@@ -253,7 +253,7 @@ class WebsocketWorker(QtCore.QThread):
 				self.statusSignalForMain.emit(("clip copied","good"))
 
 		#RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
-		elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
+		elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
 			self.RESPONDED_EVENT.set(received) #true or false	
 		
 	def sendUntilAnswered(self, send):
@@ -342,6 +342,12 @@ class WebsocketWorker(QtCore.QThread):
 			#self.starClipSignalForMain.emit(data_in)
 			
 		elif question=="Contacts?":
+			
+			data_in = self.sendUntilAnswered(send)
+			
+			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
+			
+		elif question=="Invite?":
 			
 			data_in = self.sendUntilAnswered(send)
 			

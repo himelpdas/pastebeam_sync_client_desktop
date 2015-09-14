@@ -295,19 +295,17 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			data={"list":[]}
 		)
 		self.main.outgoingSignalForWorker.emit(async_process)
-		self.success =  False
 		WaitForSignalDialog(self, "getting contacts list") #EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
-		if not self.success:
+		if not self.success["success"]:
 			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
 				self, 
 				"Error",
-				"Could not get contacts list!"
+				"Could not get contacts list!<br><br>Reason:%s"%self.success["reason"]
 			)
-		self.contacts_list = self.success["list"]
+		self.contacts_list = self.success["data"]
 		for each_email in self.contacts_list:
 			self.list_widget.addItem(email)
-		
-		
+
 	def onFriendRequestButtonClickSlot(self):
 		email = self.email_line.text()
 		if not validators.email(email):
@@ -318,7 +316,12 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			)
 			return
 			
-		self.success = False
+		self.main.outgoingSignalForWorker.emit(
+			dict(
+				question = "Invite?",
+				data = {"email":email}
+			)
+		)
 		WaitForSignalDialog(self, "sending friend request")
 		if not self.success:
 			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
@@ -326,12 +329,18 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 				"Error",
 				"Failed to send friend request!"
 			)
-			
+		else:
+			QMessageBox.information( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+				self, 
+				"Success",
+				"Friend request sent!"
+			)
 	def onFriendRequestReceivedByServerSlot(self):
 		self.friend_request_wait_dialog.done(1)
 		QMessageBox.information(self,"Success", "Friend request sent!")
 	
 	def onOkButtonClickedSlot(self):
+		#guaranteed thread safe as this window wouldn't even appear without self.contacts_list
 		self.main.panel_tab_widget.main_list_widget.contacts_list.extend(self.contacts_list)
 		self.main.panel_tab_widget.main_list_widget.doShareSubActions()
 		super(self.__class__,self).onOkButtonClickedSlot()
@@ -664,6 +673,7 @@ class WaitForSignalDialog(QDialog):
 		self.main = parent.main
 		super(self.__class__, self).__init__(self.main, QtCore.Qt.CustomizeWindowHint) #remove the X button https://forum.qt.io/topic/4108/how-to-hide-the-dialog-window-close-button/6
 		self.parent = parent 
+		self.parent.success =  False #always set false since self.success is shared
 		self.label = label
 		self.doLayout()
 		self.setLayout(self.layout)
