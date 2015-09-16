@@ -433,9 +433,13 @@ class StackedWidgetFader(QStackedWidget):
 class CommonListWidget(QListWidget):
 	def __init__(self, parent = None):
 		super(CommonListWidget, self).__init__(parent)
-		self.contacts_list = []
 		self.parent = parent
 		self.main = parent.main
+		
+		
+	def doCommon(self):
+		self.contacts_list = []
+		
 		self.doStyling()
 		#delete action
 		self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
@@ -497,8 +501,10 @@ class CommonListWidget(QListWidget):
 	def convertToDeviceClip(clip):
 		#convert back to device clip
 		del clip["_id"] #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip 
-		clip.pop("starred", None) #remove it entirely, return None
-		clip.pop("friend", None)
+		#clip.pop("starred", None) #remove it entirely, return None
+		#clip.pop("friend", None)
+		#clip.pop("alert", None) #WARNING DOES NOT HAVE CONTAINER NOR ENCRYPTED CLIP_PREVIEW, DO THAT HERE
+		clip["system"] = "main"
 		return clip
 		
 	def onItemDoubleClickSlot(self, double_clicked_item):
@@ -522,11 +528,37 @@ class CommonListWidget(QListWidget):
 		
 		#self.previous_hash = hash #or else onClipChangeSlot will react and a duplicate new list item will occur.
 
+class AlertListWidget(CommonListWidget):
+	def __init__(self, parent=None):
+		super(self.__class__, self).__init__(parent)
+		self.parent = parent
+		self.main = parent.main
+		self.doStyling()
+		#delete action
+		self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+						
+		self.doUncommon() #do uncommon here
+		
+		self.doDeleteAction() #Put delete last
+		
+		#self.itemDoubleClicked.connect(self.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
+
+	def doUncommon(self):
+		pass
+		
 class StarListWidget(CommonListWidget):
+	def __init__(self, parent = None):
+		super(self.__class__, self).__init__(parent)
+		self.doCommon()
 	def doUncommon(self):
 		pass
 		
 class MainListWidget(CommonListWidget):
+	
+	def __init__(self, parent = None):
+		super(self.__class__, self).__init__(parent)
+		self.doCommon()
+	
 	def doUncommon(self):
 		self.doStarAction()
 		self.doShareSubActions()
@@ -559,6 +591,9 @@ class MainListWidget(CommonListWidget):
 		self.main.outgoingSignalForWorker.emit(async_process)
 		
 class FriendListWidget(CommonListWidget):
+	def __init__(self, parent = None):
+		super(self.__class__, self).__init__(parent)
+		self.doCommon()
 	def doUncommon(self):
 		pass
 		
@@ -612,14 +647,17 @@ class PanelTabWidget(QTabWidget):
 		self.star_list_widget = StarListWidget(self)
 		
 		self.friend_list_widget = FriendListWidget(self)
+		
+		self.alert_list_widget = AlertListWidget(self)
 				
-		self.panels = [self.main_list_widget, self.star_list_widget, self.friend_list_widget]
+		self.panels = [self.main_list_widget, self.star_list_widget, self.friend_list_widget, self.alert_list_widget]
 		#devices star friends
 	def addPanels(self):
 		self.addTab(self.main_list_widget, QIcon("images/devices"), "Devices")
 		self.addTab(self.star_list_widget, QIcon("images/star"), "Bookmarks")
 		self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
-		self.addTab(QWidget(), QIcon("images/bulb"), "Alerts")
+		#self.addTab(QWidget(), QIcon("images/bulb"), "Alerts")
+		self.addTab(self.alert_list_widget, QIcon("images/bulb"), "Alerts")
 		self.setCornerWidget(self.search)
 		
 	def onIncommingDelete(self,location):
@@ -630,6 +668,8 @@ class PanelTabWidget(QTabWidget):
 		elif list_widget_name == "StarListWidget":
 			self.star_list_widget.takeItem(remove_row)
 		elif list_widget_name == "FriendListWidget":
+			self.friend_list_widget.takeItem(remove_row)		
+		elif list_widget_name == "AlertListWidget":
 			self.friend_list_widget.takeItem(remove_row)
 			
 	def clearAllLists(self):
@@ -644,7 +684,7 @@ class PanelTabWidget(QTabWidget):
 				each_item = list_widget.item(row)
 				item_data = each_item.data(QtCore.Qt.UserRole)
 				json_data = json.loads(item_data)
-				hash_container_pair = {json_data["hash"] : json_data["container_name"]}
+				hash_container_pair = {json_data["hash"] : json_data.get("container_name")}
 				hash_to_container.update(hash_container_pair)
 				row+=1
 			

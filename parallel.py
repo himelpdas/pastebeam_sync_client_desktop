@@ -68,15 +68,20 @@ class WebsocketWorkerMixinForMain(object):
 					icon = self.ICON_HTML.format(name=file_icon, side=32)
 				))
 			txt = "<br>".join(files)
-				
-		#PRINT("thumb on new_clip.data", new_clip["clip_display"])
-		itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData 
 		
-		if new_clip.get("starred")==True:
+		elif new_clip["clip_type"] == "invite":
+			itm.setIcon(QIcon("images/me.png"))
+			txt = new_clip["clip_display"]
+					
+		if new_clip["system"]=="starred":
 			list_widget = self.panel_tab_widget.star_list_widget
-		else:
+		elif new_clip["system"]=="alert":
+			list_widget = self.panel_tab_widget.alert_list_widget
+		elif new_clip["system"] == "main":
 			list_widget = self.panel_tab_widget.main_list_widget
 		
+		#PRINT("thumb on new_clip.data", new_clip["clip_display"])
+		itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData 
 		list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
 		list_widget.takeItem(5)
 		
@@ -354,6 +359,8 @@ class WebsocketWorker(QtCore.QThread):
 			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
 			
 	def downloadContainerIfNotExist(self, data):
+		if not data.get("container_name"):
+			return
 		container_name = data["container_name"]
 		container_path = os.path.join(self.CONTAINER_DIR, container_name)
 		print container_path
