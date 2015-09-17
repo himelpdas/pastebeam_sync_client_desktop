@@ -2,7 +2,7 @@
 
 *pywin32 - install via wheel pywin32-219-cp26-none-win32.whl (RESET)
 
-*mmh3
+*websocket-client
 
 *zbarlib - use instructions here basically you need python 2.6 32 bit, the windows installer for zbar, and the windows installer for the python module. For that reason, the virtualenv must be made with --system-site-packages
 
@@ -15,3 +15,19 @@ RESET cmd so path can take effect
 *SimpleCV - makes life easier to access camera and decode barcode
 
 *pygame, scipy, numpy, opencv - needed by simplecv to open camera
+
+*spooky
+
+*pycrypto
+
+*keyring
+
+*pymongo
+
+sudo apt-get install python-gevent
+sudo apt-get install python-pip #outdated
+sudo pip install -U pip #to get rid of assertion error when using pip freeze
+sudo apt-get install python-pyside
+sudo apt-get install gcc #already installed on 15.04
+sudo apt-get install python-dev #Python.h: No such file or directory
+sudo apt-get install -y mongodb #-y means yes to all
