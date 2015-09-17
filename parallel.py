@@ -246,16 +246,16 @@ class WebsocketWorker(QtCore.QThread):
 			lastest = each
 			
 			not_this_device = lastest["session_id"] != self.session_id
-			is_star = lastest.get("starred")
+			is_clipboard = lastest["system"] == "main"
+			is_star = lastest["system"] == "starred"
+			is_alert = lastest["system"] == "alert"
 
-			if not_this_device and not is_star: #do not allow setting from the same pc
-				self.setClipSignalForMain.emit(lastest) #this will set the newest clip only, thanks to self.main.new_clip!!!
-				#container_names will NOT be reused as setClipSignalForMain will cause a new outgoing signal when the hashes change. This will result in unecessary uploads. The only way to resolve this is to make a hashtable
-				
-			if is_star:
-				self.statusSignalForMain.emit(("starred", "good"))	
-			else:
-				self.statusSignalForMain.emit(("clip copied","good"))
+			if is_clipboard: 
+				if not_this_device: #do not allow setting from the same pc
+					self.setClipSignalForMain.emit(lastest) #this will set the newest clip only, thanks to self.main.new_clip!!!
+					self.statusSignalForMain.emit(("clip copied","good"))
+			elif lastest["system"] == "starred":
+				self.statusSignalForMain.emit(("starred", "good"))					
 
 		#RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
 		elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER

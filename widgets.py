@@ -670,7 +670,7 @@ class PanelTabWidget(QTabWidget):
 		elif list_widget_name == "FriendListWidget":
 			self.friend_list_widget.takeItem(remove_row)		
 		elif list_widget_name == "AlertListWidget":
-			self.friend_list_widget.takeItem(remove_row)
+			self.alert_list_widget.takeItem(remove_row)
 			
 	def clearAllLists(self):
 		for each in self.panels:
