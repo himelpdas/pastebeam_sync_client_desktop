@@ -71,7 +71,7 @@ class WebsocketWorkerMixinForMain(object):
 		
 		elif new_clip["clip_type"] == "invite":
 			itm.setIcon(QIcon("images/me.png"))
-			txt = new_clip["clip_display"]
+			txt = new_clip["clip_display"] + '<br><i>Right-click here to respond.<i>' 
 			
 		elif new_clip["clip_type"] == "notify":
 			itm.setIcon(QIcon("images/me.png"))

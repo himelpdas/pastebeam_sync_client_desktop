@@ -89,11 +89,11 @@ class LockoutMixin(object):
 		self.stacked_widget.switchToMainWidget()
 		self.lockout_pin.clear()
 		for each in self.menu_lockables:
-			each.setEnabled(True)
+			each.setDisabled(False)
 		
 	def onShowLockoutSlot(self):
 		for each in self.menu_lockables:
-			each.setEnabled(False)
+			each.setDisabled(True)
 		self.stacked_widget.switchToLockoutWidget()
 		
 class OkCancelWidgetMixin(object):
@@ -342,7 +342,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 	def onOkButtonClickedSlot(self):
 		#guaranteed thread safe as this window wouldn't even appear without self.contacts_list
 		self.main.panel_tab_widget.main_list_widget.contacts_list.extend(self.contacts_list)
-		self.main.panel_tab_widget.main_list_widget.doShareSubActions()
+		self.main.panel_tab_widget.main_list_widget.enableShareAction()
 		super(self.__class__,self).onOkButtonClickedSlot()
 	
 	def resizeMinWindowSizeForListWidget(self):
@@ -437,9 +437,20 @@ class CommonListWidget(QListWidget):
 		self.main = parent.main
 		self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
 		
-	def onPressedSlot(self, i):
-		pass
+		self.all_enable_disable_action_methods = []
+		self.setMouseTracking(True)
+		self.viewportEntered.connect(self.onMouseEnter)
+		self.itemPressed.connect(self.onItemPressedSlot) #ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 		
+	def onMouseEnter(self):
+		"So that any click outside of an item will disable all context items"
+		for each in self.all_enable_disable_action_methods:
+			each[1]()
+			
+	def onItemPressedSlot(self, i):
+		"So that any click of an item will enable all context items"
+		for each in self.all_enable_disable_action_methods:
+			each[0]()
 		
 	def doCommon(self):
 		self.contacts_list = []
@@ -464,14 +475,44 @@ class CommonListWidget(QListWidget):
 	def doShareAction(self):
 		self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
 		self.addAction(self.share_action)
+
+		self.all_enable_disable_action_methods.append((self.enableShareAction, self.disableShareAction))
+		self.disableShareAction()
+		
+	def enableShareAction(self):
+		if not self.contacts_list:
+			self.share_action.setDisabled(True)
+			#ADD bubble explainin why
+		else:
+			self.share_action.setDisabled(False)
+		share_menu = QMenu()
+		for name in self.contacts_list:
+			friend = QAction(name, self)
+			share_menu.addAction(name)
+			self.share_action.setMenu(share_menu)
+	
+	def disableShareAction(self):
+		self.share_action.setDisabled(True)
 	
 	def doCopyAction(self):
-		copy_action = QAction(QIcon("images/copy.png"), "&Copy", self)
+		self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy", self)
 		copy_action.triggered.connect(self.onCopyActionSlot)
 		self.addAction(copy_action)
 		separator = QAction(self)
 		separator.setSeparator(True)
 		self.addAction(separator)
+		
+		self.all_enable_disable_action_methods.append((self.enableCopyAction, self.disableCopyAction))
+		self.disableCopyAction() #start off disable bc nothing is selected yet
+		
+	def enableCopyAction(self):
+		self.copy_action.setDisabled(False)
+	
+	def disableCopyAction(self):
+		self.copy_action.setDisabled(True)
+		
+	def onCopyActionSlot(self):
+		self.onItemDoubleClickSlot(self.currentItem())
 	
 	def doDeleteAction(self):
 		separator = QAction(self)
@@ -481,10 +522,11 @@ class CommonListWidget(QListWidget):
 		self.addAction(separator)
 		self.addAction(delete_action)
 		
+		self.all_enable_disable_action_methods.append((self.enableDeleteAction, self.disableDeleteAction))
+		self.disableDeleteAction()
+		
 	def onDeleteAction(self):
 		current_row, current_item = self.getClipDataByRow()
-		if not current_item:
-			return
 		remove_id = current_item["_id"]
 		async_process = dict(
 			question = "Delete?",
@@ -492,16 +534,17 @@ class CommonListWidget(QListWidget):
 		)
 		self.main.outgoingSignalForWorker.emit(async_process)
 		
+	def enableDeleteAction(self):
+		self.last_action.setDisabled(False)
+	
+	def disableDeleteAction(self):
+		self.last_action.setDisabled(True)
+		
 	def getClipDataByRow(self):
 		current_row = self.currentRow()
 		current_item = self.currentItem()
-		if not current_item:
-			return None, None
 		current_item = json.loads(current_item.data(QtCore.Qt.UserRole)) #http://stackoverflow.com/questions/25452125/is-it-possible-to-add-a-hidden-value-to-every-item-of-qlistwidget
 		return current_row, current_item
-		
-	def onCopyActionSlot(self):
-		self.onItemDoubleClickSlot(self.currentItem())
 		
 	@staticmethod
 	def convertToDeviceClip(clip):
@@ -539,14 +582,12 @@ class AlertListWidget(CommonListWidget):
 		super(self.__class__, self).__init__(parent)
 		self.parent = parent
 		self.main = parent.main
-		self.doStyling()
+		self.doStyling(status="Right-click an item for more options.")
 
 		self.doUncommon() #do uncommon here
 
 		self.doDeleteAction() #Put delete last
-		
-		self.itemPressed.connect(self.onItemClickedSlot) #ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
-		
+
 	def doUncommon(self):
 		self.doAcceptInviteAction()
 		
@@ -554,15 +595,14 @@ class AlertListWidget(CommonListWidget):
 		self.accept_invite_action = QAction(QIcon("images/ok.png"), "&Accept invite", self)
 		self.accept_invite_action.triggered.connect(self.onAcceptInviteAction)
 		
+		self.all_enable_disable_action_methods.append((self.enableAcceptInviteAction, self.disableAcceptInviteAction))
+		self.disableAcceptInviteAction()
+		
 	def onAcceptInviteAction(self):
 		print "INVITE ACTION"
 		current_row, current_item = self.getClipDataByRow()
-		if not current_item:
-			return
-		print 1
 		if not current_item["clip_type"] == "invite":
 			return
-		print 2
 		email = current_item["host_name"]
 		
 		async_process = dict(
@@ -578,14 +618,20 @@ class AlertListWidget(CommonListWidget):
 		
 	def removeAcceptInviteAction(self):
 		self.removeAction(self.accept_invite_action)
+		
+	def enableAcceptInviteAction(self):
+		self.accept_invite_action.setDisabled(False)
+	
+	def disableAcceptInviteAction(self):
+		self.accept_invite_action.setDisabled(True)
 
-	def onItemClickedSlot(self, clicked_item):
-		print "ITEM CLICKED"
+	def onItemPressedSlot(self, clicked_item):
+		super(self.__class__, self).onItemPressedSlot(clicked_item)
 		self.removeAcceptInviteAction()
 		clicked_alert = json.loads(clicked_item.data(QtCore.Qt.UserRole))
 		if clicked_alert["clip_type"] == "invite":
 			self.addAcceptInviteAction()
-		
+	
 class StarListWidget(CommonListWidget):
 	def __init__(self, parent = None):
 		super(self.__class__, self).__init__(parent)
@@ -601,25 +647,21 @@ class MainListWidget(CommonListWidget):
 	
 	def doUncommon(self):
 		self.doStarAction()
-		self.doShareSubActions()
-		
-	def doShareSubActions(self):
-		if not self.contacts_list:
-			self.share_action.setDisabled(True)
-			#ADD bubble explainin why
-		else:
-			self.share_action.setDisabled(False)
-		share_menu = QMenu()
-		for name in self.contacts_list:
-			friend = QAction(name, self)
-			share_menu.addAction(name)
-			self.share_action.setMenu(share_menu)
 
 	def doStarAction(self):
 		#star action
-		star_action = QAction(QIcon("images/star.png"), '&Star', self)
+		self.star_action = star_action = QAction(QIcon("images/star.png"), '&Star', self)
 		star_action.triggered.connect(self.onAddStarAction)
 		self.addAction(star_action)
+
+		self.all_enable_disable_action_methods.append((self.enableStarAction, self.disableStarAction))
+		self.disableStarAction()
+		
+	def enableStarAction(self):
+		self.star_action.setDisabled(False)
+	
+	def disableStarAction(self):
+		self.star_action.setDisabled(True)
 		
 	def onAddStarAction(self):
 		current_row, current_item = self.getClipDataByRow()
