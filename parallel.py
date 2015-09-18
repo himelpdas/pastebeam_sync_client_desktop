@@ -18,7 +18,7 @@ from PySide import QtCore
 import encompress
 
 #DEFAULT_DOMAIN = "192.168.0.191"
-DEFAULT_DOMAIN = "192.168.0.7"
+DEFAULT_DOMAIN = "192.168.0.12"
 DEFAULT_PORT = 8084
 
 class WebsocketWorkerMixinForMain(object):
@@ -72,7 +72,11 @@ class WebsocketWorkerMixinForMain(object):
 		elif new_clip["clip_type"] == "invite":
 			itm.setIcon(QIcon("images/me.png"))
 			txt = new_clip["clip_display"]
-					
+			
+		elif new_clip["clip_type"] == "notify":
+			itm.setIcon(QIcon("images/me.png"))
+			txt = new_clip["clip_display"]
+			
 		if new_clip["system"]=="starred":
 			list_widget = self.panel_tab_widget.star_list_widget
 		elif new_clip["system"]=="alert":
@@ -258,7 +262,7 @@ class WebsocketWorker(QtCore.QThread):
 				self.statusSignalForMain.emit(("starred", "good"))					
 
 		#RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
-		elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
+		elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
 			self.RESPONDED_EVENT.set(received) #true or false	
 		
 	def sendUntilAnswered(self, send):
@@ -353,6 +357,12 @@ class WebsocketWorker(QtCore.QThread):
 			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
 			
 		elif question=="Invite?":
+			
+			data_in = self.sendUntilAnswered(send)
+			
+			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
+			
+		elif question =="Accept?":
 			
 			data_in = self.sendUntilAnswered(send)
 			

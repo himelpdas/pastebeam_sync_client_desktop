@@ -304,7 +304,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			)
 		self.contacts_list = self.success["data"]
 		for each_email in self.contacts_list:
-			self.list_widget.addItem(email)
+			self.list_widget.addItem(each_email)
 
 	def onFriendRequestButtonClickSlot(self):
 		email = self.email_line.text()
@@ -435,15 +435,17 @@ class CommonListWidget(QListWidget):
 		super(CommonListWidget, self).__init__(parent)
 		self.parent = parent
 		self.main = parent.main
+		self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+		
+	def onPressedSlot(self, i):
+		pass
 		
 		
 	def doCommon(self):
 		self.contacts_list = []
 		
 		self.doStyling()
-		#delete action
-		self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
-		
+		#delete action		
 		self.doCopyAction()
 		
 		self.doShareAction()
@@ -474,13 +476,15 @@ class CommonListWidget(QListWidget):
 	def doDeleteAction(self):
 		separator = QAction(self)
 		separator.setSeparator(True) #http://www.qtcentre.org/threads/21838-Separator-in-context-menu
-		delete_action = QAction(QIcon("images/trash.png"), '&Delete', self) #delete.setText("Delete")
+		self.last_action = delete_action = QAction(QIcon("images/trash.png"), '&Delete', self) #delete.setText("Delete")
 		delete_action.triggered.connect(self.onDeleteAction)
 		self.addAction(separator)
 		self.addAction(delete_action)
 		
 	def onDeleteAction(self):
 		current_row, current_item = self.getClipDataByRow()
+		if not current_item:
+			return
 		remove_id = current_item["_id"]
 		async_process = dict(
 			question = "Delete?",
@@ -491,6 +495,8 @@ class CommonListWidget(QListWidget):
 	def getClipDataByRow(self):
 		current_row = self.currentRow()
 		current_item = self.currentItem()
+		if not current_item:
+			return None, None
 		current_item = json.loads(current_item.data(QtCore.Qt.UserRole)) #http://stackoverflow.com/questions/25452125/is-it-possible-to-add-a-hidden-value-to-every-item-of-qlistwidget
 		return current_row, current_item
 		
@@ -534,17 +540,51 @@ class AlertListWidget(CommonListWidget):
 		self.parent = parent
 		self.main = parent.main
 		self.doStyling()
-		#delete action
-		self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
-						
+
 		self.doUncommon() #do uncommon here
-		
+
 		self.doDeleteAction() #Put delete last
 		
-		#self.itemDoubleClicked.connect(self.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
-
+		self.itemPressed.connect(self.onItemClickedSlot) #ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
+		
 	def doUncommon(self):
-		pass
+		self.doAcceptInviteAction()
+		
+	def doAcceptInviteAction(self):
+		self.accept_invite_action = QAction(QIcon("images/ok.png"), "&Accept invite", self)
+		self.accept_invite_action.triggered.connect(self.onAcceptInviteAction)
+		
+	def onAcceptInviteAction(self):
+		print "INVITE ACTION"
+		current_row, current_item = self.getClipDataByRow()
+		if not current_item:
+			return
+		print 1
+		if not current_item["clip_type"] == "invite":
+			return
+		print 2
+		email = current_item["host_name"]
+		
+		async_process = dict(
+			question = "Accept?",
+			data = dict(
+				email = email
+			)
+		)
+		self.main.outgoingSignalForWorker.emit(async_process)
+		
+	def addAcceptInviteAction(self):
+		self.insertAction(self.last_action, self.accept_invite_action)
+		
+	def removeAcceptInviteAction(self):
+		self.removeAction(self.accept_invite_action)
+
+	def onItemClickedSlot(self, clicked_item):
+		print "ITEM CLICKED"
+		self.removeAcceptInviteAction()
+		clicked_alert = json.loads(clicked_item.data(QtCore.Qt.UserRole))
+		if clicked_alert["clip_type"] == "invite":
+			self.addAcceptInviteAction()
 		
 class StarListWidget(CommonListWidget):
 	def __init__(self, parent = None):
