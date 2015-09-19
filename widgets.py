@@ -300,7 +300,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
 				self, 
 				"Error",
-				"Could not get contacts list!<br><br>Reason:%s"%self.success["reason"]
+				"Could not get contacts list! Reason:<br><i>%s</i>"%self.success["reason"]
 			)
 		self.contacts_list = self.success["data"]
 		for each_email in self.contacts_list:
@@ -323,11 +323,11 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			)
 		)
 		WaitForSignalDialog(self, "sending friend request")
-		if not self.success:
+		if not self.success["success"]:
 			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
 				self, 
 				"Error",
-				"Failed to send friend request!"
+				"Failed to send friend request! Reason:<br><i>%s</i>"%self.success["reason"]
 			)
 		else:
 			QMessageBox.information( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt

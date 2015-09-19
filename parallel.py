@@ -360,6 +360,9 @@ class WebsocketWorker(QtCore.QThread):
 			
 			data_in = self.sendUntilAnswered(send)
 			
+			print data_in
+			print ""
+			
 			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
 			
 		elif question =="Accept?":
