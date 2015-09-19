@@ -292,7 +292,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 	def doPreExecGetContactsList(self):
 		async_process = dict(
 			question = "Contacts?",
-			data={"list":[]}
+			data={"contacts_list":[]}
 		)
 		self.main.outgoingSignalForWorker.emit(async_process)
 		WaitForSignalDialog(self, "getting contacts list") #EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
