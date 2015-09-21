@@ -19,16 +19,16 @@ class AccountMixin(object):
 		
 		login = self.getLogin()
 		
-		email, e = QInputDialog.getText(self, 'Account', 
-			'Enter your <b>email</b>:', 
+		email, e = QInputDialog.getText(self, 'Account',
+			'Enter your <b>email</b>:',
 			text = login.get("email"),
 		)
 		
 		if not e:
 			return
 		
-		password, p = QInputDialog.getText(self, 'Account', 
-			'Enter your <b>password</b>:', 
+		password, p = QInputDialog.getText(self, 'Account',
+			'Enter your <b>password</b>:',
 			text = login.get("password"),
 			echo=QLineEdit.Password
 		)
@@ -37,7 +37,7 @@ class AccountMixin(object):
 			return
 		
 		keyring.set_password("pastebeam","account",json.dumps({
-			"email":email, 
+			"email":email,
 			"password":password,
 		}))
 		
@@ -52,7 +52,7 @@ class LockoutMixin(object):
 		
 		self.lockout_pin = lockout_pin = QLineEdit()
 		lockout_pin.setAlignment(QtCore.Qt.AlignHCenter) #http://www.codeprogress.com/cpp/libraries/qt/QLineEditCenterText.php#.VcnX9M7RtyN
-		#self.lockout_pin.setValidator(QIntValidator(0, 9999)) #OLD# http://doc.qt.io/qt-4.8/qlineedit.html#inputMask-prop 
+		#self.lockout_pin.setValidator(QIntValidator(0, 9999)) #OLD# http://doc.qt.io/qt-4.8/qlineedit.html#inputMask-prop
 		#self.lockout_pin.setMaxLength(4) #still need it despite setValidator or else you can keep typing
 		lockout_pin.setEchoMode(QLineEdit.Password) #hide with bullets #http://stackoverflow.com/questions/4663207/masking-qlineedit-text
 		lockout_pin.setStatusTip("Type your account password to unlock.")
@@ -253,7 +253,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
 			return
 		
 		keyring.set_password("pastebeam","account",json.dumps({
-			"email":typed_email, 
+			"email":typed_email,
 			"password":typed_password,
 		}))
 		
@@ -292,13 +292,13 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 	def doPreExecGetContactsList(self):
 		async_process = dict(
 			question = "Contacts?",
-			data={"contacts_list":[]}
+			data={"contacts_list":None}
 		)
 		self.main.outgoingSignalForWorker.emit(async_process)
 		WaitForSignalDialog(self, "getting contacts list") #EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
 		if not self.success["success"]:
 			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self, 
+				self,
 				"Error",
 				"Could not get contacts list! Reason:<br><i>%s</i>"%self.success["reason"]
 			)
@@ -310,7 +310,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		email = self.email_line.text()
 		if not validators.email(email):
 			QMessageBox.warning( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self, 
+				self,
 				"Warning",
 				"Invalid email address!"
 			)
@@ -325,13 +325,13 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		WaitForSignalDialog(self, "sending friend request")
 		if not self.success["success"]:
 			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self, 
+				self,
 				"Error",
 				"Failed to send friend request! Reason:<br><i>%s</i>"%self.success["reason"]
 			)
 		else:
 			QMessageBox.information( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self, 
+				self,
 				"Success",
 				"Friend request sent!"
 			)
@@ -549,7 +549,7 @@ class CommonListWidget(QListWidget):
 	@staticmethod
 	def convertToDeviceClip(clip):
 		#convert back to device clip
-		del clip["_id"] #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip 
+		del clip["_id"] #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip
 		#clip.pop("starred", None) #remove it entirely, return None
 		#clip.pop("friend", None)
 		#clip.pop("alert", None) #WARNING DOES NOT HAVE CONTAINER NOR ENCRYPTED CLIP_PREVIEW, DO THAT HERE
@@ -561,7 +561,7 @@ class CommonListWidget(QListWidget):
 		#current_item = self.item(0)
 		#current_clip = json.loads(current_item.data(QtCore.Qt.UserRole))
 		
-		double_clicked_clip = json.loads(double_clicked_item.data(QtCore.Qt.UserRole)) 
+		double_clicked_clip = json.loads(double_clicked_item.data(QtCore.Qt.UserRole))
 		
 		hash, prev = double_clicked_clip["hash"], self.main.previous_hash
 		
@@ -794,7 +794,7 @@ class WaitForSignalDialog(QDialog):
 	def __init__(self, parent, label="please wait"):
 		self.main = parent.main
 		super(self.__class__, self).__init__(self.main, QtCore.Qt.CustomizeWindowHint) #remove the X button https://forum.qt.io/topic/4108/how-to-hide-the-dialog-window-close-button/6
-		self.parent = parent 
+		self.parent = parent
 		self.parent.success =  False #always set false since self.success is shared
 		self.label = label
 		self.doLayout()
