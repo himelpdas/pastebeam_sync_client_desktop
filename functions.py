@@ -14,6 +14,11 @@ from spooky import hash128
 
 from collections import deque
 
+#DEFAULT_DOMAIN = "192.168.0.191"
+DEFAULT_DOMAIN = "192.168.0.12"
+DEFAULT_PORT = 8084
+
+CONTAINER_DIR = os.path.join(tempfile.gettempdir(), u".pastebeam") #tempfile.mkdtemp() #TODO- use tempfile.mkdtemp() when extracting container, as it guarantees other programs will not be able to intercept extracted file, see tempfile docs for more info
 
 def string_is_url(url):
 	split_url = url.split()
@@ -55,3 +60,23 @@ def URL(scheme, addr, port, *_args, **_vars):
 			url+="{key}={value}&".format(key=key, value=value)
 		url=url[:-1]
 	return url
+
+def downloadContainerIfNotExist(data):
+	if not data.get("container_name"):
+		return
+	container_name = data["container_name"]
+	container_path = os.path.join(CONTAINER_DIR, container_name)
+	print container_path
+	
+	if os.path.isfile(container_path):
+		return container_path
+	else:
+		#TODO- show downloading file dialogue
+		try:
+			#urllib.urlretrieve(URL(arg="static/%s"%container_name,port=8084,scheme="http"), container_path)
+			urllib.URLopener().retrieve(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "static", container_name), container_path) #http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
+		except IOError:
+			pass
+		else:
+			return container_path
+

@@ -107,8 +107,6 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
 
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
-	CONTAINER_DIR = os.path.join(tempfile.gettempdir(), u".pastebeam") #tempfile.mkdtemp() #TODO- use tempfile.mkdtemp() when extracting container, as it guarantees other programs will not be able to intercept extracted file, see tempfile docs for more info
-
 	ICON_HTML = u"<html><img src='images/{name}.png' width={side} height={side}></html>"
 	
 	HOST_NAME = u"{system} {release}".format(system = platform.system(), release = platform.release() ) #self.getLogin().get("device_name"),
@@ -123,7 +121,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		super(Main, self).__init__()
 		
 		try:
-			os.mkdir(self.CONTAINER_DIR)
+			os.mkdir(CONTAINER_DIR)
 		except OSError:
 			pass
 		
@@ -175,7 +173,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 				
 			#secure_hash = hashlib.new("ripemd160", hash + "ACCOUNT_SALT").hexdigest() #use pdkbf2 #to prevent rainbow table attacks of known files and their hashes, will also cause decryption to fail if file name is changed
 			img_file_name = "%s.bmp"%hash
-			img_file_path = os.path.join(self.CONTAINER_DIR, img_file_name)
+			img_file_path = os.path.join(CONTAINER_DIR, img_file_name)
 			image.save(img_file_path) #change to or compliment upload
 				
 			pmap = QPixmap(image) #change to pixmap for easier image editing than Qimage
@@ -215,7 +213,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			preview = self.anchorUrls(preview)
 						
 			html_file_name = "%s.json"%hash
-			html_file_path = os.path.join(self.CONTAINER_DIR,html_file_name)
+			html_file_path = os.path.join(CONTAINER_DIR,html_file_name)
 			
 			with open(html_file_path, 'w') as html_file:
 				html_and_text = json.dumps({"html_and_text":{
@@ -250,7 +248,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			preview = self.anchorUrls(preview)
 						
 			text_file_name = "%s.txt"%hash
-			text_file_path = os.path.join(self.CONTAINER_DIR,text_file_name)
+			text_file_path = os.path.join(CONTAINER_DIR,text_file_name)
 			
 			with open(text_file_path, 'w') as text_file:
 				text_file.write(original)
@@ -346,9 +344,9 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			for each_new_path in os_file_paths_new:
 				try:
 					if os.path.isdir(each_new_path):
-						distutils.dir_util.copy_tree(each_new_path, os.path.join(self.CONTAINER_DIR, os.path.split(each_new_path)[1] ) )
+						distutils.dir_util.copy_tree(each_new_path, os.path.join(CONTAINER_DIR, os.path.split(each_new_path)[1] ) )
 					else:
-						distutils.file_util.copy_file(each_new_path, self.CONTAINER_DIR )
+						distutils.file_util.copy_file(each_new_path, CONTAINER_DIR )
 				except distutils.errors.DistutilsFileError:
 					#show error
 					PRINT("failure",274)
@@ -380,8 +378,11 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		container_name = new_clip["container_name"]
 		clip_type = new_clip["clip_type"]
 		
+		#downloading modal
+		downloadContainerIfNotExist(new_clip) #TODO show error message if download not found on server
+		
 		self.onSetStatusSlot(("decrypting", "unlock"))
-		with encompress.Encompress(password = "nigger", directory = self.CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
+		with encompress.Encompress(password = "nigger", directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
 			#print file_paths_decrypt
 			
 			mimeData = QtCore.QMimeData()
