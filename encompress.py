@@ -178,7 +178,7 @@ class Encompress():
 			while not finished:
 				chunk, next_chunk = next_chunk, cipher.decrypt(self.file_decrypt.read(self.READ_BYTES))
 				if len(next_chunk) == 0:
-					padding_length = ord(chunk[-1]) #BRILLIANT! DURING ENCRYPTION IT FILLS THE PADDING WITH A CHARACTER THAT ALSO REPRESENTS THE REMAINDER LENGTH. SO EX. padded with aaaaaa, ord(a) = 6, chr(6) = a 
+					padding_length = ord(chunk[-1]) #BRILLIANT! DURING ENCRYPTION IT FILLS THE PADDING WITH A CHARACTER THAT ALSO REPRESENTS THE REMAINDER LENGTH. SO EX. padded with aaaaaa, ord(a) = 6, chr(6) = a
 					chunk = chunk[:-padding_length]
 					finished = True
 				archive.write(chunk)
@@ -199,7 +199,7 @@ class Encompress():
 			return name.decode("utf8") #decode back to unicode representation
 
 		updated = []
-		for m in tar.getmembers(): 
+		for m in tar.getmembers():
 			print m.name
 			m.name = recover(m.name)
 			#print m.name

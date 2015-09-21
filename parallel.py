@@ -28,7 +28,7 @@ class WebsocketWorkerMixinForMain(object):
 		
 		new_clip = emitted
 		
-		#if not new_clip["sender_uuid"] == self.SENDER_UUID: #DO NOT set clipboard if new_clip with same sender ID as this will result in double, and possibly infinite list items. 
+		#if not new_clip["sender_uuid"] == self.SENDER_UUID: #DO NOT set clipboard if new_clip with same sender ID as this will result in double, and possibly infinite list items.
 		#self.setClip()
 		
 		itm =  QListWidgetItem()
@@ -67,7 +67,7 @@ class WebsocketWorkerMixinForMain(object):
 		
 		elif new_clip["clip_type"] == "invite":
 			itm.setIcon(QIcon("images/me.png"))
-			txt = new_clip["clip_display"] + '<br><i>Right-click here to respond.<i>' 
+			txt = new_clip["clip_display"] + '<br><i>Right-click here to respond.<i>'
 			
 		elif new_clip["clip_type"] == "notify":
 			itm.setIcon(QIcon("images/me.png"))
@@ -81,7 +81,7 @@ class WebsocketWorkerMixinForMain(object):
 			list_widget = self.panel_tab_widget.main_list_widget
 		
 		#PRINT("thumb on new_clip.data", new_clip["clip_display"])
-		itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData 
+		itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
 		list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
 		list_widget.takeItem(5)
 		
@@ -124,7 +124,7 @@ class WebsocketWorker(QtCore.QThread):
 		self.OUTGOING_QUEUE = deque() #must use alternative Queue for non standard library thread and greenlets
 		
 	#A QThread is run by calling it's start() function, which calls this run()
-	#function in it's own "thread". 
+	#function in it's own "thread".
 	
 	def onOutgoingSlot(self, async_process):
 		#PRINT("onOutgoingSlot", prepare)
@@ -186,7 +186,7 @@ class WebsocketWorker(QtCore.QThread):
 		def closure(self):
 			while 1:
 				gevent.sleep(1)
-				if not self.KEEP_RUNNING: 
+				if not self.KEEP_RUNNING:
 					continue #needed when username/password is incorrect, to pause the loop until a new password is set
 				if self.WSOCK:
 					try:
@@ -249,7 +249,7 @@ class WebsocketWorker(QtCore.QThread):
 			is_star = lastest["system"] == "starred"
 			is_alert = lastest["system"] == "alert"
 
-			if is_clipboard: 
+			if is_clipboard:
 				if not_this_device: #do not allow setting from the same pc
 					self.setClipSignalForMain.emit(lastest) #this will set the newest clip only, thanks to self.main.new_clip!!!
 					self.statusSignalForMain.emit(("clip copied","good"))
@@ -269,7 +269,7 @@ class WebsocketWorker(QtCore.QThread):
 		
 			self.WSOCK.send(json.dumps(send))
 						
-			received = self.RESPONDED_EVENT.wait(timeout=5) #AsyncResult.get will block until a result is set by another greenlet, after that get will not block anymore. NOTE- get will return exception! Use wait instead 
+			received = self.RESPONDED_EVENT.wait(timeout=5) #AsyncResult.get will block until a result is set by another greenlet, after that get will not block anymore. NOTE- get will return exception! Use wait instead
 						
 			if received != None:
 			
@@ -314,7 +314,7 @@ class WebsocketWorker(QtCore.QThread):
 					r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), files={"upload": open(container_path, 'rb')})
 				except requests.exceptions.ConnectionError:
 					#connection error
-					raise socket.error 
+					raise socket.error
 			
 			self.statusSignalForMain.emit(("updating", "sync"))
 

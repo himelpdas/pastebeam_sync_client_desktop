@@ -363,7 +363,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		lines_vbox.addWidget(friend_request_button)
 		
 		self.add_user_widget = QWidget()
-		self.add_user_widget.setLayout(lines_vbox)	
+		self.add_user_widget.setLayout(lines_vbox)	#
 		
 	def doListWidget(self):
 		contacts_list_label = QLabel("Friends list:")

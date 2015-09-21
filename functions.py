@@ -3,7 +3,7 @@
 import urlparse
 import os
 
-import bson.json_util as json 
+import bson.json_util as json
 from bson.binary import Binary
 
 import hashlib, uuid, time, sys, cgi, tempfile
@@ -43,13 +43,13 @@ def getFolderSize(folder, max=None): #http://stackoverflow.com/questions/1392413
 	
 #See: http://daringfireball.net/2010/07/improved_regex_for_matching_urls
 import re, urllib
- 
+
 GRUBER_URLINTEXT_PAT = re.compile(ur'(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:\'".,<>?\xab\xbb\u201c\u201d\u2018\u2019]))')
 
 def PRINT(label, data):
 	print "\n%s: %s"%(label.capitalize(), data)
 	
-def URL(scheme, addr, port, *_args, **_vars): 
+def URL(scheme, addr, port, *_args, **_vars):
 	url = "{scheme}://{addr}:{port}/".format(scheme=scheme, addr=addr, port=port)
 	if _args:
 		args = "/".join(_args)

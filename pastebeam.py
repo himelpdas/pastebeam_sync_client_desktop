@@ -16,7 +16,7 @@ import platform, distutils.dir_util, distutils.errors, distutils.file_util #dist
 
 class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
 	#SLOT IS A QT TERM MEANING EVENT
-	def initUI(self):			   
+	def initUI(self):
 		
 		self.stacked_widget = LockoutStackedWidget()
 		
@@ -181,12 +181,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			
 			device= QtCore.QBuffer() #is an instance of QIODevice, which is accepted by image.save()
 			pmap.thumbnail.save(device, "PNG") # writes image into the in-memory container, rather than a file name
-			bytearray = device.data() #get the buffer itself
-			bytestring = bytearray.data() #copy the full string
+			_bytearray = device.data() #get the buffer itself
+			bytestring = _bytearray.data() #copy the full string
 			
 			text = "Copied Image or Screenshot\n\n{w} x {h} Pixels\n{mp} Megapixels\n{mb} Megabytes".format(w=pmap.original_w, h=pmap.original_h, mp="%d.02"%(pmap.original_w*pmap.original_h/1000000.0), mb="%d.1"%(pmap.original_w*pmap.original_h*3/1024**2) )
 			clip_display = dict(
-				text=Binary(text), 
+				text=Binary(text),
 				thumb = Binary(bytestring)  #Use BSON Binary to prevent UnicodeDecodeError: 'utf8' codec can't decode byte 0xeb in position 0: invalid continuation byte
 			)
 			
@@ -326,7 +326,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 				
 					display_file_names.append(each_file_name)
 				
-					with open(each_path, 'rb') as each_file: 
+					with open(each_path, 'rb') as each_file:
 						each_file_name = os.path.split(each_path)[1]
 						each_data = each_file.read() #update status
 				
@@ -340,7 +340,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			else:
 				hash = checksum
 							
-			#copy files to temp. this is needed 
+			#copy files to temp. this is needed
 			for each_new_path in os_file_paths_new:
 				try:
 					if os.path.isdir(each_new_path):
@@ -395,7 +395,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 					
 					clip_json = json.loads(clip_file.read()) #json handles encode and decode of UTF8
 					
-					clip_text = clip_json["html_and_text"]["text"] 
+					clip_text = clip_json["html_and_text"]["text"]
 					clip_html = clip_json["html_and_text"]["html"]
 					
 					mimeData.setText(clip_text) #set text cannot automatically truncate html (or rich text tags) like with mimeData.text(). This is probably due to the operating system providing both text and html, and it's not Qt's concern. So I decided to store getText on json file and setText here.
@@ -474,7 +474,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 	
 	@staticmethod
 	def encodeClipDisplay(clip):
-		return (clip or '').encode("utf-8", "replace").encode("zlib").encode("base64") #MUST ENCODE in base64 before transmitting obsfucated data #null clip causes serious looping problems, put some text! Prevent setText's TypeError: String or Unicode type required 
+		return (clip or '').encode("utf-8", "replace").encode("zlib").encode("base64") #MUST ENCODE in base64 before transmitting obsfucated data #null clip causes serious looping problems, put some text! Prevent setText's TypeError: String or Unicode type required
 		
 	def closeEvent(self, event): #http://stackoverflow.com/questions/9249500/pyside-pyqt-detect-if-user-trying-to-close-window
 		# if i don't terminate the worker thread, the app will crash (ex. windows will say python.exe stopped working)
