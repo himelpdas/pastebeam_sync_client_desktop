@@ -374,6 +374,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		#for letter in range(65,91):
 		#	self.contacts_list.addItem("%s@yahoo.com"%chr(letter))
 		contacts_list_delete = QPushButton("Delete friend")
+		contacts_list_delete.clicked.connect(self.onDeleteClickedSlot)
 		contacts_list_layout = QVBoxLayout()
 		contacts_list_layout.addWidget(contacts_list_label)
 		contacts_list_layout.addWidget(self.list_widget)
@@ -390,6 +391,10 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		self.contacts_layout.addWidget(self.add_user_widget)
 		self.contacts_layout.addWidget(self.contacts_list_widget)
 		self.contacts_layout.addWidget(self.okcancel_widget)
+		
+	def onDeleteClickedSlot(self):
+		current_row = self.list_widget.currentRow()
+		self.list_widget.takeItem(current_row)
 				
 class FaderWidget(QWidget):
 
