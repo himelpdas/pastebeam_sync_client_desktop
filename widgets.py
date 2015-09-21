@@ -302,9 +302,12 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 				"Error",
 				"Could not get contacts list! Reason:<br><i>%s</i>"%self.success["reason"]
 			)
+
 		self.contacts_list = self.success["data"]
 		for each_email in self.contacts_list:
 			self.list_widget.addItem(each_email)
+		
+		self.list_widget.sortItems()
 
 	def onFriendRequestButtonClickSlot(self):
 		email = self.email_line.text()
@@ -341,7 +344,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 	
 	def onOkButtonClickedSlot(self):
 		#guaranteed thread safe as this window wouldn't even appear without self.contacts_list
-		self.main.panel_tab_widget.main_list_widget.contacts_list.extend(self.contacts_list)
+		self.main.panel_tab_widget.main_list_widget.contacts_list.update(self.contacts_list)
 		self.main.panel_tab_widget.main_list_widget.enableShareAction()
 		super(self.__class__,self).onOkButtonClickedSlot()
 	
@@ -363,7 +366,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		lines_vbox.addWidget(friend_request_button)
 		
 		self.add_user_widget = QWidget()
-		self.add_user_widget.setLayout(lines_vbox)	#
+		self.add_user_widget.setLayout(lines_vbox)
 		
 	def doListWidget(self):
 		contacts_list_label = QLabel("Friends list:")
@@ -453,7 +456,7 @@ class CommonListWidget(QListWidget):
 			each[0]()
 		
 	def doCommon(self):
-		self.contacts_list = []
+		self.contacts_list = set([])
 		
 		self.doStyling()
 		#delete action		
@@ -486,7 +489,7 @@ class CommonListWidget(QListWidget):
 		else:
 			self.share_action.setDisabled(False)
 		share_menu = QMenu()
-		for name in self.contacts_list:
+		for name in sorted(self.contacts_list):
 			friend = QAction(name, self)
 			share_menu.addAction(name)
 			self.share_action.setMenu(share_menu)

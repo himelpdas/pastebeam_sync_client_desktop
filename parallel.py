@@ -312,6 +312,7 @@ class WebsocketWorker(QtCore.QThread):
 
 				try:
 					r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), files={"upload": open(container_path, 'rb')})
+					print r
 				except requests.exceptions.ConnectionError:
 					#connection error
 					raise socket.error
