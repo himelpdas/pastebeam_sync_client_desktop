@@ -342,11 +342,38 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 		self.friend_request_wait_dialog.done(1)
 		QMessageBox.information(self,"Success", "Friend request sent!")
 	
+	def currentlItems(self):
+		all_items = self.list_widget.findItems('', QtCore.Qt.MatchRegExp)
+		return all_items
+
 	def onOkButtonClickedSlot(self):
 		#guaranteed thread safe as this window wouldn't even appear without self.contacts_list
-		self.main.panel_tab_widget.main_list_widget.contacts_list.update(self.contacts_list)
-		self.main.panel_tab_widget.main_list_widget.enableShareAction()
-		super(self.__class__,self).onOkButtonClickedSlot()
+		current_items = self.currentlItems()
+		if set(current_items) == set(self.contacts_list): #no need to contact server
+			super(self.__class__,self).onOkButtonClickedSlot()
+			return
+		self.main.outgoingSignalForWorker.emit(
+			dict(
+				question = "Contacts?",
+				data = {"contacts_list":current_items}
+			)
+		)
+		WaitForSignalDialog(self, "saving contacts to server")
+		if not self.success["success"]:
+			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+				self,
+				"Error",
+				"Failed to save contacts to server! Reason:<br><i>%s</i>"%self.success["reason"]
+			)
+		else:
+			QMessageBox.information(
+				self,
+				"Success",
+				"Contacts saved to server!"
+			)
+			self.main.panel_tab_widget.main_list_widget.contacts_list.update(self.contacts_list)
+			self.main.panel_tab_widget.main_list_widget.enableShareAction()
+			super(self.__class__,self).onOkButtonClickedSlot()
 	
 	def resizeMinWindowSizeForListWidget(self):
 		default_height = self.sizeHint().height()
@@ -454,7 +481,7 @@ class CommonListWidget(QListWidget):
 		"So that any click outside of an item will disable all context items"
 		for each in self.all_enable_disable_action_methods:
 			each[1]()
-			
+
 	def onItemPressedSlot(self, i):
 		"So that any click of an item will enable all context items"
 		for each in self.all_enable_disable_action_methods:
@@ -486,7 +513,7 @@ class CommonListWidget(QListWidget):
 
 		self.all_enable_disable_action_methods.append((self.enableShareAction, self.disableShareAction))
 		self.disableShareAction()
-		
+
 	def enableShareAction(self):
 		if not self.contacts_list:
 			self.share_action.setDisabled(True)
