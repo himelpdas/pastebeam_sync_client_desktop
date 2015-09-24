@@ -278,14 +278,14 @@ class WebsocketWorker(QtCore.QThread):
 				if expect == inspect:
 					self.RESPONDED_EVENT = AsyncResult() #setattr(self, event_name, AsyncResult()	)
 					break
-							
+
 		return received["data"]
 
 	@workerLoopDecorator
 	def outgoingGreenlet(self):
 		
 		#PRINT("Begin Outgoing Greenlet", "")
-					
+
 		#self.keepAlive()
 					
 		try:

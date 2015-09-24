@@ -262,7 +262,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
 				self.main.ws_worker.WSOCK.close()
 			self.main.ws_worker.KEEP_RUNNING = 1
 			
-class ContactsDialog(QDialog, OkCancelWidgetMixin):
+class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
 	
 	@classmethod
 	def show(cls, parent):
@@ -290,18 +290,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			self.exec_()
 			
 	def doPreExecGetContactsList(self):
-		async_process = dict(
-			question = "Contacts?",
-			data={"contacts_list":None}
-		)
-		self.main.outgoingSignalForWorker.emit(async_process)
-		WaitForSignalDialog(self, "getting contacts list") #EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
-		if not self.success["success"]:
-			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self,
-				"Error",
-				"Could not get contacts list! Reason:<br><i>%s</i>"%self.success["reason"]
-			)
+		showWaitForSignalDialog(self, "Contacts?", {"contacts_list":None}, "could not get contacts list", success_msg = False)
 
 		self.contacts_list = self.success["data"]
 		for each_email in self.contacts_list:
@@ -319,58 +308,26 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin):
 			)
 			return
 			
-		self.main.outgoingSignalForWorker.emit(
-			dict(
-				question = "Invite?",
-				data = {"email":email}
-			)
-		)
-		WaitForSignalDialog(self, "sending friend request")
-		if not self.success["success"]:
-			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self,
-				"Error",
-				"Failed to send friend request! Reason:<br><i>%s</i>"%self.success["reason"]
-			)
-		else:
-			QMessageBox.information( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self,
-				"Success",
-				"Friend request sent!"
-			)
+		self.showWaitForSignalDialog(self, "Invite?", {"email":email}, "failed to send friend request", success_msg = "friend request sent")
+
 	def onFriendRequestReceivedByServerSlot(self):
 		self.friend_request_wait_dialog.done(1)
 		QMessageBox.information(self,"Success", "Friend request sent!")
 	
-	def currentlItems(self):
+	def currentItems(self):
 		all_items = self.list_widget.findItems('', QtCore.Qt.MatchRegExp)
 		return all_items
 
 	def onOkButtonClickedSlot(self):
 		#guaranteed thread safe as this window wouldn't even appear without self.contacts_list
-		current_items = self.currentlItems()
+		current_items = self.currentItems()
 		if set(current_items) == set(self.contacts_list): #no need to contact server
 			super(self.__class__,self).onOkButtonClickedSlot()
 			return
-		self.main.outgoingSignalForWorker.emit(
-			dict(
-				question = "Contacts?",
-				data = {"contacts_list":current_items}
-			)
-		)
-		WaitForSignalDialog(self, "saving contacts to server")
-		if not self.success["success"]:
-			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
-				self,
-				"Error",
-				"Failed to save contacts to server! Reason:<br><i>%s</i>"%self.success["reason"]
-			)
-		else:
-			QMessageBox.information(
-				self,
-				"Success",
-				"Contacts saved to server!"
-			)
+			
+		self.showWaitForSignalDialog("Contacts?", {"contacts_list":current_items}, "failed to save contacts to server", success_msg = "contacts saved to server")
+
+		if self.success["success"]:
 			self.main.panel_tab_widget.main_list_widget.contacts_list.update(self.contacts_list)
 			self.main.panel_tab_widget.main_list_widget.enableShareAction()
 			super(self.__class__,self).onOkButtonClickedSlot()
@@ -465,7 +422,30 @@ class StackedWidgetFader(QStackedWidget):
 	def setFadeDuration(self, duration):
 		self.duration = duration
 		
-class CommonListWidget(QListWidget):
+class WaitForSignalDialogMixin(object):
+	def showWaitForSignalDialog(self, question, data_dict, error_msg, success_msg = False):
+		"shows an unclosable dialog until closeWaitDialogSignalForMain"
+		self.main.outgoingSignalForWorker.emit(
+			dict(
+				question = question,
+				data = data_dict
+			)
+		)
+		WaitForSignalDialog(self, "sending friend request")#EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
+		if not self.success["success"]:
+			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+				self,
+				"Error",
+				"%s!<br><b>Reason:</b> <i>%s</i>"%(error_msg.capitalize(), self.success["reason"])
+			)
+		elif success_msg:
+			QMessageBox.information( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+				self,
+				"Success",
+				"%s!"%success_msg.capitalize()
+			)
+		
+class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 	def __init__(self, parent = None):
 		super(CommonListWidget, self).__init__(parent)
 		self.parent = parent
@@ -522,7 +502,7 @@ class CommonListWidget(QListWidget):
 			self.share_action.setDisabled(False)
 		share_menu = QMenu()
 		for name in sorted(self.contacts_list):
-			friend = QAction(name, self)
+			#friend = QAction(name, self)
 			share_menu.addAction(name)
 			self.share_action.setMenu(share_menu)
 	
@@ -640,13 +620,7 @@ class AlertListWidget(CommonListWidget):
 			return
 		email = current_item["host_name"]
 		
-		async_process = dict(
-			question = "Accept?",
-			data = dict(
-				email = email
-			)
-		)
-		self.main.outgoingSignalForWorker.emit(async_process)
+		self.showWaitForSignalDialog("Accept?", {"email":email}, "could not accept invitation", success_msg = False)
 		
 	def addAcceptInviteAction(self):
 		self.insertAction(self.last_action, self.accept_invite_action)
