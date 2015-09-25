@@ -51,3 +51,18 @@ pip install -U pip #to fix pip freeze issue
 sudo apt-get install python-dev
 sudo apt-get install -y mongodb #-y means yes to all
 in virtualbox go to VMs settings and port forward host 8888 guest 8888
+now things like web2py can be run in lubuntu guest, and accessed at host guest via 127.0.0.1, 192.168..., or 0.0.0.0
+
+add a folder:
+go to VMs settings and add folder, enter folder path, and give it a name
+set it to make permanent and automount
+then in lubuntu guest, type:
+sudo adduser <login name here> vboxsf
+reboot
+now folder should be in /mnt
+
+###hgrc 
+[ui]
+username = Himel Das (Spectre-X360) <himel.p.das@gmail.com>
+[paths]
+default = ssh://hg@bitbucket.org/himeldas/pastebeam_sync_client_desktop
