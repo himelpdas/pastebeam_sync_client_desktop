@@ -24,6 +24,7 @@ RESET cmd so path can take effect
 
 *pymongo
 
+sudo apt-get install build-essential #MAKE AND GCC
 sudo apt-get install python-gevent
 sudo apt-get install python-pip #outdated
 sudo pip install -U pip #to get rid of assertion error when using pip freeze
