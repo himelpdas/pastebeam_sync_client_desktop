@@ -314,12 +314,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 							if fname.upper() not in self.FILE_IGNORE_LIST: #DO NOT calculate hash for system files as they are always changing, and if a folder is in clipboard, a new upload may be initiated each time a system file is changed
 								each_sub_path = os.path.join(dirName, fname)
 								with open(each_sub_path, 'rb') as each_sub_file:
-									each_relative_path = each_sub_path.split(each_path)[1][1:] #add [1:] to remove / or \ which messes up hash #c:/python27/lib/ - c:/python27/lib/bin/abc.pyc = bin/abc.pyc
+									each_relative_path = each_sub_path.split(each_path)[1].replace("\\", "/") #windows and *nix use different slashes, therefore different hashes, use one type of slash #c:/python27/lib/ - c:/python27/lib/bin/abc.pyc = bin/abc.pyc
 									each_relative_hash = each_relative_path + hex(hash128( each_sub_file.read())) #WARNING- some files like thumbs.db constantly change, and therefore may cause an infinite upload loop. Need an ignore list.
 									os_folder_hashes.append(each_relative_hash) #use relative path+filename and hash so that set does not ignore two idenitcal files in different sub-directories. Why? let's say bin/abc.pyc and usr/abc.pyc are identical, without the aforementioned system, a folder with just bin/abc.pyc will yield same hash as bin/abc.pyc + usr/abc.pyc, not good.
 
 					each_file_name = os.path.basename(each_path)
-					os_folder_hashes.sort()
+					os_folder_hashes.sort() #sort so hash will be consistent
 					each_data = "".join(os_folder_hashes) #whole folder hash
 
 				else: #single file
