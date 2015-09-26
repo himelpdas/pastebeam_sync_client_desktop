@@ -765,7 +765,7 @@ class PanelTabWidget(QTabWidget):
 
 	def onContactsListIncomming(self, contacts_list):
 		for each_list_widget in self.panels[:-1]: #everything but alerts
-			each_list_widget.contacts_list.update(contacts_list)
+			each_list_widget.contacts_list = set(contacts_list)
 			each_list_widget.enableShareAction()
 			
 	def clearAllLists(self):
