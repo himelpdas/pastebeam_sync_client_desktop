@@ -271,9 +271,9 @@ class WaitForSignalDialogMixin(object):
 				data = data_dict
 			)
 		)
-		WaitForSignalDialog(self, "sending friend request")#EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
+		WaitForSignalDialog(self, "please wait")#EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
 		if not self.success["success"]:
-			QMessageBox.critical( #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+			QMessageBox.warning( #QMessageBox.critical #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
 				self,
 				"Error",
 				"%s!<br><b>Reason:</b> <i>%s</i>"%(error_msg.capitalize(), self.success["reason"])
@@ -351,8 +351,8 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
 		self.showWaitForSignalDialog("Contacts?", {"contacts_list":current_items}, "failed to save contacts to server", success_msg = "contacts saved to server")
 
 		if self.success["success"]:
-			self.main.panel_tab_widget.main_list_widget.contacts_list.update(self.contacts_list)
-			self.main.panel_tab_widget.main_list_widget.enableShareAction()
+			self.contacts_list = self.success["data"]
+			self.main.panel_tab_widget.onContactsListIncomming(self.contacts_list)
 			super(self.__class__,self).onOkButtonClickedSlot()
 	
 	def resizeMinWindowSizeForListWidget(self):
@@ -696,7 +696,7 @@ class PanelTabWidget(QTabWidget):
 		self.doSearchWidget()
 		self.doPanels()
 		self.addPanels()
-		
+
 	def doSearchWidget(self):
 		self.search = QLineEdit()
 		self.search.textEdited.connect(self.onSearchEditedSlot)
@@ -762,6 +762,11 @@ class PanelTabWidget(QTabWidget):
 			self.friend_list_widget.takeItem(remove_row)		
 		elif list_widget_name == "AlertListWidget":
 			self.alert_list_widget.takeItem(remove_row)
+
+	def onContactsListIncomming(self, contacts_list):
+		for each_list_widget in self.panels[:-1]: #everything but alerts
+			each_list_widget.contacts_list.update(contacts_list)
+			each_list_widget.enableShareAction()
 			
 	def clearAllLists(self):
 		for each in self.panels:
@@ -816,7 +821,6 @@ class WaitForSignalDialog(QDialog):
 		self.layout.addWidget(wait_label)
 	def bindEvents(self):
 		self.main.ws_worker.closeWaitDialogSignalForMain.connect(self.onCloseWaitDialogSlot)
-	def onCloseWaitDialogSlot(self, success):
-		result = json.loads(success)
+	def onCloseWaitDialogSlot(self, result):
 		self.parent.success=result
 		self.done(1)

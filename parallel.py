@@ -67,10 +67,10 @@ class WebsocketWorkerMixinForMain(object):
 		
 		elif new_clip["clip_type"] == "invite":
 			itm.setIcon(QIcon("images/me.png"))
-			txt = new_clip["clip_display"] + '<br><i>Right-click here to respond.<i>'
-			
-		elif new_clip["clip_type"] == "notify":
-			itm.setIcon(QIcon("images/me.png"))
+			txt = new_clip["clip_display"] + '<br><br><i>Right-click here to respond.<i>'
+
+		elif new_clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
+			itm.setIcon(QIcon("images/bell.png"))
 			txt = new_clip["clip_display"]
 			
 		if new_clip["system"]=="starred":
@@ -109,7 +109,8 @@ class WebsocketWorker(QtCore.QThread):
 	deleteClipSignalForMain = QtCore.Signal(list)
 	StarClipSignalForMain = QtCore.Signal(dict)
 	clearListSignalForMain = QtCore.Signal()
-	closeWaitDialogSignalForMain = QtCore.Signal(str)
+	closeWaitDialogSignalForMain = QtCore.Signal(dict)
+	ContactsListIncommingSignalForMain = QtCore.Signal(list)
 	
 	session_id = uuid.uuid4()
 
@@ -233,7 +234,8 @@ class WebsocketWorker(QtCore.QThread):
 				self.initialized = 1
 			else:
 				self.statusSignalForMain.emit(("reconnected", "good"))
-			
+			self.ContactsListIncommingSignalForMain.emit(data["initial_contacts"])
+
 		elif answer == "Newest!":
 			data.reverse() #so the clips can be displayed top down since each clip added gets pushed down in listwidget
 			self.statusSignalForMain.emit(("downloading", "download"))
@@ -283,10 +285,6 @@ class WebsocketWorker(QtCore.QThread):
 
 	@workerLoopDecorator
 	def outgoingGreenlet(self):
-		
-		#PRINT("Begin Outgoing Greenlet", "")
-
-		#self.keepAlive()
 					
 		try:
 			send = self.OUTGOING_QUEUE.pop()
@@ -343,15 +341,15 @@ class WebsocketWorker(QtCore.QThread):
 			
 			if data_in["success"] == False:
 				self.statusSignalForMain.emit((data_in["reason"], "warn"))
-			
-			#self.starClipSignalForMain.emit(data_in)
-			
+
 		elif question=="Contacts?":
 			
 			data_in = self.sendUntilAnswered(send)
 			
-			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
-			
+			self.closeWaitDialogSignalForMain.emit(data_in)
+			contacts_list = data_in["data"]
+			self.ContactsListIncommingSignalForMain.emit(contacts_list)
+
 		elif question=="Invite?":
 			
 			data_in = self.sendUntilAnswered(send)
@@ -359,11 +357,11 @@ class WebsocketWorker(QtCore.QThread):
 			print data_in
 			print ""
 			
-			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
+			self.closeWaitDialogSignalForMain.emit(data_in)
 			
 		elif question =="Accept?":
 			
 			data_in = self.sendUntilAnswered(send)
 			
-			self.closeWaitDialogSignalForMain.emit(json.dumps(data_in))
+			self.closeWaitDialogSignalForMain.emit(data_in)
 			

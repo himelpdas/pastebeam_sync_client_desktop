@@ -40,6 +40,10 @@ sudo apt-get install seccure #eliptic curce assymetric cryptography
 sudo  apt-get install libgmp3-dev #http://stackoverflow.com/questions/7351205/where-to-find-gmp-h
 pip install seccure
 
+PGPy:
+sudo apt-get install libffi-dev libssl-dev #https://pythonhosted.org/PGPy/installation.html
+pip install PGPy
+
 ####
 development environment
 

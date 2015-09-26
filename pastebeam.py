@@ -129,13 +129,16 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		
 		self.initUI()
 		self.setupClip()
-		
+		self.initWorker()
+
+	def initWorker(self):
 		self.ws_worker = WebsocketWorker(self)
 		self.ws_worker.incommingClipsSignalForMain.connect(self.onIncommingSlot)
 		self.ws_worker.setClipSignalForMain.connect(self.onSetNewClipSlot)
 		self.ws_worker.statusSignalForMain.connect(self.onSetStatusSlot)
 		self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncommingDelete)
 		self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
+		self.ws_worker.ContactsListIncommingSignalForMain.connect(self.panel_tab_widget.onContactsListIncomming)
 		self.ws_worker.start()
 			
 	@staticmethod
