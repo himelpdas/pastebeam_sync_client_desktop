@@ -24,6 +24,8 @@ RESET cmd so path can take effect
 
 *pymongo
 
+*py-seccure
+
 sudo apt-get install build-essential #MAKE AND GCC
 sudo apt-get install python-gevent OR pip install gevent # AFTER apt-get python-dev
 sudo apt-get install python-pip #outdated
@@ -32,6 +34,11 @@ sudo apt-get install python-pyside
 sudo apt-get install gcc #already installed on 15.04
 sudo apt-get install python-dev #Python.h: No such file or directory
 sudo apt-get install -y mongodb #-y means yes to all
+
+SECCURE:
+sudo apt-get install seccure #eliptic curce assymetric cryptography 
+sudo  apt-get install libgmp3-dev #http://stackoverflow.com/questions/7351205/where-to-find-gmp-h
+pip install seccure
 
 ####
 development environment
@@ -66,3 +73,5 @@ now folder should be in /mnt
 username = Himel Das (Spectre-X360) <himel.p.das@gmail.com>
 [paths]
 default = ssh://hg@bitbucket.org/himeldas/pastebeam_sync_client_desktop
+
+#hgignore from https://github.com/mdipierro/web2py

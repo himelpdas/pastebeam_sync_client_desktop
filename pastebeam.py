@@ -299,14 +299,14 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			
 			for each_path in os_file_paths_new:
 			
-				each_file_name = os.path.split(each_path)[1]
-			
+				each_file_name = os.path.basename(each_path) #instead of os.path.split(each_path)[1]
+
 				os_file_names_new.append(each_file_name)
-				
+
 				if os.path.isdir(each_path):
-				
+
 					display_file_names.append(each_file_name+" (%s things inside)"%len(os.listdir(each_path))+"._folder")
-				
+
 					os_folder_hashes = []
 					for dirName, subdirList, fileList in os.walk(each_path, topdown=False):
 						#subdirList = filter(...) #filer out any temp or hidden folders
@@ -314,32 +314,32 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 							if fname.upper() not in self.FILE_IGNORE_LIST: #DO NOT calculate hash for system files as they are always changing, and if a folder is in clipboard, a new upload may be initiated each time a system file is changed
 								each_sub_path = os.path.join(dirName, fname)
 								with open(each_sub_path, 'rb') as each_sub_file:
-									each_relative_path = each_sub_path.split(each_path)[1] #c:/python27/lib/ - c:/python27/lib/bin/abc.pyc = bin/abc.pyc
+									each_relative_path = each_sub_path.split(each_path)[1][1:] #add [1:] to remove / or \ which messes up hash #c:/python27/lib/ - c:/python27/lib/bin/abc.pyc = bin/abc.pyc
 									each_relative_hash = each_relative_path + hex(hash128( each_sub_file.read())) #WARNING- some files like thumbs.db constantly change, and therefore may cause an infinite upload loop. Need an ignore list.
 									os_folder_hashes.append(each_relative_hash) #use relative path+filename and hash so that set does not ignore two idenitcal files in different sub-directories. Why? let's say bin/abc.pyc and usr/abc.pyc are identical, without the aforementioned system, a folder with just bin/abc.pyc will yield same hash as bin/abc.pyc + usr/abc.pyc, not good.
-									
-					each_file_name = os.path.split(each_path)[1]
+
+					each_file_name = os.path.basename(each_path)
 					os_folder_hashes.sort()
 					each_data = "".join(os_folder_hashes) #whole folder hash
-				
+
 				else: #single file
-				
+
 					display_file_names.append(each_file_name)
-				
+
 					with open(each_path, 'rb') as each_file:
-						each_file_name = os.path.split(each_path)[1]
+						each_file_name = os.path.basename(each_path)
 						each_data = each_file.read() #update status
-				
+
 				os_file_hashes_new.add(hash128(each_file_name.encode("utf8")) + hash128(each_data) ) #http://stackoverflow.com/questions/497233/pythons-os-path-choking-on-hebrew-filenames #append the hash for this file #use filename and hash so that set does not ignore copies of two idenitcal files (but different names) in different directories #also hash filename as this can be a security issue when stored serverside
-			
-			checksum = format(sum(os_file_hashes_new), "x")					
+
+			checksum = format(sum(os_file_hashes_new), "x")
 			if self.previous_hash == checksum:  #checks to make sure if name and file are the same
 				PRINT("failure",262)
 				#self.onSetStatusSlot(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
 				return
 			else:
 				hash = checksum
-							
+
 			#copy files to temp. this is needed
 			for each_new_path in os_file_paths_new:
 				try:
@@ -351,7 +351,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 					#show error
 					PRINT("failure",274)
 					pass #MUST PASS since file may already be there.
-			
+
 			prepare = dict(
 				file_names = os_file_names_new,
 				clip_display = display_file_names,
@@ -360,21 +360,21 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 		else:
 			self.onSetStatusSlot(("Clipping is incompatible","warn"))
-			return	
-		
+			return
+
 		prepare["hash"]= hash
-		
+
 		prepare["container_name"] = self.panel_tab_widget.getMatchingContainerForHash(hash)
-		
+
 		async_process = dict(question="Update?", data=prepare)
-				
+
 		self.outgoingSignalForWorker.emit(async_process)
-		
+
 		self.previous_hash = hash
 		#image.destroy()
-		
+
 	def onSetNewClipSlot(self, new_clip): #happens when new incomming clip or when user double clicks an item
-			
+
 		container_name = new_clip["container_name"]
 		clip_type = new_clip["clip_type"]
 		
