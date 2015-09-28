@@ -24,19 +24,14 @@ class WebsocketWorkerMixinForMain(object):
 	outgoingSignalForWorker = QtCore.Signal(dict)
 	
 	def onIncommingSlot(self, emitted):
-		#print emitted #display clips here
-		
+
 		new_clip = emitted
-		
-		#if not new_clip["sender_uuid"] == self.SENDER_UUID: #DO NOT set clipboard if new_clip with same sender ID as this will result in double, and possibly infinite list items.
-		#self.setClip()
-		
+
 		itm =  QListWidgetItem()
 		
 		if new_clip["clip_type"] == "screenshot":
 			#crop and reduce pmap size to fit square icon
 			image = QImage()
-			#print "\n\n\n"
 			print image.loadFromData(new_clip["clip_display"]["thumb"])
 			itm.setIcon(QIcon(QPixmap(image)))
 			txt = new_clip["clip_display"]["text"]
@@ -80,7 +75,6 @@ class WebsocketWorkerMixinForMain(object):
 		elif new_clip["system"] == "main":
 			list_widget = self.panel_tab_widget.main_list_widget
 		
-		#PRINT("thumb on new_clip.data", new_clip["clip_display"])
 		itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
 		list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
 		list_widget.takeItem(5)
@@ -234,6 +228,8 @@ class WebsocketWorker(QtCore.QThread):
 				self.initialized = 1
 			else:
 				self.statusSignalForMain.emit(("reconnected", "good"))
+			self.rsa_private_key = data["rsa_private_key"]
+			self.rsa_pbkdf2_salt = data["rsa_pbkdf2_salt"]
 			self.ContactsListIncommingSignalForMain.emit(data["initial_contacts"])
 
 		elif answer == "Newest!":
