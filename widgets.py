@@ -715,6 +715,18 @@ class PanelTabWidget(QTabWidget):
         self.doPanels()
         self.addPanels()
 
+        self.currentChanged.connect(self.onTabChangedSlot)
+
+    def onTabChangedSlot(self, index):
+        if index == 0:
+            self.setTabIcon(0,QIcon("images/devices.png"))
+        if index == 1:
+            self.setTabIcon(1,QIcon("images/star.png"))
+        if index == 2:
+            self.setTabIcon(2,QIcon("images/friends.png"))
+        if index == 3:
+            self.setTabIcon(3,QIcon("images/bulb.png"))
+
     def doSearchWidget(self):
         self.search = QLineEdit()
         self.search.textEdited.connect(self.onSearchEditedSlot)

@@ -35,7 +35,7 @@ class WebsocketWorkerMixinForMain(object):
             print image.loadFromData(new_clip["clip_display"]["thumb"])
             itm.setIcon(QIcon(QPixmap(image)))
             txt = new_clip["clip_display"]["text"]
-            
+
         elif new_clip["clip_type"] == "html":
             itm.setIcon(QIcon("images/text.png"))
             txt = new_clip["clip_display"]
@@ -70,12 +70,19 @@ class WebsocketWorkerMixinForMain(object):
             
         if new_clip["system"]=="starred":
             list_widget = self.panel_tab_widget.star_list_widget
+            self.panel_tab_widget.setTabIcon(1,QIcon("images/new.png"))
+            new_icon_tab = 1
         elif new_clip["system"]=="alert":
             list_widget = self.panel_tab_widget.alert_list_widget
+            new_icon_tab = 3
         elif new_clip["system"] == "main":
             list_widget = self.panel_tab_widget.main_list_widget
+            new_icon_tab = 0
         elif new_clip["system"] == "share":
             list_widget = self.panel_tab_widget.friend_list_widget
+            new_icon_tab = 2
+
+        self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
         
         itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
         list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
