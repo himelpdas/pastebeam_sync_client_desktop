@@ -51,7 +51,7 @@ class WebsocketWorkerMixinForMain(object):
                 ext = each_filename.split(".")[-1]
                 file_icon = "files/%s"%ext
                 if not ext.upper() in self.FILE_ICONS:
-                    pass#file_icon = os.path.normpath("files/_blank")
+                    pass #file_icon = os.path.normpath("files/_blank")
                 if ext == "_folder": #get rid of the ._folder from folder._folder
                     each_filename = each_filename.split(".")[0]
                 files.append(u"{icon} {file_name}".format( #do NOT do "string {thing}".format(thing = u"unicode), or else unicode decode error will occur, the first string must be u"string {thing}"
@@ -74,6 +74,8 @@ class WebsocketWorkerMixinForMain(object):
             list_widget = self.panel_tab_widget.alert_list_widget
         elif new_clip["system"] == "main":
             list_widget = self.panel_tab_widget.main_list_widget
+        elif new_clip["system"] == "share":
+            list_widget = self.panel_tab_widget.friend_list_widget
         
         itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
         list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
@@ -105,6 +107,7 @@ class WebsocketWorker(QtCore.QThread):
     clearListSignalForMain = QtCore.Signal()
     closeWaitDialogSignalForMain = QtCore.Signal(dict)
     ContactsListIncommingSignalForMain = QtCore.Signal(list)
+    SetRSAKeySignalForMain = QtCore.Signal(dict)
     
     session_id = uuid.uuid4()
 
@@ -114,9 +117,10 @@ class WebsocketWorker(QtCore.QThread):
         QtCore.QThread.__init__(self)
                 
         self.main = main
-        self.main.outgoingSignalForWorker.connect(self.onOutgoingSlot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
-        
+        self.initialized = 0
         self.OUTGOING_QUEUE = deque() #must use alternative Queue for non standard library thread and greenlets
+
+        self.main.outgoingSignalForWorker.connect(self.onOutgoingSlot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
         
     #A QThread is run by calling it's start() function, which calls this run()
     #function in it's own "thread".
@@ -147,13 +151,12 @@ class WebsocketWorker(QtCore.QThread):
 
             container_name_old = data["container_name"]
             password_old = data["decryption_key"]
-            with encompress.Encompress(password = password_old, directory = CONTAINER_DIR, container_name=container_name_old) as file_paths_decrypt:
-                file_names = file_paths_decrypt
-
-            password_new = Random.new().read(16)
-            with encompress.Encompress(password = password_new, directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name_new:
-                data['container_name'] = container_name_new
-                data["decryption_key"] = password_new #still raw need to encrypt with recipients public key in outgoing greenlet!
+            with encompress.Encompress(password = password_old, directory = CONTAINER_DIR, container_name=container_name_old):
+                password_new = Random.new().read(16)
+                file_names = data["file_names"]
+                with encompress.Encompress(password = password_new, directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name_new:
+                    data['container_name'] = container_name_new
+                    data["decryption_key"] = password_new #still raw need to encrypt with recipients public key in outgoing greenlet!
 
         data['host_name'] = self.main.HOST_NAME
 
@@ -209,7 +212,7 @@ class WebsocketWorker(QtCore.QThread):
                 except: #previous try will handle later
                     pass #block thread until there is a connection
         return closure
-                
+
     @workerLoopDecorator
     def incommingGreenlet(self):
 
@@ -234,13 +237,15 @@ class WebsocketWorker(QtCore.QThread):
             self.statusSignalForMain.emit((data, "bad"))
             
         elif answer == "Connected!":
-            if not hasattr(self,"initialized"):
+            #if not hasattr(self,"initialized"):
+            if not self.initialized:
                 self.statusSignalForMain.emit(("connected", "good"))
                 self.initialized = 1
             else:
                 self.statusSignalForMain.emit(("reconnected", "good"))
-            self.rsa_private_key = data["rsa_private_key"]
-            self.rsa_pbkdf2_salt = data["rsa_pbkdf2_salt"]
+            rsa_private_key = data["rsa_private_key"]
+            rsa_pbkdf2_salt = data["rsa_pbkdf2_salt"]
+            self.SetRSAKeySignalForMain.emit(dict(rsa_private_key = rsa_private_key, rsa_pbkdf2_salt = rsa_pbkdf2_salt))
             self.ContactsListIncommingSignalForMain.emit(data["initial_contacts"])
 
         elif answer == "Newest!":
@@ -250,7 +255,7 @@ class WebsocketWorker(QtCore.QThread):
             
                 downloadContainerIfNotExist(each) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
                 self.incommingClipsSignalForMain.emit(each)
-                
+
             lastest = each
             
             not_this_device = lastest["session_id"] != self.session_id
@@ -290,6 +295,27 @@ class WebsocketWorker(QtCore.QThread):
 
         return received["data"]
 
+    def ensureContainerUpload(self, container_name):
+
+        self.statusSignalForMain.emit(("uploading", "upload"))
+        #first check if upload needed before updating
+        container_exists = self.sendUntilAnswered(dict(
+            question = "Upload?",
+            data = container_name
+        ))
+
+        if container_exists == False:
+
+            container_path = os.path.join(CONTAINER_DIR, container_name)
+
+            try:
+                r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), files={"upload": open(container_path, 'rb')})
+                print r
+            except requests.exceptions.ConnectionError:
+                #connection error
+                raise socket.error
+
+
     @workerLoopDecorator
     def outgoingGreenlet(self):
                     
@@ -314,6 +340,10 @@ class WebsocketWorker(QtCore.QThread):
             if not recipient_public_key:
                 return #SHOW MESSAGE HERE
 
+
+            container_name = data_out["container_name"]
+            self.ensureContainerUpload(container_name)
+
             rsa_public_key = RSA.importKey(recipient_public_key)
             data_out["decryption_key"] = Binary(rsa_public_key.encrypt(data_out["decryption_key"], K=None)[0]) #K is ignored, but needed for compatibility
 
@@ -325,24 +355,9 @@ class WebsocketWorker(QtCore.QThread):
         if question == "Update?":
                     
             container_name = data_out["container_name"]
-            container_path = os.path.join(CONTAINER_DIR, container_name)
-                            
-            self.statusSignalForMain.emit(("uploading", "upload"))
-            #first check if upload needed before updating
-            container_exists = self.sendUntilAnswered(dict(
-                question = "Upload?",
-                data = container_name
-            ))
-            
-            if container_exists == False:
 
-                try:
-                    r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), files={"upload": open(container_path, 'rb')})
-                    print r
-                except requests.exceptions.ConnectionError:
-                    #connection error
-                    raise socket.error
-            
+            self.ensureContainerUpload(container_name)
+
             self.statusSignalForMain.emit(("updating", "sync"))
 
             data_in = self.sendUntilAnswered(send)

@@ -124,9 +124,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			os.mkdir(CONTAINER_DIR)
 		except OSError:
 			pass
+
+		self.rsa_private_key = ""
 		
 		self.app = app
-		
 		self.initUI()
 		self.setupClip()
 		self.initWorker()
@@ -139,6 +140,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncommingDelete)
 		self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
 		self.ws_worker.ContactsListIncommingSignalForMain.connect(self.panel_tab_widget.onContactsListIncomming)
+		self.ws_worker.SetRSAKeySignalForMain.connect(self.onSetRSAKeys)
 		self.ws_worker.start()
 			
 	@staticmethod
@@ -146,6 +148,14 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		ring = keyring.get_password("pastebeam","account")
 		login = json.loads(ring) if ring else {} #todo store email locally, and access only password!
 		return login
+
+	def onSetRSAKeys(self, private_key_and_salt):
+		des_rsa_private_key = private_key_and_salt["rsa_private_key"]
+		rsa_pbkdf2_salt = private_key_and_salt["rsa_pbkdf2_salt"]
+		password = self.getLogin().get("password")
+		passphrase = PBKDF2(password, rsa_pbkdf2_salt, dkLen=24, count=1000, prf=lambda p, s: HMAC.new(p, s, SHA512).digest()).encode("hex")
+
+		self.rsa_private_key = RSA.importKey(des_rsa_private_key, passphrase)
 			
 	def setupClip(self):
 		self.previous_hash = {}
@@ -155,9 +165,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 		
 	def onClipChangeSlot(self):
 		#test if identical
-		#pmap = self.clipboard.pixmap()
-		#text = self.clipboard.text()
-		
+
 		self.onSetStatusSlot(("scanning for change", "scan"))
 		
 		mimeData = self.clipboard.mimeData()
@@ -380,14 +388,21 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 		container_name = new_clip["container_name"]
 		clip_type = new_clip["clip_type"]
+		system = new_clip["system"]
 		
 		#downloading modal
 		downloadContainerIfNotExist(new_clip) #TODO show error message if download not found on server
 		
 		self.onSetStatusSlot(("decrypting", "unlock"))
-		with encompress.Encompress(password = "nigger", directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
-			#print file_paths_decrypt
-			
+		if system == "share":
+			ciphertext = new_clip["decryption_key"]
+			password = self.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
+			print password
+		else:
+			password = "nigger"
+
+		with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
+
 			mimeData = QtCore.QMimeData()
 			
 			if clip_type == "html":

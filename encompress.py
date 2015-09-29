@@ -207,7 +207,7 @@ class Encompress():
 		#http://superuser.com/questions/60379/how-can-i-create-a-zip-tgz-in-linux-such-that-windows-has-proper-filenames
 
 		tar.extractall(path=self.directory, members = updated)
-	
+
 		root_file_and_folder_names = filter(lambda each_name: not "/" in each_name, tar.getnames()) #getnames alone returns folder cool.jpg ,48px, 48px/css.png, etc., we want 48px, and cool.jpg only
 		self.result = map(lambda each_name: os.path.join(self.directory, each_name), root_file_and_folder_names )
 		tar.close()

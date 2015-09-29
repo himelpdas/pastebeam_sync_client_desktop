@@ -580,16 +580,14 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         current_item = self.currentItem()
         current_item = json.loads(current_item.data(QtCore.Qt.UserRole)) #http://stackoverflow.com/questions/25452125/is-it-possible-to-add-a-hidden-value-to-every-item-of-qlistwidget
         return current_row, current_item
-        
+    """
     @staticmethod
-    def convertToDeviceClip(clip):
+    def convertToDeviceClip(clip): #todo do this on server! more secure!
         #convert back to device clip
-        del clip["_id"] #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip
-        #clip.pop("starred", None) #remove it entirely, return None
-        #clip.pop("friend", None)
-        #clip.pop("alert", None) #WARNING DOES NOT HAVE CONTAINER NOR ENCRYPTED CLIP_PREVIEW, DO THAT HERE
+        clip.pop("_id", None) #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip
         clip["system"] = "main"
         return clip
+    """
         
     def onItemDoubleClickSlot(self, double_clicked_item):
         
@@ -606,7 +604,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
             
         #container name is already in double_clicked_clip
         
-        double_clicked_clip = self.convertToDeviceClip(double_clicked_clip)
+        #double_clicked_clip = self.convertToDeviceClip(double_clicked_clip)
         
         self.main.onSetNewClipSlot(double_clicked_clip)
         
