@@ -490,25 +490,43 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
     def doShareAction(self):
         self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
         self.addAction(self.share_action)
-        self.share_sub_menu = QMenu()
-        self.share_action.setMenu(self.share_sub_menu)
-        self.share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
-
         self.all_enable_disable_action_methods.append((self.enableShareAction, self.disableShareAction))
         self.disableShareAction()
 
     def onShareSubMenuTriggeredSlot(self, action):
         email = action.text()
-        print text
+        share_item = self.currentItem()
+        share_item_data = json.loads(share_item.data(QtCore.Qt.UserRole))
 
+        #now get decryption keys
+        clip_system = share_item_data["system"]
+        if clip_system == "main":
+            decryption_key = "nigger"
+        elif clip_system == "share":
+            pass #TODO decrypt public key encrypted random AES key
+        elif clip_system == "alert": #cant share alerts yet
+            return
+
+        share_item_data["recipient"] = email
+        share_item_data["decryption_key"] = decryption_key #RAW
+        self.main.outgoingSignalForWorker.emit(
+            {
+                "question": "Share?",
+                "data" : share_item_data
+            }
+        )
     def enableShareAction(self):
         if not self.contacts_list:
             self.share_action.setDisabled(True)
             #ADD bubble explaining why
         else:
             self.share_action.setDisabled(False)
+            share_sub_menu = QMenu()
+            share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
             for name in sorted(self.contacts_list):
-                self.share_sub_menu.addAction(name)
+                share_sub_menu.addAction(name)
+            self.share_action.setMenu(share_sub_menu)
+
 
     def disableShareAction(self):
         self.share_action.setDisabled(True)
@@ -520,7 +538,6 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         separator = QAction(self)
         separator.setSeparator(True)
         self.addAction(separator)
-        
         self.all_enable_disable_action_methods.append((self.enableCopyAction, self.disableCopyAction))
         self.disableCopyAction() #start off disable bc nothing is selected yet
         
@@ -540,7 +557,6 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         delete_action.triggered.connect(self.onDeleteAction)
         self.addAction(separator)
         self.addAction(delete_action)
-        
         self.all_enable_disable_action_methods.append((self.enableDeleteAction, self.disableDeleteAction))
         self.disableDeleteAction()
         
