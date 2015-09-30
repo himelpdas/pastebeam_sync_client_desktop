@@ -271,10 +271,10 @@ class WebsocketWorker(QtCore.QThread):
             is_alert = lastest["system"] == "alert"
 
             if is_clipboard:
+                self.statusSignalForMain.emit(("updated", "good"))
                 if not_this_device: #do not allow setting from the same pc
                     self.setClipSignalForMain.emit(lastest) #this will set the newest clip only, thanks to self.main.new_clip!!!
-                    self.statusSignalForMain.emit(("clip copied","good"))
-            elif lastest["system"] == "starred":
+            elif is_star == "starred":
                 self.statusSignalForMain.emit(("starred", "good"))                    
 
         #RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
@@ -367,10 +367,7 @@ class WebsocketWorker(QtCore.QThread):
 
             self.statusSignalForMain.emit(("updating", "sync"))
 
-            data_in = self.sendUntilAnswered(send)
-                                
-            self.statusSignalForMain.emit(("updated", "good"))
-
+            self.sendUntilAnswered(send)
                 
         elif question=="Delete?":
             

@@ -338,16 +338,20 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         QMessageBox.information(self,"Success", "Friend request sent!")
     
     def currentItems(self):
-        all_items = self.list_widget.findItems('', QtCore.Qt.MatchRegExp)
-        return all_items
+        """http://stackoverflow.com/questions/4629584/pyqt4-how-do-you-iterate-all-items-in-a-qlistwidget"""
+        items = []
+        for index in xrange(self.list_widget.count()):
+            items.append(self.list_widget.item(index).text())
+        return items
 
     def onOkButtonClickedSlot(self):
         #guaranteed thread safe as this window wouldn't even appear without self.contacts_list
         current_items = self.currentItems()
+
         if set(current_items) == set(self.contacts_list): #no need to contact server
             super(self.__class__,self).onOkButtonClickedSlot()
             return
-            
+
         self.showWaitForSignalDialog("Contacts?", {"contacts_list":current_items}, "failed to save contacts to server", success_msg = "contacts saved to server")
 
         if self.success["success"]:
@@ -456,7 +460,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         self.setMouseTracking(True)
         self.viewportEntered.connect(self.onMouseEnter)
         self.itemPressed.connect(self.onItemPressedSlot) #ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
-        
+
     def onMouseEnter(self):
         "So that any click outside of an item will disable all context items"
         for each in self.all_enable_disable_action_methods:
@@ -464,6 +468,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
     def onItemPressedSlot(self, i):
         "So that any click of an item will enable all context items"
+        self.parent.onTabChangedSlot(self.index) #hide alert icon in tab when clicking on an item
         for each in self.all_enable_disable_action_methods:
             each[0]()
         
@@ -615,6 +620,7 @@ class AlertListWidget(CommonListWidget):
         super(self.__class__, self).__init__(parent)
         self.parent = parent
         self.main = parent.main
+        self.index = 3
         self.doStyling(status="Right-click an item for more options.")
 
         self.doUncommon() #do uncommon here
@@ -662,6 +668,7 @@ class AlertListWidget(CommonListWidget):
 class StarListWidget(CommonListWidget):
     def __init__(self, parent = None):
         super(self.__class__, self).__init__(parent)
+        self.index = 1
         self.doCommon()
     def doUncommon(self):
         pass
@@ -670,6 +677,7 @@ class MainListWidget(CommonListWidget):
     
     def __init__(self, parent = None):
         super(self.__class__, self).__init__(parent)
+        self.index = 0
         self.doCommon()
     
     def doUncommon(self):
@@ -702,6 +710,7 @@ class MainListWidget(CommonListWidget):
 class FriendListWidget(CommonListWidget):
     def __init__(self, parent = None):
         super(self.__class__, self).__init__(parent)
+        self.index = 2
         self.doCommon()
     def doUncommon(self):
         pass
