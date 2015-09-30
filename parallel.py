@@ -153,7 +153,7 @@ class WebsocketWorker(QtCore.QThread):
             if not data.get("container_name"): ##CHECK HERE IF CONTAINER EXISTS IN OTHER ITEMS
                 file_names = data["file_names"]
                 self.statusSignalForMain.emit(("encrypting", "lock"))
-                with encompress.Encompress(password = "nigger", directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name:                     
+                with encompress.Encompress(password = getLogin().get("password"), directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name:
                     
                     data["container_name"] = container_name
                     PRINT("encompress", container_name)

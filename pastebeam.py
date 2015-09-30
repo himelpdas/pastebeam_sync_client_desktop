@@ -392,7 +392,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             password = self.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
             print password
         else:
-            password = "nigger"
+            password = getLogin().get("password")
 
         try:
             with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
