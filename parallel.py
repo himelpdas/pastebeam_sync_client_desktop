@@ -68,7 +68,8 @@ class WebsocketWorkerMixinForMain(object):
         elif new_clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
             itm.setIcon(QIcon("images/bell.png"))
             txt = new_clip["clip_display"]
-            
+
+        list_widget = None
         if new_clip["system"]=="starred":
             list_widget = self.panel_tab_widget.star_list_widget
             self.panel_tab_widget.setTabIcon(1,QIcon("images/new.png"))

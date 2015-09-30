@@ -1,7 +1,7 @@
 #--coding: utf-8 --
 
 import urlparse
-import os, platform
+import os, platform, tarfile
 
 SYSTEM = platform.system() #returns Windows, Darwin, Linux
 

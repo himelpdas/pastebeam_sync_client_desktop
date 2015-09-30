@@ -599,9 +599,9 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         #current_item = self.item(0)
         #current_clip = json.loads(current_item.data(QtCore.Qt.UserRole))
         
-        double_clicked_clip = json.loads(double_clicked_item.data(QtCore.Qt.UserRole))
+        double_clicked_data = json.loads(double_clicked_item.data(QtCore.Qt.UserRole))
         
-        hash, prev = double_clicked_clip["hash"], self.main.previous_hash
+        hash, prev = double_clicked_data["hash"], self.main.previous_hash
         
         if hash == prev:
             self.main.onSetStatusSlot(("already copied","warn"))
@@ -611,7 +611,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         
         #double_clicked_clip = self.convertToDeviceClip(double_clicked_clip)
         
-        self.main.onSetNewClipSlot(double_clicked_clip)
+        self.main.onSetNewClipSlot(double_clicked_data)
         
         #self.previous_hash = hash #or else onClipChangeSlot will react and a duplicate new list item will occur.
 
@@ -813,14 +813,15 @@ class PanelTabWidget(QTabWidget):
         
     def getMatchingContainerForHash(self, hash):
         hash_to_container = {}
-        for list_widget in self.panels:
+        for list_widget in self.panels: #the reason why it's in panel tab widget
             row = 0
             while row < list_widget.count(): #http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
                 each_item = list_widget.item(row)
                 item_data = each_item.data(QtCore.Qt.UserRole)
                 json_data = json.loads(item_data)
-                hash_container_pair = {json_data["hash"] : json_data.get("container_name")}
-                hash_to_container.update(hash_container_pair)
+                if not json_data["system"] in ["share", "alert"]: #DO NOT reuse shared clips, as they were encrypted with a random key, not user's password. Not reusing wil force the system to re-encrypt the container with user's password
+                    hash_container_pair = {json_data["hash"] : json_data.get("container_name")}
+                    hash_to_container.update(hash_container_pair)
                 row+=1
             
         container = hash_to_container.get(hash) #or None
