@@ -24,7 +24,11 @@ RESET cmd so path can take effect
 
 *pymongo
 
-*py-seccure
+*py-seccure # ELIPTIC CURVE CRYPTO NO LONGER NEEDED SINCE WE'RE USING PYCRYPTO RSA, BUT STILL COOL
+
+*requests
+
+*requests_toolbelt #can use to encode a mulipart (ie form) data and POST. Can also be used as an easy progress bar #http://stackoverflow.com/questions/13909900/progress-of-python-requests-post
 
 sudo apt-get install build-essential #MAKE AND GCC
 sudo apt-get install python-gevent OR pip install gevent # AFTER apt-get python-dev
