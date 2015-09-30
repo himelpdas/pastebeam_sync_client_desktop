@@ -1,5 +1,3 @@
-import keyring
-
 import bson.json_util as json
 
 from functions import *
@@ -81,7 +79,7 @@ class LockoutMixin(object):
         self.stacked_widget.addWidget(self.lockout_widget)
         
     def onLockoutPinTypedSlot(self, written):
-        login = self.getLogin().get("password")
+        login = getLogin().get("password")
         if not login:
             pass #no password was set yet
         elif login != written:
@@ -126,7 +124,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
     def __init__(self, parent = None, f = 0):
         super(self.__class__, self).__init__()
         self.main = parent
-        self.current_login = self.main.getLogin()
+        self.current_login = getLogin()
         self.setWindowTitle("Edit Settings")
         self.doAccountWidget()
         self.doSystemWidget()
@@ -244,7 +242,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
 
     def setAccountInfoToKeyring(self):
         
-        login = self.main.getLogin()
+        login = getLogin()
         
         typed_email = self.email_line.text()
         typed_password = self.password_line.text()

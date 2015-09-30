@@ -1,7 +1,7 @@
 #--coding: utf-8 --
 
 import urlparse
-import os, platform, tarfile
+import os, platform, tarfile, random
 
 SYSTEM = platform.system() #returns Windows, Darwin, Linux
 
@@ -88,3 +88,9 @@ def downloadContainerIfNotExist(data):
 		else:
 			return container_path
 
+import keyring
+
+def getLogin():
+	ring = keyring.get_password("pastebeam","account")
+	login = json.loads(ring) if ring else {} #todo store email locally, and access only password!
+	return login

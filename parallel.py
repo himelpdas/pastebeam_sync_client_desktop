@@ -8,6 +8,7 @@ from gevent.event import AsyncResult
 from functions import *
 
 import requests, datetime, socket
+from requests_toolbelt import MultipartEncoderMonitor
 
 #from ws4py.client.geventclient import WebSocketClient
 from websocket import create_connection
@@ -127,6 +128,7 @@ class WebsocketWorker(QtCore.QThread):
                 
         self.main = main
         self.initialized = 0
+        self.current_login = getLogin()
         self.OUTGOING_QUEUE = deque() #must use alternative Queue for non standard library thread and greenlets
 
         self.main.outgoingSignalForWorker.connect(self.onOutgoingSlot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
@@ -186,7 +188,7 @@ class WebsocketWorker(QtCore.QThread):
         self.RESPONDED_EVENT = AsyncResult() #keep events separate, as other incomming events may interfere and crash the app! Though TCP/IP guarantees in-order sending and receiving, non-determanistic events like "new clips" will definitely fuck up the order!
         #self.RESPONDED_LIVING_EVENT = AsyncResult()
         
-        self.RECONNECT = lambda: create_connection(URL("ws",DEFAULT_DOMAIN, DEFAULT_PORT, "ws", email=self.main.getLogin().get("email"), password=self.main.getLogin().get("password"), ) ) #The geventclient's websocket MUST be runned here, as running it in __init__ would put websocket in main thread
+        self.RECONNECT = lambda: create_connection(URL("ws",DEFAULT_DOMAIN, DEFAULT_PORT, "ws", email=getLogin().get("email"), password=getLogin().get("password"), ) ) #The geventclient's websocket MUST be runned here, as running it in __init__ would put websocket in main thread
         
         self.WSOCK = None
         
@@ -304,9 +306,16 @@ class WebsocketWorker(QtCore.QThread):
 
         return received["data"]
 
+    def streamingUploadCallback(self, monitor, container_size):
+        bytes_read = float(monitor.bytes_read)
+        percent_done = "%.2f"%(bytes_read/container_size*100.0)
+        print "%s%%"%percent_done
+        set_progress_1_in_10 = random.choice(xrange(10))
+        if set_progress_1_in_10 == 7: #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
+            self.statusSignalForMain.emit(("uploading %s%%"%percent_done, "upload"))
+
     def ensureContainerUpload(self, container_name):
 
-        self.statusSignalForMain.emit(("uploading", "upload"))
         #first check if upload needed before updating
         container_exists = self.sendUntilAnswered(dict(
             question = "Upload?",
@@ -314,11 +323,18 @@ class WebsocketWorker(QtCore.QThread):
         ))
 
         if container_exists == False:
-
             container_path = os.path.join(CONTAINER_DIR, container_name)
+            container_size = os.path.getsize(container_path)
 
             try:
-                r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), files={"upload": open(container_path, 'rb')})
+                email = self.current_login.get("email")
+                password = self.current_login.get("password")
+                m = MultipartEncoderMonitor.from_fields(
+                    fields={'email': email, 'password': password,
+                            'upload': (container_name, open(container_path, 'rb'), "application/pastebeam")},
+                    callback=lambda monitor : self.streamingUploadCallback(monitor, container_size)
+                    )
+                r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), data = m, headers={'Content-Type': m.content_type}) #files={"upload": open(container_path, 'rb')}) #old way of using requests file upload which does not allow customization of request
                 print r
             except requests.exceptions.ConnectionError:
                 #connection error

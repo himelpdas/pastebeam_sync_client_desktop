@@ -142,17 +142,11 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.ws_worker.ContactsListIncommingSignalForMain.connect(self.panel_tab_widget.onContactsListIncomming)
         self.ws_worker.SetRSAKeySignalForMain.connect(self.onSetRSAKeys)
         self.ws_worker.start()
-            
-    @staticmethod
-    def getLogin():
-        ring = keyring.get_password("pastebeam","account")
-        login = json.loads(ring) if ring else {} #todo store email locally, and access only password!
-        return login
 
     def onSetRSAKeys(self, private_key_and_salt):
         des_rsa_private_key = private_key_and_salt["rsa_private_key"]
         rsa_pbkdf2_salt = private_key_and_salt["rsa_pbkdf2_salt"]
-        password = self.getLogin().get("password")
+        password = getLogin().get("password")
         passphrase = PBKDF2(password, rsa_pbkdf2_salt, dkLen=24, count=1000, prf=lambda p, s: HMAC.new(p, s, SHA512).digest()).encode("hex")
 
         self.rsa_private_key = RSA.importKey(des_rsa_private_key, passphrase)
