@@ -282,8 +282,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 			os_file_paths_new = []
 			
 			for each in self.clipboard.mimeData().urls():
-				#PRINT("path", each.toString().encode())
-				each_path = each.path()[(1 if os.name == "nt" else 0):] #urls() returns /c://...// in windows, [1:] removes the starting /, not sure how this will affect *NIXs
+				each_path = each.path()[(1 if SYSTEM == "Windows" else 0):] #urls() returns /c://...// in windows, [1:] removes the starting /, not sure how this will affect *NIXs
 				#if os.name=="nt":
 				#	each_path = each_path.encode(sys.getfilesystemencoding()) #windows uses mbcs encoding, not utf8 like *nix, so something like a chinese character will result in file operations raising WindowsErrors #http://stackoverflow.com/questions/10180765/open-file-with-a-unicode-filename
 				standardized_path = os.path.abspath(each_path) #abspath is needed to bypass symlinks in *NIX systems, also guarantees slashes are correct (C:\\...) for windows

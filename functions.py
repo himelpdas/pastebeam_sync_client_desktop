@@ -1,7 +1,9 @@
 #--coding: utf-8 --
 
 import urlparse
-import os
+import os, platform
+
+SYSTEM = platform.system() #returns Windows, Darwin, Linux
 
 import bson.json_util as json
 from bson.binary import Binary

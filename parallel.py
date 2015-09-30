@@ -62,7 +62,8 @@ class WebsocketWorkerMixinForMain(object):
         
         elif new_clip["clip_type"] == "invite":
             itm.setIcon(QIcon("images/me.png"))
-            txt = new_clip["clip_display"] + '<br><br><i>Right-click here to respond.<i>'
+            action = "Control" if SYSTEM == "Darwin" else "Right"
+            txt = new_clip["clip_display"] + '<br><br><span style="color:red;">{action}-click to respond.</span>'.format(action = action)
 
         elif new_clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
             itm.setIcon(QIcon("images/bell.png"))
