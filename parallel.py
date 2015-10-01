@@ -261,10 +261,9 @@ class WebsocketWorker(QtCore.QThread):
 
         elif answer == "Newest!":
             data.reverse() #so the clips can be displayed top down since each clip added gets pushed down in listwidget
-            self.statusSignalForMain.emit(("downloading", "download"))
             for each in data:
             
-                downloadContainerIfNotExist(each) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
+                downloadContainerIfNotExist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
                 self.incommingClipsSignalForMain.emit(each)
 
             lastest = each
@@ -306,12 +305,15 @@ class WebsocketWorker(QtCore.QThread):
 
         return received["data"]
 
-    def streamingUploadCallback(self, monitor, container_size):
+    def streamingDownloadCallback(self, progress):
+        self.statusSignalForMain.emit(("downloading %s"%progress["percent_done"], "download"))
+
+    def streamingUploadCallback(self, monitor, container_size, callback_frequency = 55): #FIXME App can CRASH if freq too high!
         bytes_read = float(monitor.bytes_read)
         percent_done = "%.2f"%(bytes_read/container_size*100.0)
         #print "%s%%"%percent_done
-        set_progress_1_in_10 = random.choice(xrange(10))
-        if set_progress_1_in_10 == 7: #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
+        callback_frequency = random.choice(xrange(callback_frequency))
+        if callback_frequency == 1: #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
             self.statusSignalForMain.emit(("uploading %s%%"%percent_done, "upload"))
 
     def ensureContainerUpload(self, container_name):

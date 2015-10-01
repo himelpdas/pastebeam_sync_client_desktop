@@ -377,6 +377,9 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.previous_hash = hash
         #image.destroy()
 
+    def streamingDownloadCallback(self, progress):
+        self.onSetStatusSlot(("downloading %s"%progress["percent_done"], "download"))
+
     def onSetNewClipSlot(self, new_clip): #happens when new incomming clip or when user double clicks an item
 
         container_name = new_clip["container_name"]
@@ -384,7 +387,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         system = new_clip["system"]
         
         #downloading modal
-        downloadContainerIfNotExist(new_clip) #TODO show error message if download not found on server
+        downloadContainerIfNotExist(new_clip, self.streamingDownloadCallback) #TODO show error message if download not found on server
         
         self.onSetStatusSlot(("decrypting", "unlock"))
         if system == "share":

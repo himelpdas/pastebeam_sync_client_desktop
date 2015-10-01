@@ -1,7 +1,7 @@
 #--coding: utf-8 --
 
 import urlparse
-import os, platform, tarfile, random
+import os, platform, tarfile, random, requests
 
 SYSTEM = platform.system() #returns Windows, Darwin, Linux
 
@@ -69,7 +69,7 @@ def URL(scheme, addr, port, *_args, **_vars):
 		url=url[:-1]
 	return url
 
-def downloadContainerIfNotExist(data):
+def downloadContainerIfNotExist(data, progress_callback = None):
 	if not data.get("container_name"):
 		return
 	container_name = data["container_name"]
@@ -82,14 +82,41 @@ def downloadContainerIfNotExist(data):
 		#TODO- show downloading file dialogue
 		try:
 			#urllib.urlretrieve(URL(arg="static/%s"%container_name,port=8084,scheme="http"), container_path)
-			urllib.URLopener().retrieve(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "static", container_name), container_path) #http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
+			#urllib.URLopener().retrieve(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "static", container_name), container_path) #http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
+			url = URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "static", container_name)
+			getFile(url, container_path, progress_callback)
 		except IOError:
 			pass
 		else:
 			return container_path
 
-import keyring
+def getFile(url, container_path, progress_callback=None, callback_frequency = 55): #8192 bytes * 100 / 1024 / 1024 ~ every 0.8 mb it'll callback. Too quickly and app will CRASH!
+	"""http://stackoverflow.com/questions/16694907/how-to-download-large-file-in-python-with-requests-py"""
+	if not progress_callback: #no need to breakup the request into smaller bits for progress, so just use reliable urllib
+		urllib.URLopener().retrieve(url, container_path) #http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
+		return
+	#progress report wanted so do progress callback will run once every <frequency>
+	print "NIGGER"
+	r = requests.get(url, stream=True)
+	chunk_size = 8192
+	file_size_now = file_size_original = int(r.headers['content-length'])
+	with open(container_path, 'wb') as f:
+		for chunk in r.iter_content(chunk_size=chunk_size): #chunk in bytes
+			if chunk: # filter out keep-alive new chunks
+				f.write(chunk)
+				f.flush() #http://stackoverflow.com/questions/7127075/what-exactly-the-pythons-file-flush-is-doing #The first, flush, will simply write out any data that lingers in a program buffer to the actual file. Typically this means that the data will be copied from the program buffer to the operating system buffer.
 
+				file_size_now -= chunk_size
+				if random.choice( xrange(callback_frequency) ) == 1:
+					downloaded = file_size_original - file_size_now
+					progress = {
+						"remaining": file_size_now,
+						"downloaded": downloaded,
+						"percent_done": "%.2f%%"%(float(downloaded) / file_size_original * 100.0),
+					}
+					progress_callback(progress)
+
+import keyring
 def getLogin():
 	ring = keyring.get_password("pastebeam","account")
 	login = json.loads(ring) if ring else {} #todo store email locally, and access only password!
