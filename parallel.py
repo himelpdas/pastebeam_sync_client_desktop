@@ -309,7 +309,7 @@ class WebsocketWorker(QtCore.QThread):
     def streamingUploadCallback(self, monitor, container_size):
         bytes_read = float(monitor.bytes_read)
         percent_done = "%.2f"%(bytes_read/container_size*100.0)
-        print "%s%%"%percent_done
+        #print "%s%%"%percent_done
         set_progress_1_in_10 = random.choice(xrange(10))
         if set_progress_1_in_10 == 7: #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
             self.statusSignalForMain.emit(("uploading %s%%"%percent_done, "upload"))
