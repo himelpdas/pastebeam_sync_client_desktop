@@ -114,7 +114,7 @@ def getFile(url, container_path, progress_callback=None, callback_frequency = 55
 						"downloaded": downloaded,
 						"percent_done": "%.2f%%"%(float(downloaded) / file_size_original * 100.0),
 					}
-					progress_callback(progress)
+					progress_callback(progress) #FIXME THIS IS PRONE TO CRASH IF INTERNET IS FAST, AS TOO MANY EMITS WILL OVERLOAD APP
 
 import keyring
 def getLogin():
