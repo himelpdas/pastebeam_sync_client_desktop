@@ -22,6 +22,8 @@ class WebsocketWorkerMixinForMain(object):
 
     FILE_ICONS = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files") ) )
 
+    HOST_COLORS = sorted(["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C","#2966B8", "#3923D6", "#23819C", "#FF62B0",]) #http://www.hitmill.com/html/pastels.html
+
     outgoingSignalForWorker = QtCore.Signal(dict)
     
     def onIncommingSlot(self, emitted):
@@ -73,7 +75,6 @@ class WebsocketWorkerMixinForMain(object):
         list_widget = None
         if new_clip["system"]=="starred":
             list_widget = self.panel_tab_widget.star_list_widget
-            self.panel_tab_widget.setTabIcon(1,QIcon("images/new.png"))
             new_icon_tab = 1
         elif new_clip["system"]=="alert":
             list_widget = self.panel_tab_widget.alert_list_widget
@@ -92,8 +93,10 @@ class WebsocketWorkerMixinForMain(object):
         list_widget.takeItem(5)
         
         space = "&nbsp;"*8
-        timestamp_human = u'{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}{space}<span style="color:grey">{dt.month}-{dt.day}-{dt.year}</span>'.format(space = space, dt=datetime.datetime.fromtimestamp(new_clip["timestamp_server"] ) ) #http://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
-        custom_label = QLabel(u"<b>{host_name}</b>{space}{timestamp}<pre>{text}</pre>".format(space = space, host_name = new_clip["host_name"], timestamp = timestamp_human, text=txt ) )
+        seed = hash32(new_clip["host_name"])
+        reproducible_random_color = random.Random(seed).choice(self.HOST_COLORS) #REPRODUCABLE RANDOM COLOR FROM SEED
+        timestamp_human = u'<span style="color:grey">{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}{space}{dt.month}-{dt.day}-{dt.year}</span>'.format(space = space, dt=datetime.datetime.fromtimestamp(new_clip["timestamp_server"] ) ) #http://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
+        custom_label = QLabel(u"<span style='color:{color}'>{host_name}</span>{space}{timestamp}<pre>{text}</pre>".format(color=reproducible_random_color, space = space, host_name = new_clip["host_name"], timestamp = timestamp_human, text=txt ) )
         custom_label.setOpenExternalLinks(True) ##http://stackoverflow.com/questions/8427446/making-qlabel-behave-like-a-hyperlink
         
         #resize the listwidget item to fit the html Qlabel, using Qlabel's sizehint
