@@ -66,7 +66,7 @@ class WebsocketWorkerMixinForMain(object):
         elif new_clip["clip_type"] == "invite":
             itm.setIcon(QIcon("images/me.png"))
             action = "Control" if SYSTEM == "Darwin" else "Right"
-            txt = new_clip["clip_display"] + '<br><br><span style="color:red;">{action}-click to respond.</span>'.format(action = action)
+            txt = '<h5 style="color:red;">{action}-click to respond.</h5>'.format(action = action) + new_clip["clip_display"]
 
         elif new_clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
             itm.setIcon(QIcon("images/bell.png"))
@@ -96,7 +96,7 @@ class WebsocketWorkerMixinForMain(object):
         seed = hash32(new_clip["host_name"])
         reproducible_random_color = random.Random(seed).choice(self.HOST_COLORS) #REPRODUCABLE RANDOM COLOR FROM SEED
         timestamp_human = u'<span style="color:grey">{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}{space}{dt.month}-{dt.day}-{dt.year}</span>'.format(space = space, dt=datetime.datetime.fromtimestamp(new_clip["timestamp_server"] ) ) #http://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
-        custom_label = QLabel(u"<span style='color:{color}'>{host_name}</span>{space}{timestamp}<pre>{text}</pre>".format(color=reproducible_random_color, space = space, host_name = new_clip["host_name"], timestamp = timestamp_human, text=txt ) )
+        custom_label = QLabel(u"<h5><span style='color:{color}'>{host_name}</span>{space}{timestamp}</h5><pre>{text}</pre>".format(color=reproducible_random_color, space = space, host_name = new_clip["host_name"], timestamp = timestamp_human, text=txt ) )
         custom_label.setOpenExternalLinks(True) ##http://stackoverflow.com/questions/8427446/making-qlabel-behave-like-a-hyperlink
         
         #resize the listwidget item to fit the html Qlabel, using Qlabel's sizehint
