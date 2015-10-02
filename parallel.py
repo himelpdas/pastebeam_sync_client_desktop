@@ -72,21 +72,20 @@ class WebsocketWorkerMixinForMain(object):
             itm.setIcon(QIcon("images/bell.png"))
             txt = new_clip["clip_display"]
 
-        list_widget = None
         if new_clip["system"]=="starred":
             list_widget = self.panel_tab_widget.star_list_widget
-            new_icon_tab = 1
+            #new_icon_tab = 1
         elif new_clip["system"]=="alert":
             list_widget = self.panel_tab_widget.alert_list_widget
-            new_icon_tab = 3
+            #new_icon_tab = 3
         elif new_clip["system"] == "main":
             list_widget = self.panel_tab_widget.main_list_widget
-            new_icon_tab = 0
+            #new_icon_tab = 0
         elif new_clip["system"] == "share":
             list_widget = self.panel_tab_widget.friend_list_widget
-            new_icon_tab = 2
+            #new_icon_tab = 2
 
-        self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
+        #self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
         
         itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
         list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
@@ -106,7 +105,7 @@ class WebsocketWorkerMixinForMain(object):
         #move the scrollbar to top
         list_widget_scrollbar = list_widget.verticalScrollBar() #http://stackoverflow.com/questions/8698174/how-to-control-the-scroll-bar-with-qlistwidget
         list_widget_scrollbar.setValue(0)
-                    
+
 class WebsocketWorker(QtCore.QThread):
 
     #This is the signal that will be emitted during the processing.
@@ -121,6 +120,7 @@ class WebsocketWorker(QtCore.QThread):
     closeWaitDialogSignalForMain = QtCore.Signal(dict)
     ContactsListIncommingSignalForMain = QtCore.Signal(list)
     SetRSAKeySignalForMain = QtCore.Signal(dict)
+    changeTabIconSignalForMain = QtCore.Signal(set)
     
     session_id = uuid.uuid4()
 
@@ -131,6 +131,7 @@ class WebsocketWorker(QtCore.QThread):
                 
         self.main = main
         self.initialized = 0
+        self.refilling_list = True
         self.current_login = getLogin()
         self.OUTGOING_QUEUE = deque() #must use alternative Queue for non standard library thread and greenlets
 
@@ -218,6 +219,8 @@ class WebsocketWorker(QtCore.QThread):
                         PRINT("failure in", workerGreenlet.__name__)
                         self.statusSignalForMain.emit(("Reconnecting", "connect"))
                         self.WSOCK.close() #close the WSOCK
+
+                        self.refilling_list = True
                     else:
                         continue
                 try: #TODO INVOKE CLIP READING ON STARTUP! AFTER CONNECTION
@@ -264,24 +267,38 @@ class WebsocketWorker(QtCore.QThread):
 
         elif answer == "Newest!":
             data.reverse() #so the clips can be displayed top down since each clip added gets pushed down in listwidget
+
+            tabs_affected = set([])
             for each in data:
             
                 downloadContainerIfNotExist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
                 self.incommingClipsSignalForMain.emit(each)
 
-            lastest = each
+                tabs_affected.add(each["system"])
+
+            if not self.refilling_list:
+                self.changeTabIconSignalForMain.emit(tabs_affected)
+            else:
+                self.refilling_list = False
+
+            latest = each
             
-            not_this_device = lastest["session_id"] != self.session_id
-            is_clipboard = lastest["system"] == "main"
-            is_star = lastest["system"] == "starred"
-            is_alert = lastest["system"] == "alert"
+            not_this_device = latest["session_id"] != self.session_id
+            is_clipboard = latest["system"] == "main"
+            is_star = latest["system"] == "starred"
+            is_alert = latest["system"] == "alert"
+            is_share = latest["system"] == "share"
 
             if is_clipboard:
-                self.statusSignalForMain.emit(("updated", "good"))
+                self.statusSignalForMain.emit(("clipboard synced to cloud", "good"))
                 if not_this_device: #do not allow setting from the same pc
-                    self.setClipSignalForMain.emit(lastest) #this will set the newest clip only, thanks to self.main.new_clip!!!
-            elif is_star == "starred":
-                self.statusSignalForMain.emit(("starred", "good"))
+                    self.setClipSignalForMain.emit(latest) #this will set the newest clip only, thanks to self.main.new_clip!!!
+            elif is_star:
+                self.statusSignalForMain.emit(("added item to bookmarks", "good"))
+            elif is_share:
+                self.statusSignalForMain.emit(("you got something from %s"%latest["host_name"], "good"))
+            elif is_alert:
+                self.statusSignalForMain.emit(("you have a new alert", "good"))
 
         #RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
@@ -406,7 +423,7 @@ class WebsocketWorker(QtCore.QThread):
                     
         elif question=="Star?":
         
-            self.statusSignalForMain.emit(("starring", "star"))
+            self.statusSignalForMain.emit(("Adding to bookmarks", "star"))
             data_in = self.sendUntilAnswered(send)
             
             if data_in["success"] == False:

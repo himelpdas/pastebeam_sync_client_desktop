@@ -734,6 +734,18 @@ class PanelTabWidget(QTabWidget):
         if index == 3:
             self.setTabIcon(3,QIcon("images/bulb.png"))
 
+    def onChangeTabIconSlot(self, tabs_affected):
+        if "starred" in tabs_affected:
+            new_icon_tab = 1
+        elif "alert" in tabs_affected:
+            new_icon_tab = 3
+        elif "main" in tabs_affected:
+            new_icon_tab = 0
+        elif "share" in tabs_affected:
+            new_icon_tab = 2
+
+        self.setTabIcon(new_icon_tab,QIcon("images/new.png"))
+
     def doSearchWidget(self):
         self.search = QLineEdit()
         self.search.textEdited.connect(self.onSearchEditedSlot)
