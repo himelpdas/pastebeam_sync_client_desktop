@@ -453,6 +453,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         self.parent = parent
         self.main = parent.main
         self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel) #http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
         
         self.all_enable_disable_action_methods = []
         self.setMouseTracking(True)

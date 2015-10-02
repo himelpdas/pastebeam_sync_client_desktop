@@ -276,7 +276,7 @@ class WebsocketWorker(QtCore.QThread):
 
                 tabs_affected.add(each["system"])
 
-            if not self.refilling_list:
+            if not self.refilling_list: #THE FIRST ONE EVER WILL NOT SHOW
                 self.changeTabIconSignalForMain.emit(tabs_affected)
             else:
                 self.refilling_list = False
