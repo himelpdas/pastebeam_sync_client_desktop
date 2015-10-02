@@ -289,6 +289,7 @@ class WebsocketWorker(QtCore.QThread):
             is_alert = latest["system"] == "alert"
             is_share = latest["system"] == "share"
 
+            """
             if is_clipboard:
                 self.statusSignalForMain.emit(("clipboard synced to cloud", "good"))
                 if not_this_device: #do not allow setting from the same pc
@@ -299,6 +300,8 @@ class WebsocketWorker(QtCore.QThread):
                 self.statusSignalForMain.emit(("you got something from %s"%latest["host_name"], "good"))
             elif is_alert:
                 self.statusSignalForMain.emit(("you have a new alert", "good"))
+            """
+            self.statusSignalForMain.emit(("synced!", "good"))
 
         #RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
@@ -375,6 +378,8 @@ class WebsocketWorker(QtCore.QThread):
             question = send["question"]
 
         if question == "Share?":
+
+            self.statusSignalForMain.emit(("sharing", "share"))
 
             email = data_out["recipient"]
 
