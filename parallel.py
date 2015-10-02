@@ -66,7 +66,7 @@ class WebsocketWorkerMixinForMain(object):
         elif new_clip["clip_type"] == "invite":
             itm.setIcon(QIcon("images/me.png"))
             action = "Control" if SYSTEM == "Darwin" else "Right"
-            txt = '<h5 style="color:red;">{action}-click to respond.</h5>'.format(action = action) + new_clip["clip_display"]
+            txt = '<h5 style="color:maroon;">{action}-click to respond.</h5>'.format(action = action) + new_clip["clip_display"]
 
         elif new_clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
             itm.setIcon(QIcon("images/bell.png"))
@@ -196,7 +196,7 @@ class WebsocketWorker(QtCore.QThread):
         self.WSOCK = None
         
         self.KEEP_RUNNING = 1
-        
+
         self.greenlets = [
             gevent.spawn(self.outgoingGreenlet),
             gevent.spawn(self.incommingGreenlet),
@@ -281,7 +281,7 @@ class WebsocketWorker(QtCore.QThread):
                 if not_this_device: #do not allow setting from the same pc
                     self.setClipSignalForMain.emit(lastest) #this will set the newest clip only, thanks to self.main.new_clip!!!
             elif is_star == "starred":
-                self.statusSignalForMain.emit(("starred", "good"))                    
+                self.statusSignalForMain.emit(("starred", "good"))
 
         #RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
