@@ -171,17 +171,18 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
         
         self.account_widget = QWidget()        
         self.account_widget.setLayout(account_vbox)
-        
+
     def doSystemWidget(self):
         device_name_label = QLabel("Device Name:")
-        device_name_line = QLineEdit()
+        self.device_name_line = QLineEdit()
+        self.device_name_line.setText(getDeviceNameFromKeyring())
         device_name_hbox = QHBoxLayout()
         device_name_hbox.addWidget(device_name_label)
-        device_name_hbox.addWidget(device_name_line)
+        device_name_hbox.addWidget(self.device_name_line)
         device_name_widget = QWidget()
         device_name_widget.setLayout(device_name_hbox)
         
-        sync_label = QLabel("Automatically check for updates")
+        sync_label = QLabel("Sync device clipboard with the cloud ")
         sync_check = QCheckBox()
         sync_hbox  = QHBoxLayout()
         sync_hbox.addWidget(sync_label)
@@ -195,10 +196,15 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
         
         self.system_widget = QWidget()
         self.system_widget.setLayout(master_vbox)
+
+    def setDeviceNameToKeyRing(self):
+       keyring.set_password("pastebeam","device_name",
+            self.device_name_line.text().strip() or HOST_NAME #strip removes trailing spaces
+       )
         
     def doStartupWidget(self):
         
-        run_label = QLabel("Run PasteBeam")
+        run_label = QLabel("Run PasteBeam on startup")
         run_check = QCheckBox()
         run_hbox = QHBoxLayout()
         run_hbox.addWidget(run_label)
@@ -206,7 +212,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
         run_widget = QWidget()
         run_widget.setLayout(run_hbox)
         
-        updates_label = QLabel("Check for updates")
+        updates_label = QLabel("Periodically check for updates")
         updates_check = QCheckBox()
         updates_hbox = QHBoxLayout()
         updates_hbox.addWidget(updates_label)
@@ -224,8 +230,8 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
     def doTabWidget(self):
         self.tab_widget = QTabWidget()
         self.tab_widget.addTab(self.account_widget, QIcon("images/account"), "Account")
-        self.tab_widget.addTab(self.system_widget, QIcon("images/system"), "System")
-        self.tab_widget.addTab(self.startup_widget, QIcon("images/controls"), "Startup")
+        self.tab_widget.addTab(self.system_widget, QIcon("images/system"), "Device")
+        self.tab_widget.addTab(self.startup_widget, QIcon("images/controls"), "Preferences")
     
     def doSettingsLayout(self):
         self.settings_layout = QVBoxLayout()
@@ -234,6 +240,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
         
     def onOkButtonClickedSlot(self):
         self.setAccountInfoToKeyring()
+        self.setDeviceNameToKeyRing()
         self.done(1)
             
     def onCancelButtonClickedSlot(self):

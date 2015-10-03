@@ -173,7 +173,7 @@ class WebsocketWorker(QtCore.QThread):
                     data['container_name'] = container_name_new
                     data["decryption_key"] = password_new #still raw need to encrypt with recipients public key in outgoing greenlet!
 
-        data['host_name'] = self.main.HOST_NAME
+        data['host_name'] = getDeviceNameFromKeyring()#self.main.HOST_NAME
 
         data["timestamp_client"] = time.time()    
         
@@ -301,7 +301,6 @@ class WebsocketWorker(QtCore.QThread):
             elif is_alert:
                 self.statusSignalForMain.emit(("you have a new alert", "good"))
             """
-            self.statusSignalForMain.emit(("synced!", "good"))
 
         #RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
@@ -399,10 +398,14 @@ class WebsocketWorker(QtCore.QThread):
             rsa_public_key = RSA.importKey(recipient_public_key)
             data_out["decryption_key"] = Binary(rsa_public_key.encrypt(data_out["decryption_key"], K=None)[0]) #K is ignored, but needed for compatibility
 
-            self.sendUntilAnswered(dict(
+            data_in = self.sendUntilAnswered(dict(
                 question = "Share?",
                 data = data_out
             ))
+            if data_in['success']:
+                self.statusSignalForMain.emit(("your item was sent", "sync"))
+            else:
+                self.statusSignalForMain.emit((data_in["reason"], "warn"))
 
         if question == "Update?":
                     
@@ -410,9 +413,12 @@ class WebsocketWorker(QtCore.QThread):
 
             self.ensureContainerUpload(container_name)
 
-            self.statusSignalForMain.emit(("updating", "sync"))
+            self.statusSignalForMain.emit(("updating clip to server", "sync"))
 
-            self.sendUntilAnswered(send)
+            data_in = self.sendUntilAnswered(send)
+
+            if data_in["success"]:
+                 self.statusSignalForMain.emit(("updated!", "good"))
                 
         elif question=="Delete?":
             
@@ -431,7 +437,9 @@ class WebsocketWorker(QtCore.QThread):
             self.statusSignalForMain.emit(("Adding to bookmarks", "star"))
             data_in = self.sendUntilAnswered(send)
             
-            if data_in["success"] == False:
+            if data_in["success"]:
+                self.statusSignalForMain.emit(("added to your bookmarks!", "good"))
+            else:
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
 
         elif question=="Contacts?":

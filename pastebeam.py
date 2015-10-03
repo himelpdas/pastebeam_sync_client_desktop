@@ -108,9 +108,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
     ICON_HTML = u"<html><img src='images/{name}.png' width={side} height={side}></html>"
-    
-    HOST_NAME = u"{system} {release}".format(system = platform.system(), release = platform.release() ) #self.getLogin().get("device_name"),
-    
+
     FILE_IGNORE_LIST = map(lambda each: each.upper(), ["desktop.ini","thumbs.db",".ds_store","icon\r",".dropbox",".dropbox.attr"])
 
     MAX_FILE_SIZE = 1024*1024*50
