@@ -302,6 +302,10 @@ class WebsocketWorker(QtCore.QThread):
                 self.statusSignalForMain.emit(("you have a new alert", "good"))
             """
 
+        elif answer == "get_contacts!":
+            contacts_list = data
+            self.ContactsListIncommingSignalForMain.emit(contacts_list)
+
         #RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
@@ -442,21 +446,18 @@ class WebsocketWorker(QtCore.QThread):
             else:
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
 
-        elif question=="Contacts?":
+        elif question=="Contacts?": #change to set_contacts?
             
             data_in = self.sendUntilAnswered(send)
             
             self.closeWaitDialogSignalForMain.emit(data_in)
-            contacts_list = data_in["data"]
-            self.ContactsListIncommingSignalForMain.emit(contacts_list)
 
         elif question=="Invite?":
             
             data_in = self.sendUntilAnswered(send)
             
             print data_in
-            print ""
-            
+
             self.closeWaitDialogSignalForMain.emit(data_in)
             
         elif question =="Accept?":

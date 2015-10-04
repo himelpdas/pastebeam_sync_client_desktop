@@ -96,7 +96,6 @@ def getFile(url, container_path, progress_callback=None, callback_frequency = 55
 		urllib.URLopener().retrieve(url, container_path) #http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
 		return
 	#progress report wanted so do progress callback will run once every <frequency>
-	print "NIGGER"
 	r = requests.get(url, stream=True)
 	chunk_size = 8192
 	file_size_now = file_size_original = int(r.headers['content-length'])
