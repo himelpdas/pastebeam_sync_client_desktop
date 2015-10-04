@@ -48,6 +48,11 @@ PGPy:
 sudo apt-get install libffi-dev libssl-dev #https://pythonhosted.org/PGPy/installation.html
 pip install PGPy
 
+ZEROMQ
+sudo apt-get install libzmq3-dev
+pip install pyzmq
+import zmq.green as zmq
+
 ####
 development environment
 
