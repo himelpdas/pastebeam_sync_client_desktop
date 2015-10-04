@@ -769,24 +769,37 @@ class PanelTabWidget(QTabWidget):
         """
         
     def onSearchEditedSlot(self, written):
-        items = [] #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
-        for index in xrange(self.main_list_widget.count()):
-            items.append(self.main_list_widget.item(index))
-        
-        is_blank = not bool(written) #unhide when written is blank
-                
-        for item in items:
-            if is_blank:
-                item.setHidden(False) #unhide all
-            else:
-                item_data = json.loads(item.data(QtCore.Qt.UserRole))
-                if not item_data["clip_type"] in ["text","html"]:
-                    item.setHidden(True)
-                    continue
-                if written.upper() in item_data["clip_display"].upper(): #TODO only search in searchable html class
-                    item.setHidden(False)
+        for list_widget in self.panels:
+            items = [] #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
+            for index in xrange(list_widget.count()):
+                items.append(list_widget.item(index))
+
+            is_blank = not bool(written) #unhide when written is blank
+
+            for item in items:
+                if is_blank:
+                    item.setHidden(False) #unhide all
                 else:
-                    item.setHidden(True)
+                    item_data = json.loads(item.data(QtCore.Qt.UserRole))
+
+                    unsearchable_types = ["screenshot"]
+                    if item_data["clip_type"] in unsearchable_types:
+                        item.setHidden(True)
+                        continue
+
+                    any_match = False
+                    if item_data["clip_type"] == "files":
+                        for each_display in item_data["clip_display"]:
+                            #print each_display
+                            if written.upper() in each_display.replace("._folder", "").upper():
+                                any_match = True
+                    elif written.upper() in item_data["clip_display"].upper(): #make compatible with files clip display #TODO only search in searchable html class
+                        any_match = True
+
+                    if any_match:
+                        item.setHidden(False)
+                    else:
+                        item.setHidden(True)
     
     def doPanels(self):
             

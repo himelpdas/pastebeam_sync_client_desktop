@@ -403,7 +403,7 @@ class WebsocketWorker(QtCore.QThread):
                 data = data_out
             ))
             if data_in['success']:
-                self.statusSignalForMain.emit(("your item was sent", "sync"))
+                self.statusSignalForMain.emit(("your item was sent", "good"))
             else:
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
 
