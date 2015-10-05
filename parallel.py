@@ -248,7 +248,7 @@ class WebsocketWorker(QtCore.QThread):
         
         #Keep alive is handled by the websocket library itself (ie. it sends "alive?" pings that was done manually befor)
     
-        #NON RESPONDED (non-determanistic)
+        #PUB SUB STYLE
         if answer == "Error!":
             self.KEEP_RUNNING = 0
             self.statusSignalForMain.emit((data, "bad"))
@@ -306,7 +306,9 @@ class WebsocketWorker(QtCore.QThread):
             contacts_list = data
             self.ContactsListIncommingSignalForMain.emit(contacts_list)
 
-        #RESPONDED (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
+
+
+        #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
         
@@ -314,17 +316,17 @@ class WebsocketWorker(QtCore.QThread):
         while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
         
             expect = uuid.uuid4()
-                
+
             send["echo"] = expect #prevents responses coming after 5 seconds from being accepted
-        
+
             self.WSOCK.send(json.dumps(send))
-                        
+
             received = self.RESPONDED_EVENT.wait(timeout=5) #AsyncResult.get will block until a result is set by another greenlet, after that get will not block anymore. NOTE- get will return exception! Use wait instead
-                        
+
             if received != None:
-            
+
                 inspect = received["echo"]
-                
+
                 if expect == inspect:
                     self.RESPONDED_EVENT = AsyncResult() #setattr(self, event_name, AsyncResult()    )
                     break

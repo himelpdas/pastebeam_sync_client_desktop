@@ -360,8 +360,8 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.showWaitForSignalDialog("Contacts?", {"contacts_list":current_items}, "failed to save contacts to server", success_msg = "contacts saved to server")
 
         if self.success["success"]:
-            self.contacts_list = self.success["data"]
-            self.main.panel_tab_widget.onContactsListIncomming(self.contacts_list)
+            #self.contacts_list = self.success["data"]
+            #self.main.panel_tab_widget.onContactsListIncomming(self.contacts_list)
             super(self.__class__,self).onOkButtonClickedSlot()
     
     def resizeMinWindowSizeForListWidget(self):
