@@ -289,6 +289,9 @@ class WebsocketWorker(QtCore.QThread):
             is_alert = latest["system"] == "alert"
             is_share = latest["system"] == "share"
 
+            if is_clipboard and not_this_device: #do not allow setting from the same pc
+                self.setClipSignalForMain.emit(latest) #this will set the newest clip only, thanks to self.main.new_clip!!!
+
             """
             if is_clipboard:
                 self.statusSignalForMain.emit(("clipboard synced to cloud", "good"))
