@@ -2,6 +2,8 @@
 
 *pywin32 - install via wheel pywin32-219-cp26-none-win32.whl (RESET)
 
+*gevent-websocket
+
 *websocket-client
 
 *zbarlib - use instructions here basically you need python 2.6 32 bit, the windows installer for zbar, and the windows installer for the python module. For that reason, the virtualenv must be made with --system-site-packages
@@ -29,6 +31,8 @@ RESET cmd so path can take effect
 *requests
 
 *requests_toolbelt #can use to encode a mulipart (ie form) data and POST. Can also be used as an easy progress bar #http://stackoverflow.com/questions/13909900/progress-of-python-requests-post
+
+*validators
 
 sudo apt-get install build-essential #MAKE AND GCC
 sudo apt-get install python-gevent OR pip install gevent # AFTER apt-get python-dev
