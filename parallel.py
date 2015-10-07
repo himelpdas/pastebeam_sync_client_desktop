@@ -61,7 +61,16 @@ class WebsocketWorkerMixinForMain(object):
                     file_name = each_filename,
                     icon = self.ICON_HTML.format(name=file_icon, side=32)
                 ))
-            txt = "<br>".join(files)
+
+            iteration = iter(files)
+            files_group_3 = list(itertools.izip_longest(iteration, iteration, iteration, fillvalue=None))
+            lines = []
+            for i,group in enumerate(files_group_3):
+                line = ", ".join(filter(lambda x: bool(x), group))
+                if not i == len(files_group_3)-1: # add trailing comma at end of every line except last
+                    line+=","
+                lines.append(line)
+            txt = "<br>".join(lines)
         
         elif new_clip["clip_type"] == "invite":
             itm.setIcon(QIcon("images/me.png"))
@@ -124,8 +133,8 @@ class WebsocketWorker(QtCore.QThread):
     
     session_id = uuid.uuid4()
 
-    #You can do any extra things in this init you need, but for this example
-    #nothing else needs to be done expect call the super's init
+    # You can do any extra things in this init you need, but for this example
+    # nothing else needs to be done expect call the super's init
     def __init__(self, main):
         QtCore.QThread.__init__(self)
                 
@@ -133,7 +142,7 @@ class WebsocketWorker(QtCore.QThread):
         self.initialized = 0
         self.refilling_list = True
         self.current_login = getLogin()
-        self.OUTGOING_QUEUE = deque() #must use alternative Queue for non standard library thread and greenlets
+        self.OUTGOING_QUEUE = deque() # must use alternative Queue for non standard library thread and greenlets
 
         self.main.outgoingSignalForWorker.connect(self.onOutgoingSlot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
         
@@ -201,7 +210,7 @@ class WebsocketWorker(QtCore.QThread):
         self.greenlets = [
             gevent.spawn(self.outgoingGreenlet),
             gevent.spawn(self.incommingGreenlet),
-            #gevent.spawn(self.keepAliveGreenlet),
+            # gevent.spawn(self.keepAliveGreenlet),
         ]
         
         self.green = gevent.joinall(self.greenlets)

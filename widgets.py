@@ -189,7 +189,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
         sync_hbox.addWidget(sync_check)
         sync_widget = QWidget()
         sync_widget.setLayout(sync_hbox)
-        
+
         master_vbox = QVBoxLayout()
         master_vbox.addWidget(device_name_widget)
         master_vbox.addWidget(sync_widget)

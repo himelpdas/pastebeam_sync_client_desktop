@@ -8,7 +8,7 @@ SYSTEM = platform.system()  # returns Windows, Darwin, Linux
 import bson.json_util as json
 from bson.binary import Binary
 
-import hashlib, uuid, time, sys, cgi, tempfile
+import hashlib, uuid, time, sys, cgi, tempfile, itertools
 
 from Crypto.PublicKey import RSA
 from Crypto import Random
