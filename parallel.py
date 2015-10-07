@@ -63,7 +63,7 @@ class WebsocketWorkerMixinForMain(object):
                 ))
 
             iteration = iter(files)
-            files_group_3 = list(itertools.izip_longest(iteration, iteration, iteration, fillvalue=None))
+            files_group_3 = list(itertools.izip_longest(iteration, iteration, iteration, fillvalue=None)) # http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
             lines = []
             for i,group in enumerate(files_group_3):
                 line = ", ".join(filter(lambda x: bool(x), group))
