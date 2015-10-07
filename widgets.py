@@ -155,7 +155,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin): #http://www.qtcentre.org/thr
         
         register_link = QLabel("<a href='#'>Register</a>")
         seperator = QLabel("|")
-        forgot_link = QLabel("<a href='#'>Forgot password?</a>")
+        forgot_link = QLabel("<a href='#'>Reset or change password</a>")
         links_hbox = QHBoxLayout()
         links_hbox.addWidget(register_link)
         links_hbox.addWidget(seperator)
@@ -759,7 +759,7 @@ class PanelTabWidget(QTabWidget):
         self.search.textEdited.connect(self.onSearchEditedSlot)
         search_tip = "Search through your items (preview text only)."
         self.search.setStatusTip(search_tip)
-        self.search.setPlaceholderText("Filter...")
+        self.search.setPlaceholderText("Search text...")
         """
         search_icon = QLabel() #http://www.iconarchive.com/show/super-mono-3d-icons-by-double-j-design/search-icon.html
         pmap = QPixmap("images/find.png")
