@@ -159,7 +159,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def onClipChangeSlot(self):
         #test if identical
 
-        self.onSetStatusSlot(("scanning for change", "scan"))
+        self.onSetStatusSlot(("Waiting for change", "scan"))
         
         mimeData = self.clipboard.mimeData()
                 

@@ -320,11 +320,12 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
     def doPreExecGetContactsList(self):
         self.showWaitForSignalDialog("Contacts?", {"contacts_list":None}, "could not get contacts list", success_msg = False)
 
-        self.contacts_list = self.success["data"]
-        for each_email in self.contacts_list:
-            self.list_widget.addItem(each_email)
-        
-        self.list_widget.sortItems()
+        if self.success["success"]:
+            self.contacts_list = self.success["data"]
+            for each_email in self.contacts_list:
+                self.list_widget.addItem(each_email)
+
+            self.list_widget.sortItems()
 
     def onFriendRequestButtonClickSlot(self):
         email = self.email_line.text()

@@ -326,23 +326,28 @@ class WebsocketWorker(QtCore.QThread):
             self.RESPONDED_EVENT.set(received) #true or false    
         
     def sendUntilAnswered(self, send):
-        while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
+        #while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
         
-            expect = uuid.uuid4()
+        expect = uuid.uuid4()
 
-            send["echo"] = expect #prevents responses coming after 5 seconds from being accepted
+        send["echo"] = expect #prevents responses coming after 5 seconds from being accepted
 
-            self.WSOCK.send(json.dumps(send))
+        self.WSOCK.send(json.dumps(send))
 
-            received = self.RESPONDED_EVENT.wait(timeout=5) #AsyncResult.get will block until a result is set by another greenlet, after that get will not block anymore. NOTE- get will return exception! Use wait instead
+        received = self.RESPONDED_EVENT.wait(timeout=10) #AsyncResult.get will block until a result is set by another greenlet, after that get will not block anymore. NOTE- get will return exception! Use wait instead
 
-            if received != None:
+        if received != None:
 
-                inspect = received["echo"]
+            inspect = received["echo"]
 
-                if expect == inspect:
-                    self.RESPONDED_EVENT = AsyncResult() #setattr(self, event_name, AsyncResult()    )
-                    break
+            if expect == inspect:
+                self.RESPONDED_EVENT = AsyncResult() #setattr(self, event_name, AsyncResult()    )
+        else:
+            received = {}
+            received["data"] = dict(
+                success=False,
+                reason = "Operation timed out!"
+            )
 
         return received["data"]
 
@@ -360,10 +365,14 @@ class WebsocketWorker(QtCore.QThread):
     def ensureContainerUpload(self, container_name):
 
         #first check if upload needed before updating
-        container_exists = self.sendUntilAnswered(dict(
+        data = self.sendUntilAnswered(dict(
             question = "Upload?",
             data = container_name
         ))
+        if not data["success"]:
+            return
+
+        container_exists = data["container_exists"]
 
         if container_exists == False:
             container_path = os.path.join(CONTAINER_DIR, container_name)
@@ -424,6 +433,7 @@ class WebsocketWorker(QtCore.QThread):
             if data_in['success']:
                 self.statusSignalForMain.emit(("your item was sent", "good"))
             else:
+                #print "sh"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
 
         if question == "Update?":
@@ -438,6 +448,9 @@ class WebsocketWorker(QtCore.QThread):
 
             if data_in["success"]:
                  self.statusSignalForMain.emit(("updated!", "good"))
+            else:
+                #print "upd"+data_in["reason"]
+                self.statusSignalForMain.emit((data_in["reason"], "warn"))
                 
         elif question=="Delete?":
             
@@ -449,7 +462,8 @@ class WebsocketWorker(QtCore.QThread):
                 self.deleteClipSignalForMain.emit(data_in["location"])
                 self.statusSignalForMain.emit(("deleted", "good"))
             else:
-                self.statusSignalForMain.emit(("already deleted", "warn"))
+                #print "del"+data_in["reason"]
+                self.statusSignalForMain.emit((data_in["reason"], "warn"))
                     
         elif question=="Star?":
         
@@ -459,6 +473,7 @@ class WebsocketWorker(QtCore.QThread):
             if data_in["success"]:
                 self.statusSignalForMain.emit(("added to your bookmarks!", "good"))
             else:
+                #print "star"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
 
         elif question=="Contacts?": #change to set_contacts?
