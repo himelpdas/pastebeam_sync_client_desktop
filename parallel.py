@@ -237,6 +237,7 @@ class WebsocketWorker(QtCore.QThread):
                     self.clearListSignalForMain.emit() #clear list on reconnect or else a new list will be sent on top of previous
                 except: #previous try will handle later
                     pass #block thread until there is a connection
+                gevent.sleep(1)
         return closure
 
     @workerLoopDecorator
@@ -325,7 +326,7 @@ class WebsocketWorker(QtCore.QThread):
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
         
-    def sendUntilAnswered(self, send):
+    def sendUntilAnswered(self, send): #todo change name
         #while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
         
         expect = uuid.uuid4()
