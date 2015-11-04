@@ -3,6 +3,11 @@
 import urlparse
 import os, platform, tarfile, random, requests
 
+import logging
+logging.basicConfig()
+LOG = logging.getLogger("pastebeam")
+LOG.setLevel(logging.DEBUG)
+
 SYSTEM = platform.system()  # returns Windows, Darwin, Linux
 
 import bson.json_util as json

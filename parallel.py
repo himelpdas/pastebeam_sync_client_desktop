@@ -236,8 +236,13 @@ class WebsocketWorker(QtCore.QThread):
                     self.WSOCK = self.RECONNECT()
                     self.clearListSignalForMain.emit() #clear list on reconnect or else a new list will be sent on top of previous
                 except: #previous try will handle later
+                    LOG.info("Couldn't connect!")
+                    LOG.info("Closing modal dialogs")
+                    self.closeWaitDialogSignalForMain.emit(dict(
+                            success=False,
+                            reason = "Got disconnected!")
+                    )
                     pass #block thread until there is a connection
-                gevent.sleep(1)
         return closure
 
     @workerLoopDecorator
