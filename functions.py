@@ -26,9 +26,9 @@ from spooky import hash128, hash32
 
 from collections import deque
 
-# DEFAULT_DOMAIN = "192.168.0.191"
+DEFAULT_DOMAIN = "192.168.0.191"
 # DEFAULT_DOMAIN = "192.168.0.12"
-DEFAULT_DOMAIN = "127.0.0.1"
+# DEFAULT_DOMAIN = "127.0.0.1"
 DEFAULT_PORT = 8084
 
 CONTAINER_DIR = os.path.join(tempfile.gettempdir(),
