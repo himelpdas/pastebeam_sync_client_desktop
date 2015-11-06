@@ -57,17 +57,26 @@ class WebsocketWorkerMixinForMain(object):
                     pass #file_icon = os.path.normpath("files/_blank")
                 if ext == "_folder": #get rid of the ._folder from folder._folder
                     each_filename = each_filename.split(".")[0]
+                #truncate filenames
+                fn_len = len(each_filename)
+                if fn_len > 40:
+                    fn_len_half = fn_len/2 #lowest whole number only
+                    letters = list(each_filename)
+                    if fn_len%2 != 0: #make even by popping middle letter
+                        letters.pop(fn_len_half)
+                    letters = letters[:17] + ["<span style='color:red'>[...]</span>"] + letters[-17:] #cut off 4 chars, so that you don't get "hello...world"
+                    each_filename = "".join(letters)
                 files.append(u"{icon} {file_name}".format( #do NOT do "string {thing}".format(thing = u"unicode), or else unicode decode error will occur, the first string must be u"string {thing}"
                     file_name = each_filename,
                     icon = self.ICON_HTML.format(name=file_icon, side=32)
                 ))
 
             iteration = iter(files)
-            files_group_3 = list(itertools.izip_longest(iteration, iteration, iteration, fillvalue=None)) # http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
+            files_group_5 = list(itertools.izip_longest(iteration, iteration, iteration, iteration, iteration, fillvalue=None)) # http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
             lines = []
-            for i,group in enumerate(files_group_3):
+            for i,group in enumerate(files_group_5):
                 line = ", ".join(filter(lambda x: bool(x), group))
-                if not i == len(files_group_3)-1: # add trailing comma at end of every line except last
+                if not i == len(files_group_5)-1: # add trailing comma at end of every line except last
                     line+=","
                 lines.append(line)
             txt = "<br>".join(lines)
@@ -106,7 +115,9 @@ class WebsocketWorkerMixinForMain(object):
         timestamp_human = u'<span style="color:grey">{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}{space}{dt.month}-{dt.day}-{dt.year}</span>'.format(space = space, dt=datetime.datetime.fromtimestamp(new_clip["timestamp_server"] ) ) #http://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
         custom_label = QLabel(u"<h5><span style='color:{color}'>{host_name}</span>{space}{timestamp}</h5><pre>{text}</pre>".format(color=reproducible_random_color, space = space, host_name = new_clip["host_name"], timestamp = timestamp_human, text=txt ) )
         custom_label.setOpenExternalLinks(True) ##http://stackoverflow.com/questions/8427446/making-qlabel-behave-like-a-hyperlink
-        
+        custom_label.setWordWrap(True)
+        custom_label.setMargin(10)
+
         #resize the listwidget item to fit the html Qlabel, using Qlabel's sizehint
         list_widget.setItemWidget(itm, custom_label ) #add the label
         itm.setSizeHint( custom_label.sizeHint() ) #resize

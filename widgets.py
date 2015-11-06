@@ -515,7 +515,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         if clip_system in ["main", "starred"]:
             decryption_key = getLogin().get("password")
         elif clip_system == "share":
-            return #TODO decrypt public key encrypted random AES key
+            return #DONE decrypt public key encrypted random AES key
         elif clip_system == "alert": #cant share alerts yet
             return
 
