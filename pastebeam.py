@@ -168,8 +168,11 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             image = mimeData.imageData()
 
             prev = self.previous_hash #image.bits() crashes with OneNote large image copy
-            hash = format(hash128(image.bits()), "x") ##http://stackoverflow.com/questions/16414559/trying-to-use-hex-without-0x #we want the large image out of memory asap, so just take a hash and gc collect the image
-            
+            try: #None.bits attribute error here can cause a freeze
+                hash = format(hash128(image.bits()), "x") ##http://stackoverflow.com/questions/16414559/trying-to-use-hex-without-0x #we want the large image out of memory asap, so just take a hash and gc collect the image
+            except AttributeError:
+                return
+
             PRINT("on clip change pmap", (hash,prev))
             if hash == prev:
                 #self.onSetStatusSlot(("image copied","good"))
