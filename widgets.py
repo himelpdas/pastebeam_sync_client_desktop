@@ -512,10 +512,10 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         #now get decryption keys
         clip_system = share_item_data["system"]
-        if clip_system == "main":
+        if clip_system in ["main", "starred"]:
             decryption_key = getLogin().get("password")
         elif clip_system == "share":
-            pass #TODO decrypt public key encrypted random AES key
+            return #TODO decrypt public key encrypted random AES key
         elif clip_system == "alert": #cant share alerts yet
             return
 
@@ -565,10 +565,11 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
     def doDeleteAction(self):
         separator = QAction(self)
         separator.setSeparator(True) #http://www.qtcentre.org/threads/21838-Separator-in-context-menu
-        self.last_action = delete_action = QAction(QIcon("images/trash.png"), '&Delete', self) #delete.setText("Delete")
-        delete_action.triggered.connect(self.onDeleteAction)
+        self.last_action = separator
+        self.delete_action = QAction(QIcon("images/trash.png"), '&Delete', self) #delete.setText("Delete")
+        self.delete_action.triggered.connect(self.onDeleteAction)
         self.addAction(separator)
-        self.addAction(delete_action)
+        self.addAction(self.delete_action)
         self.all_enable_disable_action_methods.append((self.enableDeleteAction, self.disableDeleteAction))
         self.disableDeleteAction()
         
@@ -582,10 +583,10 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         self.main.outgoingSignalForWorker.emit(async_process)
         
     def enableDeleteAction(self):
-        self.last_action.setDisabled(False)
+        self.delete_action.setDisabled(False)
     
     def disableDeleteAction(self):
-        self.last_action.setDisabled(True)
+        self.delete_action.setDisabled(True)
         
     def getClipDataByRow(self):
         current_row = self.currentRow()
