@@ -13,7 +13,7 @@ SYSTEM = platform.system()  # returns Windows, Darwin, Linux
 import bson.json_util as json
 from bson.binary import Binary
 
-import hashlib, uuid, time, sys, cgi, tempfile, itertools
+import hashlib, uuid, time, sys, cgi, tempfile, itertools, datetime
 
 from Crypto.PublicKey import RSA
 from Crypto import Random
@@ -84,6 +84,20 @@ def URL(scheme, addr, port, *_args, **_vars):
         url = url[:-1]
     return url
 
+class OnceEveryX():
+    """
+    Return True every interval. Prevents reuse of the same second, despite the frequency of calls to check()
+    """
+    def __init__(self, interval):
+        self.interval = interval
+        self.just_used = None
+    def check(self,):
+        second = datetime.datetime.now().second
+        if second != self.just_used and second % self.interval == 0:
+            self.just_used = second
+            return True
+
+once_every_second = OnceEveryX(1)
 
 def downloadContainerIfNotExist(data, progress_callback=None):
     if not data.get("container_name"):
@@ -106,7 +120,6 @@ def downloadContainerIfNotExist(data, progress_callback=None):
         else:
             return container_path
 
-
 def getFile(url, container_path, progress_callback=None,
             callback_frequency=55):  # 8192 bytes * 100 / 1024 / 1024 ~ every 0.8 mb it'll callback. Too quickly and app will CRASH!
     """http://stackoverflow.com/questions/16694907/how-to-download-large-file-in-python-with-requests-py"""
@@ -125,7 +138,7 @@ def getFile(url, container_path, progress_callback=None,
                 f.flush()  # http://stackoverflow.com/questions/7127075/what-exactly-the-pythons-file-flush-is-doing #The first, flush, will simply write out any data that lingers in a program buffer to the actual file. Typically this means that the data will be copied from the program buffer to the operating system buffer.
 
                 file_size_now -= chunk_size
-                if random.choice(xrange(callback_frequency)) == 1:
+                if once_every_second.check(): # FIXED- THIS IS PRONE TO CRASH IF INTERNET IS FAST, AS TOO MANY EMITS WILL OVERLOAD APP. MAKING IT TIME BASED WILL NOT CRASH!
                     downloaded = file_size_original - file_size_now
                     progress = {
                         "remaining": file_size_now,
@@ -133,8 +146,7 @@ def getFile(url, container_path, progress_callback=None,
                         "percent_done": "%.2f%%" % (float(downloaded) / file_size_original * 100.0),
                     }
                     progress_callback(
-                        progress)  # FIXME THIS IS PRONE TO CRASH IF INTERNET IS FAST, AS TOO MANY EMITS WILL OVERLOAD APP. MAKING IT TIME BASED WILL NOT CRASH!
-
+                        progress)
 
 import keyring
 
