@@ -337,7 +337,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
             )
             return
             
-        self.showWaitForSignalDialog("Invite?", {"email":email}, "failed to send friend request", success_msg = "friend request sent")
+        self.showWaitForSignalDialog("Invite?", {"email":email}, "failed to send friend invite", success_msg = "friend request sent")
 
     def onFriendRequestReceivedByServerSlot(self):
         self.friend_request_wait_dialog.done(1)
