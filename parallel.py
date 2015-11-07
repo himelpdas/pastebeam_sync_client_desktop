@@ -336,8 +336,6 @@ class WebsocketWorker(QtCore.QThread):
             contacts_list = data
             self.ContactsListIncommingSignalForMain.emit(contacts_list)
 
-
-
         #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
@@ -371,12 +369,11 @@ class WebsocketWorker(QtCore.QThread):
     def streamingDownloadCallback(self, progress):
         self.statusSignalForMain.emit(("downloading %s"%progress["percent_done"], "download"))
 
-    def streamingUploadCallback(self, monitor, container_size, callback_frequency = 55): #FIXME App can CRASH if freq too high!
+    def streamingUploadCallback(self, monitor, container_size): #FIXME App can CRASH if freq too high!
         bytes_read = float(monitor.bytes_read)
         percent_done = "%.2f"%(bytes_read/container_size*100.0)
         #print "%s%%"%percent_done
-        callback_frequency = random.choice(xrange(callback_frequency))
-        if callback_frequency == 1: #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
+        if once_every_second.check(): #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
             self.statusSignalForMain.emit(("uploading %s%%"%percent_done, "upload"))
 
     def ensureContainerUpload(self, container_name):
