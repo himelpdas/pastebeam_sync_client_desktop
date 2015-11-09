@@ -925,9 +925,10 @@ class FancyListWidgetItem(QWidget):
         item_title_hbox.addWidget(QLabel(self.datestamp))
         item_content_hbox = QHBoxLayout()
         content_widget = QTextBrowser() #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
+        content_widget.viewport().setAutoFillBackground(False) #http://www.qtcentre.org/threads/12148-how-QTextEdit-transparent-to-his-parent-window
         content_widget.setText(self.content)
         content_widget.setReadOnly(True)
-        content_widget.setTextBackgroundColor(QColor(255,255,227))
+        content_widget.setOpenExternalLinks(True)
         #content_widget.setWordWrapMode(QTextOption.NoWrap)
         item_content_hbox.addWidget(content_widget)
         item_layout = QVBoxLayout()
