@@ -468,6 +468,15 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         self.viewportEntered.connect(self.onMouseEnter)
         self.itemPressed.connect(self.onItemPressedSlot) #ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 
+    def getItems(self):
+        #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
+        for index in xrange(self.count()):
+            yield self.item(index)
+
+    def resizeEvent(self, event):
+        super(CommonListWidget, self).resizeEvent(event)
+        #do something on resize!
+
     def onMouseEnter(self):
         "So that any click outside of an item will disable all context items"
         for each in self.all_enable_disable_action_methods:
@@ -772,13 +781,13 @@ class PanelTabWidget(QTabWidget):
         
     def onSearchEditedSlot(self, written):
         for list_widget in self.panels:
-            items = [] #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
-            for index in xrange(list_widget.count()):
-                items.append(list_widget.item(index))
+            #items = [] #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
+            #for index in xrange(list_widget.count()):
+            #    items.append(list_widget.item(index))
 
             is_blank = not bool(written) #unhide when written is blank
 
-            for item in items:
+            for item in list_widget.getItems():
                 if is_blank:
                     item.setHidden(False) #unhide all
                 else:
@@ -897,3 +906,31 @@ class WaitForSignalDialog(QDialog):
     def onCloseWaitDialogSlot(self, result):
         self.parent.success=result
         self.done(1)
+
+
+class FancyListWidgetItem(QWidget):
+    def __init__(self, sender, timestamp, datestamp, content):
+        super(self.__class__, self).__init__()
+
+        self.sender = sender
+        self.timestamp = timestamp
+        self.datestamp = datestamp
+        self.content = content
+
+        self.doLayout()
+    def doLayout(self):
+        item_title_hbox = QHBoxLayout()
+        item_title_hbox.addWidget(QLabel(self.sender))
+        item_title_hbox.addWidget(QLabel(self.timestamp))
+        item_title_hbox.addWidget(QLabel(self.datestamp))
+        item_content_hbox = QHBoxLayout()
+        content_widget = QTextBrowser() #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
+        content_widget.setText(self.content)
+        content_widget.setReadOnly(True)
+        content_widget.setTextBackgroundColor(QColor(255,255,227))
+        #content_widget.setWordWrapMode(QTextOption.NoWrap)
+        item_content_hbox.addWidget(content_widget)
+        item_layout = QVBoxLayout()
+        item_layout.addLayout(item_title_hbox)
+        item_layout.addLayout(item_content_hbox)
+        self.setLayout(item_layout)

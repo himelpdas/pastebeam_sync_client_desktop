@@ -6,6 +6,7 @@ from gevent.event import AsyncResult
 #from gevent.queue import Queue #CANNOT USE QUEUE BECAUSE GEVENT CANNOT SWITCH CONTEXTS BETWEEN THREADS
 
 from functions import *
+from widgets import FancyListWidgetItem
 
 import requests, datetime, socket
 from requests_toolbelt import MultipartEncoderMonitor
@@ -20,12 +21,14 @@ import encompress
 
 class WebsocketWorkerMixinForMain(object):
 
+    ICON_HTML = u"<img src='images/{name}.png' width={side} height={side}>"
+
     FILE_ICONS = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files") ) )
 
     HOST_COLORS = sorted(["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C","#2966B8", "#3923D6", "#23819C", "#FF62B0",]) #http://www.hitmill.com/html/pastels.html
 
     outgoingSignalForWorker = QtCore.Signal(dict)
-    
+
     def onIncommingSlot(self, emitted):
 
         new_clip = emitted
@@ -68,7 +71,7 @@ class WebsocketWorkerMixinForMain(object):
                     each_filename = "".join(letters)
                 files.append(u"{icon} {file_name}".format( #do NOT do "string {thing}".format(thing = u"unicode), or else unicode decode error will occur, the first string must be u"string {thing}"
                     file_name = each_filename,
-                    icon = self.ICON_HTML.format(name=file_icon, side=32)
+                    icon = self.ICON_HTML.format(name=file_icon, side=24)
                 ))
 
             iteration = iter(files)
@@ -80,6 +83,7 @@ class WebsocketWorkerMixinForMain(object):
                     line+=","
                 lines.append(line)
             txt = "<br>".join(lines)
+            txt = ", ".join(files)
         
         elif new_clip["clip_type"] == "invite":
             itm.setIcon(QIcon("images/me.png"))
@@ -108,7 +112,7 @@ class WebsocketWorkerMixinForMain(object):
         itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
         list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
         list_widget.takeItem(5)
-        
+
         space = "&nbsp;"*8
         seed = hash32(new_clip["host_name"])
         reproducible_random_color = random.Random(seed).choice(self.HOST_COLORS) #REPRODUCABLE RANDOM COLOR FROM SEED
@@ -117,6 +121,12 @@ class WebsocketWorkerMixinForMain(object):
         custom_label.setOpenExternalLinks(True) ##http://stackoverflow.com/questions/8427446/making-qlabel-behave-like-a-hyperlink
         custom_label.setWordWrap(True)
         custom_label.setMargin(10)
+
+        datetime_stamp = datetime.datetime.fromtimestamp(new_clip["timestamp_server"])
+        timestamp = u"<h4 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h4>".format(dt = datetime_stamp)
+        datestamp = u"<h4 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h4>".format(dt = datetime_stamp)
+        sender = u"<h4 style='color:{color}'>{host_name}</h4>".format(color=reproducible_random_color, host_name = new_clip["host_name"])
+        custom_label = FancyListWidgetItem(sender, timestamp, datestamp, txt)
 
         #resize the listwidget item to fit the html Qlabel, using Qlabel's sizehint
         list_widget.setItemWidget(itm, custom_label ) #add the label
