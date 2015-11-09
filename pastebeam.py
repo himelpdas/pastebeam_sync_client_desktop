@@ -470,6 +470,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
             print "tar"+e[0]
             self.onSetStatusSlot(("Decryption failed. Did you change your password?","bad"))
+        except ValueError:
+            self.onSetStatusSlot(("Decryption failed. Some data is missing or corrupt.","bad")) #ie. server returned a 404.html document
                 
     @staticmethod
     def truncateTextLines(txt, max_lines=15):

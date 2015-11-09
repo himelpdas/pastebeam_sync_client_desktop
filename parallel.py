@@ -297,8 +297,8 @@ class WebsocketWorker(QtCore.QThread):
             tabs_affected = set([])
             for each in data:
             
-                downloadContainerIfNotExist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
-                self.incommingClipsSignalForMain.emit(each)
+                #downloadContainerIfNotExist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
+                self.incommingClipsSignalForMain.emit(each) #TODO DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
 
                 tabs_affected.add(each["system"])
 
@@ -318,7 +318,8 @@ class WebsocketWorker(QtCore.QThread):
             #TODO- add user setting to disable this if he doesn't want to sync with the cloud!
             if is_clipboard and not_this_device: #do not allow setting from the same pc
                 self.setClipSignalForMain.emit(latest) #this will set the newest clip only, thanks to self.main.new_clip!!!
-
+            elif is_share:
+                self.statusSignalForMain.emit(("you got something from %s"%latest["host_name"], "good"))
             """
             if is_clipboard:
                 self.statusSignalForMain.emit(("clipboard synced to cloud", "good"))
