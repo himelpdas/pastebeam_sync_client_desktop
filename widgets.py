@@ -553,7 +553,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         self.share_action.setDisabled(True)
     
     def doCopyAction(self):
-        self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy", self)
+        self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy all", self)
         copy_action.triggered.connect(self.onCopyActionSlot)
         self.addAction(copy_action)
         separator = QAction(self)
@@ -995,22 +995,52 @@ class FancyListWidgetItem(QWidget):
         elif self.clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
             self.item.setIcon(QIcon("images/bell.png"))
             self.content = self.clip["clip_display"]
-    
+
+    def onDropDownClicked(self):
+        def getLatestConextActionsForItem():
+            list_widget = self.item.listWidget()
+            actions = list_widget.actions()
+            menu = QMenu()
+            menu.addActions(actions)
+            self.dropdown_widget.setMenu(menu)
+            self.dropdown_widget.showMenu()
+            print "NIGGER"
+            #dropdown_widget.addItem(QIcon("images/copy.png"), "Copy all")
+        getLatestConextActionsForItem()
+
     def doLayout(self):
-        item_title_hbox = QHBoxLayout()
-        item_title_hbox.addWidget(QLabel(self.sender))
-        item_title_hbox.addWidget(QLabel(self.timestamp))
-        item_title_hbox.addWidget(QLabel(self.datestamp))
-        item_content_hbox = QHBoxLayout()
-        content_widget = QTextBrowser() #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
-        content_widget.viewport().setAutoFillBackground(False) #http://www.qtcentre.org/threads/12148-how-QTextEdit-transparent-to-his-parent-window
-        content_widget.setText(self.content)
-        content_widget.setReadOnly(True)
-        content_widget.setOpenExternalLinks(True)
-        #content_widget.setWordWrapMode(QTextOption.NoWrap)
-        item_content_hbox.addWidget(content_widget)
+        def do_header():
+            item_header_hbox = QHBoxLayout()
+            item_header_hbox.addWidget(QLabel(self.sender))
+            item_header_hbox.addWidget(QLabel(self.timestamp))
+            item_header_hbox.addWidget(QLabel(self.datestamp))
+            item_layout.addLayout(item_header_hbox)
+        def do_content():
+            item_content_hbox = QHBoxLayout()
+            content_widget = QTextBrowser() #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
+            content_widget.viewport().setAutoFillBackground(False) #http://www.qtcentre.org/threads/12148-how-QTextEdit-transparent-to-his-parent-window
+            content_widget.setText(self.content)
+            content_widget.setReadOnly(True)
+            content_widget.setOpenExternalLinks(True)
+            #content_widget.setWordWrapMode(QTextOption.NoWrap)
+            item_content_hbox.addWidget(content_widget)
+            item_layout.addLayout(item_content_hbox)
+        def do_dropdown():
+            dropdown_hbox_layout = QHBoxLayout()
+            self.dropdown_widget = QToolButton()
+            self.dropdown_widget.setIcon(AppIcon("action"))
+            self.dropdown_widget.clicked.connect(self.onDropDownClicked)
+            self.dropdown_widget.setMenu(QMenu()) #needed to show arrow icon
+            dropdown_hbox_layout.addStretch(1)
+            dropdown_hbox_layout.addWidget(self.dropdown_widget)
+            item_layout.addLayout(dropdown_hbox_layout)
         item_layout = QVBoxLayout()
-        item_layout.addLayout(item_title_hbox)
-        item_layout.addLayout(item_content_hbox)
+        do_header()
+        do_content()
+        do_dropdown()
         self.setLayout(item_layout)
         self.item.setSizeHint( self.sizeHint() )    #resize the listwidget item to fit the custom widget, using Qlabel's sizehint
+
+class AppIcon(QIcon):
+    def __init__(self, name):
+        super(self.__class__, self).__init__("images/{name}.png".format(name=name))
