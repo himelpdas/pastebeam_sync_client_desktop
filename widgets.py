@@ -743,6 +743,23 @@ class PanelTabWidget(QTabWidget):
 
         self.currentChanged.connect(self.onTabChangedSlot)
 
+    def getListWidgetFromClip(self, clip):
+        list_widget = None
+        if clip["system"]=="starred":
+            list_widget = self.star_list_widget
+            #new_icon_tab = 1
+        elif clip["system"]=="alert":
+            list_widget = self.alert_list_widget
+            #new_icon_tab = 3
+        elif clip["system"] == "main":
+            list_widget = self.main_list_widget
+            #new_icon_tab = 0
+        elif clip["system"] == "share":
+            list_widget = self.friend_list_widget
+            #new_icon_tab = 2
+        return list_widget
+
+
     def onTabChangedSlot(self, index):
         if index == 0:
             self.setTabIcon(0,QIcon("images/devices.png"))
@@ -909,15 +926,76 @@ class WaitForSignalDialog(QDialog):
 
 
 class FancyListWidgetItem(QWidget):
-    def __init__(self, sender, timestamp, datestamp, content):
+
+    host_colors = sorted(["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C","#2966B8", "#3923D6", "#23819C", "#FF62B0",]) #http://www.hitmill.com/html/pastels.html
+    file_icons = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files") ) )
+    icon_html = u"<img src='images/{name}.png' width={side} height={side}>"
+
+    def __init__(self, clip, item):
         super(self.__class__, self).__init__()
 
-        self.sender = sender
-        self.timestamp = timestamp
-        self.datestamp = datestamp
-        self.content = content
+        self.sender = None
+        self.timestamp = None
+        self.datestamp = None
+        self.content = None
+        self.item = item
+        self.clip = clip
 
+        self.setHeaderFromClip()
+        self.setContentFromClip()
         self.doLayout()
+        
+    def setHeaderFromClip(self):
+        seed = hash32(self.clip["host_name"])
+        reproducible_random_color = random.Random(seed).choice(self.host_colors) #REPRODUCABLE RANDOM COLOR FROM SEED
+
+        datetime_stamp = datetime.datetime.fromtimestamp(self.clip["timestamp_server"])
+        self.timestamp = u"<h4 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h4>".format(dt = datetime_stamp)
+        self.datestamp = u"<h4 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h4>".format(dt = datetime_stamp)
+        self.sender = u"<h4 style='color:{color}'>{host_name}</h4>".format(color=reproducible_random_color, host_name = self.clip["host_name"])
+
+    def setContentFromClip(self):
+        if self.clip["clip_type"] == "screenshot":
+            #crop and reduce pmap size to fit square icon
+            image = QImage()
+            print image.loadFromData(self.clip["clip_display"]["thumb"])
+            self.item.setIcon(QIcon(QPixmap(image)))
+            self.content = self.clip["clip_display"]["text"]
+
+        elif self.clip["clip_type"] == "html":
+            self.item.setIcon(QIcon("images/text.png"))
+            self.content = self.clip["clip_display"]
+            
+        elif self.clip["clip_type"] == "text":
+            self.item.setIcon(QIcon("images/text.png"))
+            self.content = self.clip["clip_display"]
+            
+        elif self.clip["clip_type"] == "files":
+            self.item.setIcon(QIcon("images/files.png"))
+            files = []
+            for each_filename in self.clip["clip_display"]:
+                ext = each_filename.split(".")[-1]
+                file_icon = "files/%s"%ext
+                if not ext.upper() in self.file_icons:
+                    pass #file_icon = os.path.normpath("files/_blank")
+                if ext == "_folder": #get rid of the ._folder from folder._folder
+                    each_filename = each_filename.split(".")[0]
+                files.append(u"{icon} {file_name}".format( #do NOT do "string {thing}".format(thing = u"unicode), or else unicode decode error will occur, the first string must be u"string {thing}"
+                    file_name = each_filename,
+                    icon = self.icon_html.format(name=file_icon, side=24)
+                ))
+
+            self.content = "<ol><li>{li}</ol>".format(li="<li> ".join(files))
+        
+        elif self.clip["clip_type"] == "invite":
+            self.item.setIcon(QIcon("images/me.png"))
+            action = "Control" if SYSTEM == "Darwin" else "Right"
+            self.content = '<h5 style="color:maroon;">{action}-click to respond.</h5>'.format(action = action) + self.clip["clip_display"]
+
+        elif self.clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
+            self.item.setIcon(QIcon("images/bell.png"))
+            self.content = self.clip["clip_display"]
+    
     def doLayout(self):
         item_title_hbox = QHBoxLayout()
         item_title_hbox.addWidget(QLabel(self.sender))
@@ -935,3 +1013,4 @@ class FancyListWidgetItem(QWidget):
         item_layout.addLayout(item_title_hbox)
         item_layout.addLayout(item_content_hbox)
         self.setLayout(item_layout)
+        self.item.setSizeHint( self.sizeHint() )    #resize the listwidget item to fit the custom widget, using Qlabel's sizehint

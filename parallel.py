@@ -21,117 +21,25 @@ import encompress
 
 class WebsocketWorkerMixinForMain(object):
 
-    ICON_HTML = u"<img src='images/{name}.png' width={side} height={side}>"
-
-    FILE_ICONS = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files") ) )
-
-    HOST_COLORS = sorted(["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C","#2966B8", "#3923D6", "#23819C", "#FF62B0",]) #http://www.hitmill.com/html/pastels.html
-
     outgoingSignalForWorker = QtCore.Signal(dict)
 
     def onIncommingSlot(self, emitted):
 
         new_clip = emitted
 
-        itm =  QListWidgetItem()
-        
-        if new_clip["clip_type"] == "screenshot":
-            #crop and reduce pmap size to fit square icon
-            image = QImage()
-            print image.loadFromData(new_clip["clip_display"]["thumb"])
-            itm.setIcon(QIcon(QPixmap(image)))
-            txt = new_clip["clip_display"]["text"]
-
-        elif new_clip["clip_type"] == "html":
-            itm.setIcon(QIcon("images/text.png"))
-            txt = new_clip["clip_display"]
-            
-        elif new_clip["clip_type"] == "text":
-            itm.setIcon(QIcon("images/text.png"))
-            txt = new_clip["clip_display"]
-            
-        elif new_clip["clip_type"] == "files":
-            itm.setIcon(QIcon("images/files.png"))
-            files = []
-            for each_filename in new_clip["clip_display"]:
-                ext = each_filename.split(".")[-1]
-                file_icon = "files/%s"%ext
-                if not ext.upper() in self.FILE_ICONS:
-                    pass #file_icon = os.path.normpath("files/_blank")
-                if ext == "_folder": #get rid of the ._folder from folder._folder
-                    each_filename = each_filename.split(".")[0]
-                #truncate filenames
-                fn_len = len(each_filename)
-                if fn_len > 40:
-                    fn_len_half = fn_len/2 #lowest whole number only
-                    letters = list(each_filename)
-                    if fn_len%2 != 0: #make even by popping middle letter
-                        letters.pop(fn_len_half)
-                    letters = letters[:17] + ["<span style='color:red'>[...]</span>"] + letters[-17:] #cut off 4 chars, so that you don't get "hello...world"
-                    each_filename = "".join(letters)
-                files.append(u"{icon} {file_name}".format( #do NOT do "string {thing}".format(thing = u"unicode), or else unicode decode error will occur, the first string must be u"string {thing}"
-                    file_name = each_filename,
-                    icon = self.ICON_HTML.format(name=file_icon, side=24)
-                ))
-
-            iteration = iter(files)
-            files_group_5 = list(itertools.izip_longest(iteration, iteration, iteration, iteration, iteration, fillvalue=None)) # http://stackoverflow.com/questions/312443/how-do-you-split-a-list-into-evenly-sized-chunks-in-python
-            lines = []
-            for i,group in enumerate(files_group_5):
-                line = ", ".join(filter(lambda x: bool(x), group))
-                if not i == len(files_group_5)-1: # add trailing comma at end of every line except last
-                    line+=","
-                lines.append(line)
-            txt = "<br>".join(lines)
-            txt = ", ".join(files)
-        
-        elif new_clip["clip_type"] == "invite":
-            itm.setIcon(QIcon("images/me.png"))
-            action = "Control" if SYSTEM == "Darwin" else "Right"
-            txt = '<h5 style="color:maroon;">{action}-click to respond.</h5>'.format(action = action) + new_clip["clip_display"]
-
-        elif new_clip["clip_type"] == "notify": #change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
-            itm.setIcon(QIcon("images/bell.png"))
-            txt = new_clip["clip_display"]
-
-        if new_clip["system"]=="starred":
-            list_widget = self.panel_tab_widget.star_list_widget
-            #new_icon_tab = 1
-        elif new_clip["system"]=="alert":
-            list_widget = self.panel_tab_widget.alert_list_widget
-            #new_icon_tab = 3
-        elif new_clip["system"] == "main":
-            list_widget = self.panel_tab_widget.main_list_widget
-            #new_icon_tab = 0
-        elif new_clip["system"] == "share":
-            list_widget = self.panel_tab_widget.friend_list_widget
-            #new_icon_tab = 2
+        list_widget = self.panel_tab_widget.getListWidgetFromClip(new_clip)
 
         #self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
-        
-        itm.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
-        list_widget.insertItem(0,itm) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
-        list_widget.takeItem(5)
 
-        space = "&nbsp;"*8
-        seed = hash32(new_clip["host_name"])
-        reproducible_random_color = random.Random(seed).choice(self.HOST_COLORS) #REPRODUCABLE RANDOM COLOR FROM SEED
-        timestamp_human = u'<span style="color:grey">{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}{space}{dt.month}-{dt.day}-{dt.year}</span>'.format(space = space, dt=datetime.datetime.fromtimestamp(new_clip["timestamp_server"] ) ) #http://stackoverflow.com/questions/904928/python-strftime-date-without-leading-0
-        custom_label = QLabel(u"<h5><span style='color:{color}'>{host_name}</span>{space}{timestamp}</h5><pre>{text}</pre>".format(color=reproducible_random_color, space = space, host_name = new_clip["host_name"], timestamp = timestamp_human, text=txt ) )
-        custom_label.setOpenExternalLinks(True) ##http://stackoverflow.com/questions/8427446/making-qlabel-behave-like-a-hyperlink
-        custom_label.setWordWrap(True)
-        custom_label.setMargin(10)
+        new_list_widget_item =  QListWidgetItem()
+        new_list_widget_item.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
+        list_widget.insertItem(0,new_list_widget_item) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
+        list_widget.takeItem(5) #TODO replace 5 with user settings #removes last item
 
-        datetime_stamp = datetime.datetime.fromtimestamp(new_clip["timestamp_server"])
-        timestamp = u"<h4 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h4>".format(dt = datetime_stamp)
-        datestamp = u"<h4 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h4>".format(dt = datetime_stamp)
-        sender = u"<h4 style='color:{color}'>{host_name}</h4>".format(color=reproducible_random_color, host_name = new_clip["host_name"])
-        custom_label = FancyListWidgetItem(sender, timestamp, datestamp, txt)
+        new_widget = FancyListWidgetItem(new_clip, new_list_widget_item)
 
-        #resize the listwidget item to fit the html Qlabel, using Qlabel's sizehint
-        list_widget.setItemWidget(itm, custom_label ) #add the label
-        itm.setSizeHint( custom_label.sizeHint() ) #resize
-        
+        list_widget.setItemWidget(new_list_widget_item, new_widget ) #add the label
+
         #move the scrollbar to top
         list_widget_scrollbar = list_widget.verticalScrollBar() #http://stackoverflow.com/questions/8698174/how-to-control-the-scroll-bar-with-qlistwidget
         list_widget_scrollbar.setValue(0)
