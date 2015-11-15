@@ -276,7 +276,7 @@ class WaitForSignalDialogMixin(object):
                 data = data_dict
             )
         )
-        WaitForSignalDialog(self, "please wait")#EXECUTION FREEZES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
+        WaitForSignalDialog(self, "please wait")#EXECUTION FREEZfES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
         if not self.success["success"]:
             QMessageBox.warning( #QMessageBox.critical #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
                 self,
@@ -321,7 +321,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.showWaitForSignalDialog("Contacts?", {"contacts_list":None}, "could not get contacts list", success_msg = False)
 
         if self.success["success"]:
-            self.contacts_list = self.success["data"]
+            self.contacts_list = self.success["contacts"]
             for each_email in self.contacts_list:
                 self.list_widget.addItem(each_email)
 
@@ -361,8 +361,6 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.showWaitForSignalDialog("Contacts?", {"contacts_list":current_items}, "failed to save contacts to server", success_msg = "contacts saved to server")
 
         if self.success["success"]:
-            #self.contacts_list = self.success["data"]
-            #self.main.panel_tab_widget.onContactsListIncomming(self.contacts_list)
             super(self.__class__,self).onOkButtonClickedSlot()
     
     def resizeMinWindowSizeForListWidget(self):
@@ -456,16 +454,13 @@ class StackedWidgetFader(QStackedWidget):
         self.duration = duration
         
 class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
+
     def __init__(self, parent = None):
         super(CommonListWidget, self).__init__(parent)
         self.parent = parent
         self.main = parent.main
-        self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel) #http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
-        
-        self.all_enable_disable_action_methods = []
-        self.setMouseTracking(True)
-        self.viewportEntered.connect(self.onMouseEnter)
+
         self.itemPressed.connect(self.onItemPressedSlot) #ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 
     def getItems(self):
@@ -477,139 +472,28 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         super(CommonListWidget, self).resizeEvent(event)
         #do something on resize!
 
-    def onMouseEnter(self):
-        "So that any click outside of an item will disable all context items"
-        for each in self.all_enable_disable_action_methods:
-            each[1]()
-
     def onItemPressedSlot(self, i):
         "So that any click of an item will enable all context items"
         self.parent.onTabChangedSlot(self.index) #hide alert icon in tab when clicking on an item
-        for each in self.all_enable_disable_action_methods:
-            each[0]()
         
     def doCommon(self):
-        self.contacts_list = set([])
-        
+
         self.doStyling()
-        #delete action        
-        self.doCopyAction()
-        
-        self.doShareAction()
         
         self.doUncommon() #do uncommon here
-        
-        self.doDeleteAction() #Put delete last
-        
+
         self.itemDoubleClicked.connect(self.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
 
     def doStyling(self, status="Double-click an item to copy it, or right-click it for more options."):
         self.setIconSize(self.parent.icon_size) #http://www.qtcentre.org/threads/8733-Size-of-an-Icon #http://nullege.com/codes/search/PySide.QtGui.QListWidget.setIconSize
         self.setAlternatingRowColors(True) #http://stackoverflow.com/questions/23213929/qt-qlistwidget-item-with-alternating-colors
         self.setStatusTip(status)
-        
-    def doShareAction(self):
-        self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
-        self.addAction(self.share_action)
-        self.all_enable_disable_action_methods.append((self.enableShareAction, self.disableShareAction))
-        self.disableShareAction()
 
-    def onShareSubMenuTriggeredSlot(self, action):
-        email = action.text()
-        share_item = self.currentItem()
-        share_item_data = json.loads(share_item.data(QtCore.Qt.UserRole))
-
-        #now get decryption keys
-        clip_system = share_item_data["system"]
-        if clip_system in ["main", "starred"]:
-            decryption_key = getLogin().get("password")
-        elif clip_system == "share":
-            return #DONE decrypt public key encrypted random AES key
-        elif clip_system == "alert": #cant share alerts yet
-            return
-
-        share_item_data["recipient"] = email
-        share_item_data["decryption_key"] = decryption_key #RAW
-        self.main.outgoingSignalForWorker.emit(
-            {
-                "question": "Share?",
-                "data" : share_item_data
-            }
-        )
-    def enableShareAction(self):
-        if not self.contacts_list:
-            self.share_action.setDisabled(True)
-            #ADD bubble explaining why
-        else:
-            self.share_action.setDisabled(False)
-            share_sub_menu = QMenu()
-            share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
-            for name in sorted(self.contacts_list):
-                share_sub_menu.addAction(name)
-            self.share_action.setMenu(share_sub_menu)
-
-
-    def disableShareAction(self):
-        self.share_action.setDisabled(True)
-    
-    def doCopyAction(self):
-        self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy all", self)
-        copy_action.triggered.connect(self.onCopyActionSlot)
-        self.addAction(copy_action)
-        separator = QAction(self)
-        separator.setSeparator(True)
-        self.addAction(separator)
-        self.all_enable_disable_action_methods.append((self.enableCopyAction, self.disableCopyAction))
-        self.disableCopyAction() #start off disable bc nothing is selected yet
-        
-    def enableCopyAction(self):
-        self.copy_action.setDisabled(False)
-    
-    def disableCopyAction(self):
-        self.copy_action.setDisabled(True)
-        
-    def onCopyActionSlot(self):
-        self.onItemDoubleClickSlot(self.currentItem())
-    
-    def doDeleteAction(self):
-        separator = QAction(self)
-        separator.setSeparator(True) #http://www.qtcentre.org/threads/21838-Separator-in-context-menu
-        self.last_action = separator
-        self.delete_action = QAction(QIcon("images/trash.png"), '&Delete', self) #delete.setText("Delete")
-        self.delete_action.triggered.connect(self.onDeleteAction)
-        self.addAction(separator)
-        self.addAction(self.delete_action)
-        self.all_enable_disable_action_methods.append((self.enableDeleteAction, self.disableDeleteAction))
-        self.disableDeleteAction()
-        
-    def onDeleteAction(self):
-        current_row, current_item = self.getClipDataByRow()
-        remove_id = current_item["_id"]
-        async_process = dict(
-            question = "Delete?",
-            data = {"remove_id":remove_id, "remove_row":current_row, "list_widget_name":self.__class__.__name__}
-        )
-        self.main.outgoingSignalForWorker.emit(async_process)
-        
-    def enableDeleteAction(self):
-        self.delete_action.setDisabled(False)
-    
-    def disableDeleteAction(self):
-        self.delete_action.setDisabled(True)
-        
     def getClipDataByRow(self):
         current_row = self.currentRow()
         current_item = self.currentItem()
         current_item = json.loads(current_item.data(QtCore.Qt.UserRole)) #http://stackoverflow.com/questions/25452125/is-it-possible-to-add-a-hidden-value-to-every-item-of-qlistwidget
         return current_row, current_item
-    """
-    @staticmethod
-    def convertToDeviceClip(clip): #todo do this on server! more secure!
-        #convert back to device clip
-        clip.pop("_id", None) #this is an id from an old clip from server. must remove or else key error will occur on server when trying to insert new clip
-        clip["system"] = "main"
-        return clip
-    """
         
     def onItemDoubleClickSlot(self, double_clicked_item):
         
@@ -635,52 +519,11 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 class AlertListWidget(CommonListWidget):
     def __init__(self, parent=None):
         super(self.__class__, self).__init__(parent)
-        self.parent = parent
-        self.main = parent.main
         self.index = 3
-        self.doStyling(status="Right-click an item for more options.")
-
-        self.doUncommon() #do uncommon here
-
-        self.doDeleteAction() #Put delete last
+        self.doCommon()
 
     def doUncommon(self):
-        self.doAcceptInviteAction()
-        
-    def doAcceptInviteAction(self):
-        self.accept_invite_action = QAction(QIcon("images/ok.png"), "&Accept invite", self)
-        self.accept_invite_action.triggered.connect(self.onAcceptInviteAction)
-        
-        self.all_enable_disable_action_methods.append((self.enableAcceptInviteAction, self.disableAcceptInviteAction))
-        self.disableAcceptInviteAction()
-        
-    def onAcceptInviteAction(self):
-        print "INVITE ACTION"
-        current_row, current_item = self.getClipDataByRow()
-        if not current_item["clip_type"] == "invite":
-            return
-        email = current_item["host_name"]
-        
-        self.showWaitForSignalDialog("Accept?", {"email":email}, "could not accept invitation", success_msg = False)
-        
-    def addAcceptInviteAction(self):
-        self.insertAction(self.last_action, self.accept_invite_action)
-        
-    def removeAcceptInviteAction(self):
-        self.removeAction(self.accept_invite_action)
-        
-    def enableAcceptInviteAction(self):
-        self.accept_invite_action.setDisabled(False)
-    
-    def disableAcceptInviteAction(self):
-        self.accept_invite_action.setDisabled(True)
-
-    def onItemPressedSlot(self, clicked_item):
-        super(self.__class__, self).onItemPressedSlot(clicked_item)
-        self.removeAcceptInviteAction()
-        clicked_alert = json.loads(clicked_item.data(QtCore.Qt.UserRole))
-        if clicked_alert["clip_type"] == "invite":
-            self.addAcceptInviteAction()
+        pass
     
 class StarListWidget(CommonListWidget):
     def __init__(self, parent = None):
@@ -698,31 +541,7 @@ class MainListWidget(CommonListWidget):
         self.doCommon()
     
     def doUncommon(self):
-        self.doStarAction()
-
-    def doStarAction(self):
-        #star action
-        self.star_action = star_action = QAction(QIcon("images/star.png"), '&Star', self)
-        star_action.triggered.connect(self.onAddStarAction)
-        self.addAction(star_action)
-
-        self.all_enable_disable_action_methods.append((self.enableStarAction, self.disableStarAction))
-        self.disableStarAction()
-        
-    def enableStarAction(self):
-        self.star_action.setDisabled(False)
-    
-    def disableStarAction(self):
-        self.star_action.setDisabled(True)
-        
-    def onAddStarAction(self):
-        current_row, current_item = self.getClipDataByRow()
-        del current_item["_id"]
-        async_process = dict(
-            question = "Star?",
-            data = current_item
-        )
-        self.main.outgoingSignalForWorker.emit(async_process)
+        pass
         
 class FriendListWidget(CommonListWidget):
     def __init__(self, parent = None):
@@ -860,11 +679,6 @@ class PanelTabWidget(QTabWidget):
             self.friend_list_widget.takeItem(remove_row)        
         elif list_widget_name == "AlertListWidget":
             self.alert_list_widget.takeItem(remove_row)
-
-    def onContactsListIncomming(self, contacts_list):
-        for each_list_widget in self.panels[:-1]: #everything but alerts
-            each_list_widget.contacts_list = set(contacts_list)
-            each_list_widget.enableShareAction()
             
     def clearAllLists(self):
         for each in self.panels:
@@ -922,10 +736,14 @@ class WaitForSignalDialog(QDialog):
         self.main.ws_worker.closeWaitDialogSignalForMain.connect(self.onCloseWaitDialogSlot)
     def onCloseWaitDialogSlot(self, result):
         self.parent.success=result
+        try:
+            self.main.updateContactsListSignal.emit(sorted(result["contacts"]))
+        except KeyError:
+            pass
         self.done(1)
 
 
-class FancyListWidgetItem(QWidget):
+class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
 
     host_colors = sorted(["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C","#2966B8", "#3923D6", "#23819C", "#FF62B0",]) #http://www.hitmill.com/html/pastels.html
     file_icons = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files") ) )
@@ -934,16 +752,142 @@ class FancyListWidgetItem(QWidget):
     def __init__(self, clip, item):
         super(self.__class__, self).__init__()
 
-        self.sender = None
-        self.timestamp = None
-        self.datestamp = None
-        self.content = None
         self.item = item
         self.clip = clip
+
+        self.sender = self.timestamp = self.datestamp = self.content = None
+
+        self.list_widget = self.item.listWidget()
+        self.main = self.list_widget.main
+
+        self.copy_action = self.accept_invite_action = self.delete_action = self.share_action = self.star_action = None
 
         self.setHeaderFromClip()
         self.setContentFromClip()
         self.doLayout()
+
+        self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+
+    def mousePressEvent(self, event):
+        self.clearActions()
+        self.setActions()
+        event.accept() #same as super(self.__class__, self).mousePressEvent()
+
+
+    def clearActions(self):
+        actions = self.actions()
+        for each_action in actions:
+            self.removeAction(each_action)
+
+    def setActions(self):
+
+        if not self.clip["system"] == "alert":
+            self.setCopyAction()
+            self.setStarAction()
+            self.setShareAction()
+
+        elif self.clip["clip_type"] == "invite":
+            self.setAcceptInviteAction()
+
+        self.setDeleteAction() #Put delete last
+
+    def setStarAction(self):
+        #star action
+        self.star_action = star_action = QAction(QIcon("images/star.png"), '&Star', self)
+        star_action.triggered.connect(self.onAddStarAction)
+        self.addAction(star_action)
+
+    def onAddStarAction(self):
+        current_row, current_item = self.list_widget.getClipDataByRow()
+        del current_item["_id"]
+        async_process = dict(
+            question = "Star?",
+            data = current_item
+        )
+        self.main.outgoingSignalForWorker.emit(async_process)
+
+    def setAcceptInviteAction(self):
+        self.accept_invite_action = QAction(QIcon("images/ok.png"), "&Accept invite", self)
+        self.accept_invite_action.triggered.connect(self.onAcceptInviteAction)
+        self.addAction(self.accept_invite_action)
+
+    def disableAcceptInviteAction(self):
+        self.accept_invite_action.setDisabled(True)
+
+    def onAcceptInviteAction(self):
+        print "INVITE ACTION"
+        current_row, current_item = self.getClipDataByRow()
+        if not current_item["clip_type"] == "invite":
+            return
+        email = current_item["host_name"]
+
+        self.showWaitForSignalDialog("Accept?", {"email":email}, "could not accept invitation", success_msg = False)
+
+    def setShareAction(self):
+        self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
+        self.addAction(self.share_action)
+        self.enableShareAction()
+
+    def onShareSubMenuTriggeredSlot(self, action):
+        email = action.text()
+        share_item_data = json.loads(self.item.data(QtCore.Qt.UserRole))
+
+        #now get decryption keys
+        clip_system = share_item_data["system"]
+        if clip_system in ["main", "starred"]:
+            decryption_key = getLogin().get("password")
+        elif clip_system == "share":
+            return #DONE decrypt public key encrypted random AES key
+        elif clip_system == "alert": #cant share alerts yet
+            return
+
+        share_item_data["recipient"] = email
+        share_item_data["decryption_key"] = decryption_key #RAW
+        self.main.outgoingSignalForWorker.emit(
+            {
+                "question": "Share?",
+                "data" : share_item_data
+            }
+        )
+    def enableShareAction(self):
+        if not self.main.contacts_list:
+            self.share_action.setDisabled(True)
+            #ADD bubble explaining why
+        else:
+            self.share_action.setDisabled(False)
+            share_sub_menu = QMenu()
+            share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
+            for name in sorted(self.main.contacts_list):
+                share_sub_menu.addAction(name)
+            self.share_action.setMenu(share_sub_menu)
+
+    def setCopyAction(self):
+        self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy all", self)
+        copy_action.triggered.connect(self.onCopyActionSlot)
+        self.addAction(copy_action)
+        separator = QAction(self)
+        separator.setSeparator(True)
+        self.addAction(separator)
+
+    def onCopyActionSlot(self):
+        self.main.onItemDoubleClickSlot(self.item) #listwidgetitems don't have signals, so must use parent
+
+    def setDeleteAction(self):
+        separator = QAction(self)
+        separator.setSeparator(True) #http://www.qtcentre.org/threads/21838-Separator-in-context-menu
+        self.delete_action = QAction(QIcon("images/trash.png"), '&Delete', self) #delete.setText("Delete")
+        self.delete_action.triggered.connect(self.onDeleteAction)
+        self.addAction(separator)
+        self.addAction(self.delete_action)
+
+    def onDeleteAction(self):
+        current_row, current_item = self.getClipDataByRow()
+        remove_id = current_item["_id"]
+        async_process = dict(
+            question = "Delete?",
+            data = {"remove_id":remove_id, "remove_row":current_row, "list_widget_name":self.__class__.__name__}
+        )
+        self.main.outgoingSignalForWorker.emit(async_process)
         
     def setHeaderFromClip(self):
         seed = hash32(self.clip["host_name"])
@@ -998,13 +942,11 @@ class FancyListWidgetItem(QWidget):
 
     def onDropDownClicked(self):
         def getLatestConextActionsForItem():
-            list_widget = self.item.listWidget()
-            actions = list_widget.actions()
+            actions = self.list_widget.actions()
             menu = QMenu()
             menu.addActions(actions)
             self.dropdown_widget.setMenu(menu)
             self.dropdown_widget.showMenu()
-            print "NIGGER"
             #dropdown_widget.addItem(QIcon("images/copy.png"), "Copy all")
         getLatestConextActionsForItem()
 

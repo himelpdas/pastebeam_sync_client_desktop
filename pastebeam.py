@@ -112,6 +112,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     MAX_FILE_SIZE = 1024*1024*50
     
     SENDER_UUID = uuid.uuid4()
+
+    updateContactsListSignal = QtCore.Signal(list)
     
     def __init__(self, app):
         super(Main, self).__init__()
@@ -122,11 +124,20 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             pass
 
         self.rsa_private_key = ""
-        
+
         self.app = app
         self.initUI()
         self.setupClip()
         self.initWorker()
+
+        self.contacts_list = []
+        self.updateContactsListSignal.connect(self.setContactsList)
+
+    def setContactsList(self, contacts_list):
+        self.contacts_list = contacts_list
+
+    def onContactsListIncomming(self, contacts_list):
+        self.setContactsList(contacts_list)
 
     def initWorker(self):
         self.ws_worker = WebsocketWorker(self)
@@ -135,7 +146,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.ws_worker.statusSignalForMain.connect(self.onSetStatusSlot)
         self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncommingDelete)
         self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
-        self.ws_worker.ContactsListIncommingSignalForMain.connect(self.panel_tab_widget.onContactsListIncomming)
+        self.ws_worker.InitializeContactsListSignalForMain.connect(self.onContactsListIncomming)
         self.ws_worker.changeTabIconSignalForMain.connect(self.panel_tab_widget.onChangeTabIconSlot)
         self.ws_worker.SetRSAKeySignalForMain.connect(self.onSetRSAKeys)
         self.ws_worker.start()

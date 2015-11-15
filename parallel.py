@@ -56,7 +56,7 @@ class WebsocketWorker(QtCore.QThread):
     StarClipSignalForMain = QtCore.Signal(dict)
     clearListSignalForMain = QtCore.Signal()
     closeWaitDialogSignalForMain = QtCore.Signal(dict)
-    ContactsListIncommingSignalForMain = QtCore.Signal(list)
+    InitializeContactsListSignalForMain = QtCore.Signal(list)
     SetRSAKeySignalForMain = QtCore.Signal(dict)
     changeTabIconSignalForMain = QtCore.Signal(set)
     
@@ -207,7 +207,7 @@ class WebsocketWorker(QtCore.QThread):
             rsa_private_key = data["rsa_private_key"]
             rsa_pbkdf2_salt = data["rsa_pbkdf2_salt"]
             self.SetRSAKeySignalForMain.emit(dict(rsa_private_key = rsa_private_key, rsa_pbkdf2_salt = rsa_pbkdf2_salt))
-            self.ContactsListIncommingSignalForMain.emit(data["initial_contacts"])
+            self.InitializeContactsListSignalForMain.emit(data["initial_contacts"])
 
         elif answer == "Newest!":
             data.reverse() #so the clips can be displayed top down since each clip added gets pushed down in listwidget
@@ -253,7 +253,7 @@ class WebsocketWorker(QtCore.QThread):
 
         elif answer == "get_contacts!":
             contacts_list = data
-            self.ContactsListIncommingSignalForMain.emit(contacts_list)
+            self.InitializeContactsListSignalForMain.emit(contacts_list)
 
         #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
