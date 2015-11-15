@@ -104,7 +104,7 @@ def downloadContainerIfNotExist(data, progress_callback=None):
         return
     container_name = data["container_name"]
     container_path = os.path.join(CONTAINER_DIR, container_name)
-    print container_path
+    LOG.info(container_path)
 
     if os.path.isfile(container_path):
         return container_path

@@ -23,7 +23,7 @@ class WebsocketWorkerMixinForMain(object):
 
     outgoingSignalForWorker = QtCore.Signal(dict)
 
-    def onIncommingSlot(self, emitted):
+    def onIncomingSlot(self, emitted):
 
         new_clip = emitted
 
@@ -49,7 +49,7 @@ class WebsocketWorker(QtCore.QThread):
     #This is the signal that will be emitted during the processing.
     #By including int as an argument, it lets the signal know to expect
     #an integer argument when emitting.
-    incommingClipsSignalForMain = QtCore.Signal(dict)
+    incomingClipsSignalForMain = QtCore.Signal(dict)
     setClipSignalForMain = QtCore.Signal(dict)
     statusSignalForMain = QtCore.Signal(tuple)
     deleteClipSignalForMain = QtCore.Signal(list)
@@ -127,7 +127,7 @@ class WebsocketWorker(QtCore.QThread):
     def run(self): #It arranges for the object’s run() method to be invoked in a separate thread of control.
         #GEVENT OBJECTS CANNOT BE RUNNED OUTSIDE OF THIS THREAD, OR ELSE CONTEXT SWITCHING (COROUTINE YIELDING) WILL FAIL! THIS IS BECAUSE QTHREAD IS NOT MONKEY_PATCHABLE
     
-        self.RESPONDED_EVENT = AsyncResult() #keep events separate, as other incomming events may interfere and crash the app! Though TCP/IP guarantees in-order sending and receiving, non-determanistic events like "new clips" will definitely fuck up the order!
+        self.RESPONDED_EVENT = AsyncResult() #keep events separate, as other incoming events may interfere and crash the app! Though TCP/IP guarantees in-order sending and receiving, non-determanistic events like "new clips" will definitely fuck up the order!
         #self.RESPONDED_LIVING_EVENT = AsyncResult()
         
         self.RECONNECT = lambda: create_connection(URL("ws",DEFAULT_DOMAIN, DEFAULT_PORT, "ws", email=getLogin().get("email"), password=getLogin().get("password"), ) ) #The geventclient's websocket MUST be runned here, as running it in __init__ would put websocket in main thread
@@ -138,7 +138,7 @@ class WebsocketWorker(QtCore.QThread):
 
         self.greenlets = [
             gevent.spawn(self.outgoingGreenlet),
-            gevent.spawn(self.incommingGreenlet),
+            gevent.spawn(self.incomingGreenlet),
             # gevent.spawn(self.keepAliveGreenlet),
         ]
         
@@ -175,9 +175,9 @@ class WebsocketWorker(QtCore.QThread):
         return closure
 
     @workerLoopDecorator
-    def incommingGreenlet(self):
+    def incomingGreenlet(self):
 
-        PRINT("Begin Incomming Greenlet", "")
+        LOG.info("Begin incoming greenlet")
     
         dump = self.WSOCK.recv()
 
@@ -216,7 +216,7 @@ class WebsocketWorker(QtCore.QThread):
             for each in data:
             
                 #downloadContainerIfNotExist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
-                self.incommingClipsSignalForMain.emit(each) #TODO DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
+                self.incomingClipsSignalForMain.emit(each) #TODO DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
 
                 tabs_affected.add(each["system"])
 
@@ -320,7 +320,6 @@ class WebsocketWorker(QtCore.QThread):
                     callback=lambda monitor : self.streamingUploadCallback(monitor, container_size)
                     )
                 r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), data = m, headers={'Content-Type': m.content_type}) #files={"upload": open(container_path, 'rb')}) #old way of using requests file upload which does not allow customization of request
-                print r
             except requests.exceptions.ConnectionError:
                 #connection error
                 raise socket.error
@@ -392,6 +391,7 @@ class WebsocketWorker(QtCore.QThread):
             data_in = self.sendUntilAnswered(send)
             
             if data_in["success"] == True:
+                LOG.debug("DELETE!")
                 self.deleteClipSignalForMain.emit(data_in["location"])
                 self.statusSignalForMain.emit(("deleted", "good"))
             else:
@@ -418,8 +418,6 @@ class WebsocketWorker(QtCore.QThread):
         elif question=="Invite?":
             
             data_in = self.sendUntilAnswered(send)
-            
-            print data_in
 
             self.closeWaitDialogSignalForMain.emit(data_in)
             

@@ -136,17 +136,17 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def setContactsList(self, contacts_list):
         self.contacts_list = contacts_list
 
-    def onContactsListIncomming(self, contacts_list):
+    def onContactsListIncoming(self, contacts_list):
         self.setContactsList(contacts_list)
 
     def initWorker(self):
         self.ws_worker = WebsocketWorker(self)
-        self.ws_worker.incommingClipsSignalForMain.connect(self.onIncommingSlot)
+        self.ws_worker.incomingClipsSignalForMain.connect(self.onIncomingSlot)
         self.ws_worker.setClipSignalForMain.connect(self.onSetNewClipSlot)
         self.ws_worker.statusSignalForMain.connect(self.onSetStatusSlot)
-        self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncommingDelete)
+        self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncomingDelete)
         self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
-        self.ws_worker.InitializeContactsListSignalForMain.connect(self.onContactsListIncomming)
+        self.ws_worker.InitializeContactsListSignalForMain.connect(self.onContactsListIncoming)
         self.ws_worker.changeTabIconSignalForMain.connect(self.panel_tab_widget.onChangeTabIconSlot)
         self.ws_worker.SetRSAKeySignalForMain.connect(self.onSetRSAKeys)
         self.ws_worker.start()
@@ -247,9 +247,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         elif mimeData.hasText() and not mimeData.hasUrls(): #linux appears to provide text for files, so make sure it is not a file or else this will overrie it
         
             original = mimeData.text().encode("utf8")
-            
-            print original
-            
+
             prev = self.previous_hash
             
             hash = format(hash128(original), "x")
@@ -391,7 +389,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def streamingDownloadCallback(self, progress):
         self.onSetStatusSlot(("downloading %s"%progress["percent_done"], "download"))
 
-    def onSetNewClipSlot(self, new_clip): #happens when new incomming clip or when user double clicks an item
+    def onSetNewClipSlot(self, new_clip): #happens when new incoming clip or when user double clicks an item
 
         container_name = new_clip["container_name"]
         clip_type = new_clip["clip_type"]
@@ -477,7 +475,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 self.clipboard.setMimeData(mimeData)
         except tarfile.ReadError as e:
             #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
-            print "tar"+e[0]
+            LOG.error("tar"+e[0])
             self.onSetStatusSlot(("Decryption failed. Did you change your password?","bad"))
         except ValueError:
             self.onSetStatusSlot(("Decryption failed. Some data is missing or corrupt.","bad")) #ie. server returned a 404.html document

@@ -668,7 +668,7 @@ class PanelTabWidget(QTabWidget):
         self.addTab(self.alert_list_widget, QIcon("images/bulb"), "Alerts")
         self.setCornerWidget(self.search)
         
-    def onIncommingDelete(self,location):
+    def onIncomingDelete(self,location):
         list_widget_name, remove_row = location
         
         if list_widget_name == "MainListWidget":
@@ -769,10 +769,13 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
 
     def mousePressEvent(self, event):
-        self.clearActions()
-        self.setActions()
+        if event.button() == QtCore.Qt.RightButton:
+            self.resetActions()
         event.accept() #same as super(self.__class__, self).mousePressEvent()
 
+    def resetActions(self):
+        self.clearActions()
+        self.setActions()
 
     def clearActions(self):
         actions = self.actions()
@@ -815,7 +818,6 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         self.accept_invite_action.setDisabled(True)
 
     def onAcceptInviteAction(self):
-        print "INVITE ACTION"
         current_row, current_item = self.list_widget.getClipDataByRow()
         if not current_item["clip_type"] == "invite":
             return
@@ -870,7 +872,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         self.addAction(separator)
 
     def onCopyActionSlot(self):
-        self.main.onItemDoubleClickSlot(self.item) #listwidgetitems don't have signals, so must use parent
+        self.list_widget.onItemDoubleClickSlot(self.item) #listwidgetitems don't have signals, so must use parent
 
     def setDeleteAction(self):
         separator = QAction(self)
@@ -885,7 +887,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         remove_id = current_item["_id"]
         async_process = dict(
             question = "Delete?",
-            data = {"remove_id":remove_id, "remove_row":current_row, "list_widget_name":self.__class__.__name__}
+            data = {"remove_id":remove_id, "remove_row":current_row, "list_widget_name":self.list_widget.__class__.__name__}
         )
         self.main.outgoingSignalForWorker.emit(async_process)
         
@@ -902,7 +904,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         if self.clip["clip_type"] == "screenshot":
             #crop and reduce pmap size to fit square icon
             image = QImage()
-            print image.loadFromData(self.clip["clip_display"]["thumb"])
+            LOG.info(image.loadFromData(self.clip["clip_display"]["thumb"]) )
             self.item.setIcon(QIcon(QPixmap(image)))
             self.content = self.clip["clip_display"]["text"]
 
@@ -942,7 +944,8 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
 
     def onDropDownClicked(self):
         def getLatestConextActionsForItem():
-            actions = self.list_widget.actions()
+            self.resetActions()
+            actions = self.actions()
             menu = QMenu()
             menu.addActions(actions)
             self.dropdown_widget.setMenu(menu)
