@@ -816,7 +816,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
 
     def onAcceptInviteAction(self):
         print "INVITE ACTION"
-        current_row, current_item = self.getClipDataByRow()
+        current_row, current_item = self.list_widget.getClipDataByRow()
         if not current_item["clip_type"] == "invite":
             return
         email = current_item["host_name"]
@@ -881,7 +881,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         self.addAction(self.delete_action)
 
     def onDeleteAction(self):
-        current_row, current_item = self.getClipDataByRow()
+        current_row, current_item = self.list_widget.getClipDataByRow()
         remove_id = current_item["_id"]
         async_process = dict(
             question = "Delete?",
