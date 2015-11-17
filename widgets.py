@@ -742,6 +742,20 @@ class WaitForSignalDialog(QDialog):
             pass
         self.done(1)
 
+class QTextBrowserForFancyListWidgetItem(QTextBrowser):
+    def __init__(self, list_widget, item, content, *args, **kwargs):
+        super(self.__class__, self).__init__(*args, **kwargs)
+        self.list_widget = list_widget
+        self.item = item
+        self.content = content
+        self.viewport().setAutoFillBackground(False) #http://www.qtcentre.org/threads/12148-how-QTextEdit-transparent-to-his-parent-window
+        self.setText(content)
+        self.setReadOnly(True)
+        self.setOpenExternalLinks(True)
+    def mousePressEvent(self, event):
+        super(self.__class__, self).mousePressEvent(event)
+        self.list_widget.setCurrentItem(self.item)
+
 
 class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
 
@@ -771,7 +785,11 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.RightButton:
             self.resetActions()
-        event.accept() #same as super(self.__class__, self).mousePressEvent()
+        #self.list_widget.setCurrentItem(self.item)
+        super(self.__class__, self).mousePressEvent(event)
+
+    def mouseDoubleClickEvent(self, event):
+        self.list_widget.onItemDoubleClickSlot(self.item)
 
     def resetActions(self):
         self.clearActions()
@@ -896,9 +914,9 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         reproducible_random_color = random.Random(seed).choice(self.host_colors) #REPRODUCABLE RANDOM COLOR FROM SEED
 
         datetime_stamp = datetime.datetime.fromtimestamp(self.clip["timestamp_server"])
-        self.timestamp = u"<h4 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h4>".format(dt = datetime_stamp)
-        self.datestamp = u"<h4 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h4>".format(dt = datetime_stamp)
-        self.sender = u"<h4 style='color:{color}'>{host_name}</h4>".format(color=reproducible_random_color, host_name = self.clip["host_name"])
+        self.timestamp = u"<h3 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h3>".format(dt = datetime_stamp)
+        self.datestamp = u"<h3 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h3>".format(dt = datetime_stamp)
+        self.sender = u"<h3 style='color:{color}'>{host_name}</h3>".format(color=reproducible_random_color, host_name = self.clip["host_name"])
 
     def setContentFromClip(self):
         if self.clip["clip_type"] == "screenshot":
@@ -962,11 +980,8 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             item_layout.addLayout(item_header_hbox)
         def do_content():
             item_content_hbox = QHBoxLayout()
-            content_widget = QTextBrowser() #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
-            content_widget.viewport().setAutoFillBackground(False) #http://www.qtcentre.org/threads/12148-how-QTextEdit-transparent-to-his-parent-window
-            content_widget.setText(self.content)
-            content_widget.setReadOnly(True)
-            content_widget.setOpenExternalLinks(True)
+            content_widget = QTextBrowserForFancyListWidgetItem(self.list_widget, self.item, self.content) #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
+
             #content_widget.setWordWrapMode(QTextOption.NoWrap)
             item_content_hbox.addWidget(content_widget)
             item_layout.addLayout(item_content_hbox)
