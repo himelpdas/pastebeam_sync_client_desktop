@@ -362,7 +362,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                         distutils.file_util.copy_file(each_new_path, CONTAINER_DIR )
                 except distutils.errors.DistutilsFileError:
                     #show error
-                    PRINT("failure",274)
+                    LOG.info("File %s already exists"%each_new_path)
                     pass #MUST PASS since file may already be there.
 
             prepare = dict(
@@ -453,13 +453,6 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                     urls = []
 
                     for each_path in file_paths_decrypt:
-                        #if os.name=="nt":
-                        #    each_path = each_path.replace("\\","/").replace("c:","C:")
-                        #    #each_path = each_path.decode(sys.getfilesystemencoding()) #windows uses mbcs encoding, not utf8 like *nix, so something like a chinese character will result in file operations raising WindowsErrors #http://stackoverflow.com/questions/10180765/open-file-with-a-unicode-filename
-                        #else:
-                        #    each_path=each_path[1:]
-
-                        #each_path = "file:///"+each_path
 
                         QUrl = QtCore.QUrl()
                         #QUrl.setUrl(each_path)

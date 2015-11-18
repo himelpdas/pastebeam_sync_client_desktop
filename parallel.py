@@ -255,13 +255,16 @@ class WebsocketWorker(QtCore.QThread):
             contacts_list = data
             self.InitializeContactsListSignalForMain.emit(contacts_list)
 
+        elif answer == "delete_local":
+            self.deleteClipSignalForMain.emit(data["location"])
+
         #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
         
     def sendUntilAnswered(self, send): #todo change name
         #while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
-        
+
         expect = uuid.uuid4()
 
         send["echo"] = expect #prevents responses coming after 5 seconds from being accepted
@@ -383,17 +386,16 @@ class WebsocketWorker(QtCore.QThread):
             else:
                 #print "upd"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
-                
+
         elif question=="Delete?":
-            
+
             self.statusSignalForMain.emit(("deleting", "trash"))
-            
+
             data_in = self.sendUntilAnswered(send)
-            
+
             if data_in["success"] == True:
                 LOG.debug("DELETE!")
-                self.deleteClipSignalForMain.emit(data_in["location"])
-                self.statusSignalForMain.emit(("deleted", "good"))
+                self.statusSignalForMain.emit(("deleted from server", "good"))
             else:
                 #print "del"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))

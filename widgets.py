@@ -980,7 +980,11 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             item_layout.addLayout(item_header_hbox)
         def do_content():
             item_content_hbox = QHBoxLayout()
-            content_widget = QTextBrowserForFancyListWidgetItem(self.list_widget, self.item, self.content) #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
+
+            if self.clip["system"] == "alert":
+                content_widget = QLabel(self.content)
+            else:
+                content_widget = QTextBrowserForFancyListWidgetItem(self.list_widget, self.item, self.content) #http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
 
             #content_widget.setWordWrapMode(QTextOption.NoWrap)
             item_content_hbox.addWidget(content_widget)
