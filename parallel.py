@@ -235,7 +235,7 @@ class WebsocketWorker(QtCore.QThread):
 
             #TODO- add user setting to disable this if he doesn't want to sync with the cloud!
             if is_clipboard and not_this_device: #do not allow setting from the same pc
-                self.setClipSignalForMain.emit(latest) #this will set the newest clip only, thanks to self.main.new_clip!!!
+                self.setClipSignalForMain.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
             elif is_share:
                 self.statusSignalForMain.emit(("you got something from %s"%latest["host_name"], "good"))
             """
@@ -262,7 +262,7 @@ class WebsocketWorker(QtCore.QThread):
         elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
         
-    def sendUntilAnswered(self, send): #todo change name
+    def requestResponse(self, send): #todo change name
         #while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
 
         expect = uuid.uuid4()
@@ -301,7 +301,7 @@ class WebsocketWorker(QtCore.QThread):
     def ensureContainerUpload(self, container_name):
 
         #first check if upload needed before updating
-        data = self.sendUntilAnswered(dict(
+        data = self.requestResponse(dict(
             question = "Upload?",
             data = container_name
         ))
@@ -345,7 +345,7 @@ class WebsocketWorker(QtCore.QThread):
 
             email = data_out["recipient"]
 
-            public_key_success = self.sendUntilAnswered(dict(
+            public_key_success = self.requestResponse(dict(
                 question = "Publickey?",
                 data = email
             ))
@@ -361,7 +361,7 @@ class WebsocketWorker(QtCore.QThread):
             rsa_public_key = RSA.importKey(recipient_public_key)
             data_out["decryption_key"] = Binary(rsa_public_key.encrypt(data_out["decryption_key"], K=None)[0]) #K is ignored, but needed for compatibility
 
-            data_in = self.sendUntilAnswered(dict(
+            data_in = self.requestResponse(dict(
                 question = "Share?",
                 data = data_out
             ))
@@ -379,7 +379,7 @@ class WebsocketWorker(QtCore.QThread):
 
             self.statusSignalForMain.emit(("updating clip to server", "sync"))
 
-            data_in = self.sendUntilAnswered(send)
+            data_in = self.requestResponse(send)
 
             if data_in["success"]:
                  self.statusSignalForMain.emit(("updated!", "good"))
@@ -391,7 +391,7 @@ class WebsocketWorker(QtCore.QThread):
 
             self.statusSignalForMain.emit(("deleting", "trash"))
 
-            data_in = self.sendUntilAnswered(send)
+            data_in = self.requestResponse(send)
 
             if data_in["success"] == True:
                 LOG.debug("DELETE!")
@@ -403,7 +403,7 @@ class WebsocketWorker(QtCore.QThread):
         elif question=="Star?":
         
             self.statusSignalForMain.emit(("Adding to bookmarks", "star"))
-            data_in = self.sendUntilAnswered(send)
+            data_in = self.requestResponse(send)
             
             if data_in["success"]:
                 self.statusSignalForMain.emit(("added to your bookmarks!", "good"))
@@ -413,19 +413,19 @@ class WebsocketWorker(QtCore.QThread):
 
         elif question=="Contacts?": #change to set_contacts?
             
-            data_in = self.sendUntilAnswered(send)
+            data_in = self.requestResponse(send)
             
             self.closeWaitDialogSignalForMain.emit(data_in)
 
         elif question=="Invite?":
             
-            data_in = self.sendUntilAnswered(send)
+            data_in = self.requestResponse(send)
 
             self.closeWaitDialogSignalForMain.emit(data_in)
             
         elif question =="Accept?":
             
-            data_in = self.sendUntilAnswered(send)
+            data_in = self.requestResponse(send)
             
             self.closeWaitDialogSignalForMain.emit(data_in)
             

@@ -502,7 +502,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
             True)  # http://stackoverflow.com/questions/23213929/qt-qlistwidget-item-with-alternating-colors
         self.setStatusTip(status)
 
-    def getClipDataByRow(self):
+    def getClipDataByCurrentRow(self):
         current_row = self.currentRow()
         current_item = self.currentItem()
         current_item = json.loads(current_item.data(
@@ -526,7 +526,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         # double_clicked_clip = self.convertToDeviceClip(double_clicked_clip)
 
-        self.main.onSetNewClipSlot(double_clicked_data)
+        self.main.onSetNewClipSlot(dict(new_clip = double_clicked_data, block_clip_change_detection = False))
 
         # self.previous_hash = hash #or else onClipChangeSlot will react and a duplicate new list item will occur.
 
@@ -859,29 +859,57 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         # star action
         self.star_action = star_action = QAction(QIcon("images/star.png"), '&Star', self)
         # self.star_action.triggered.connect(self.onAddStarAction)
-
-        star_sub_menu = QMenu()
-        # share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
-        star_message_subaction = QWidgetAction(self)
-        star_message_widget = QLineEdit()
-        max_length = 40
-        star_message_widget.setMaxLength(max_length)
-
-        def onReturnPressed():
-            # star_action.trigger()
-            self.onAddStarAction(star_message_widget.text()[:max_length])
-            self.item_menu.close()
-
-        star_message_widget.returnPressed.connect(onReturnPressed)
-        star_message_widget.setPlaceholderText("Enter a note...")
-        star_message_subaction.setDefaultWidget(star_message_widget)
-        star_sub_menu.addAction(star_message_subaction)
-
-        star_action.setMenu(star_sub_menu)
+        sub_menu = self.getNoteSubMenu(history_list_widget =self.main.panel_tab_widget.star_list_widget,
+                                       trigger = self.onAddStarAction,
+                                       parent_action = None)
+        star_action.setMenu(sub_menu)
         self.item_menu.addAction(star_action)
 
-    def onAddStarAction(self, note):
-        current_row, current_item = self.list_widget.getClipDataByRow()
+    def getNoteSubMenu(self, history_list_widget, trigger, parent_action,
+                                 placeholder="Enter a note...", max_length = 40):
+        def always_close_menu_decorator(func):
+            def closure():
+                func()
+                self.item_menu.close()
+            return closure
+
+        sub_menu = QMenu()
+        # share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
+        message_subaction = QWidgetAction(self)
+        message_widget = QLineEdit()
+        message_widget.setMaxLength(max_length)
+
+        @always_close_menu_decorator
+        def onReturnPressed():
+            # star_action.trigger()
+            trigger(message_widget.text()[:max_length].strip(), parent_action)
+
+        message_widget.returnPressed.connect(onReturnPressed)
+        message_widget.setPlaceholderText(placeholder)
+        message_subaction.setDefaultWidget(message_widget)
+        sub_menu.addAction(message_subaction)
+
+        if history_list_widget:
+            sub_menu.addSeparator()
+            action_names = []
+            for each_item in history_list_widget.getItems(): #self.main.panel_tab_widget.star_list_widget.getItems():
+                each_item_data = json.loads(each_item.data(QtCore.Qt.UserRole))
+                each_item_note = each_item_data.get("note")
+                if each_item_note and each_item_note not in action_names:
+
+                    @always_close_menu_decorator
+                    def on_note_history_action():
+                        trigger(each_item_note, parent_action)
+
+                    note_history_action = QAction(each_item_note, self)
+                    note_history_action.triggered.connect(on_note_history_action)
+                    sub_menu.addAction(note_history_action)
+                    action_names.append(each_item_note)
+
+        return sub_menu
+
+    def onAddStarAction(self, note, *args):
+        current_item = json.loads(self.item.data(QtCore.Qt.UserRole))
         current_item["note"] = note
         del current_item["_id"]
         async_process = dict(
@@ -899,7 +927,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         self.accept_invite_action.setDisabled(True)
 
     def onAcceptInviteAction(self):
-        current_row, current_item = self.list_widget.getClipDataByRow()
+        current_item = json.loads(self.item.data(QtCore.Qt.UserRole))
         if not current_item["clip_type"] == "invite":
             return
         email = current_item["host_name"]
@@ -908,12 +936,13 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
 
     def setShareAction(self):
         self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
-        self.item_menu.addAction(self.share_action)
         self.enableShareAction()
+        self.item_menu.addAction(self.share_action)
 
-    def onShareSubMenuTriggeredSlot(self, action):
+    def onShareSubMenuTriggeredSlot(self, note, action):
         email = action.text()
         share_item_data = json.loads(self.item.data(QtCore.Qt.UserRole))
+        share_item_data["note"] = note
 
         # now get decryption keys
         clip_system = share_item_data["system"]
@@ -940,9 +969,15 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         else:
             self.share_action.setDisabled(False)
             share_sub_menu = QMenu()
-            share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
-            for name in sorted(self.main.contacts_list):
-                share_sub_menu.addAction(name)
+            #share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
+            for email_addr in sorted(self.main.contacts_list):
+                email_addr_action = QAction(email_addr, self)
+                sub_menu = self.getNoteSubMenu(history_list_widget=None,
+                                               trigger=self.onShareSubMenuTriggeredSlot,
+                                               parent_action=email_addr_action,
+                                               placeholder="Enter a message...")
+                email_addr_action.setMenu(sub_menu)
+                share_sub_menu.addAction(email_addr_action)
             self.share_action.setMenu(share_sub_menu)
 
     def setCopyAction(self):
@@ -965,7 +1000,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         self.item_menu.addAction(self.delete_action)
 
     def onDeleteAction(self):
-        current_row, current_item = self.list_widget.getClipDataByRow()
+        current_row, current_item = self.list_widget.getClipDataByCurrentRow()
         remove_id = current_item["_id"]
         async_process = dict(
             question="Delete?",
@@ -1070,7 +1105,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             self.dropdown_widget.setIcon(AppIcon("action"))
             self.dropdown_widget.clicked.connect(self.onDropDownClicked)
             self.dropdown_widget.setMenu(QMenu())  # needed to show arrow icon
-            note_label = QLabel("<i>%s</i>" % (self.clip.get("note") or ""))
+            note_label = QLabel(views.note_label % (self.clip.get("note") or self.clip["clip_type"].capitalize() )  )
             dropdown_hbox_layout.addWidget(note_label)
             dropdown_hbox_layout.addStretch(1)
             dropdown_hbox_layout.addWidget(self.dropdown_widget)

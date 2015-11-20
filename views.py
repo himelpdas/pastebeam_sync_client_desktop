@@ -24,3 +24,5 @@ image_preview = """
     </tr>
 </table>
 """
+
+note_label = "<i>%s</i>"

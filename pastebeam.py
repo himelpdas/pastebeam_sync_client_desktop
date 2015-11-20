@@ -391,6 +391,19 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def streamingDownloadCallback(self, progress):
         self.onSetStatusSlot(("downloading %s"%progress["percent_done"], "download"))
 
+    def blockClipChangeDetection(func):
+        """When incoming, this will invoke dataChanged, which will in turn invoke a push, therefore a race condition
+        will occur with multiple devices. This decorator will block redundant reupload from clipboard.dataChanged"""
+        def closure(self, clip_dict):
+            new_clip, block = clip_dict["new_clip"], clip_dict["block_clip_change_detection"]
+            if block:
+                self.clipboard.dataChanged.disconnect(self.onClipChangeSlot)
+            func(self, new_clip)
+            self.clipboard.dataChanged.connect(self.onClipChangeSlot)
+            self.previous_hash = new_clip["hash"] #needed since an incoming will not set self.previous_hash
+        return closure
+
+    @blockClipChangeDetection
     def onSetNewClipSlot(self, new_clip): #happens when new incoming clip or when user double clicks an item
 
         container_name = new_clip["container_name"]
