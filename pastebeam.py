@@ -76,7 +76,9 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         #editMenu.addAction(accountAction)    
         editMenu.addAction(contactsAction)    
         editMenu.addSeparator()
-        editMenu.addAction(settingsAction)    
+        editMenu.addAction(settingsAction)
+
+        helpMenu = menubar.addMenu("&Help")
         
         self.menu_lockables = [lockoutAction, editMenu]
         
@@ -96,7 +98,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
                 
     def onSetStatusSlot(self, msg_icn):
         msg,icn = msg_icn
-        self.status_lbl.setText("<b>%s...</b>"%msg.capitalize())
+        self.status_lbl.setText("<h3>%s...</h3>"%msg.capitalize())
         
         pmap = QPixmap("images/{icn}".format(icn=icn))
         pmap = pmap.scaledToWidth(32, QtCore.Qt.SmoothTransformation) #antialiasing http://stackoverflow.com/questions/7623631/qt-antialiasing-png-resize
@@ -193,16 +195,16 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             image.save(img_file_path) #change to or compliment upload
                 
             pmap = QPixmap(image) #change to pixmap for easier image editing than Qimage
-            pmap = PixmapThumbnail(pmap)
+            pmap = PixmapThumbnail(pmap, 240)
             
             device= QtCore.QBuffer() #is an instance of QIODevice, which is accepted by image.save()
             pmap.thumbnail.save(device, "PNG") # writes image into the in-memory container, rather than a file name
             _bytearray = device.data() #get the buffer itself
             bytestring = _bytearray.data() #copy the full string
             
-            text = "Copied Image or Screenshot\n\n{w} x {h} Pixels\n{mp} Megapixels\n{mb} Megabytes".format(w=pmap.original_w, h=pmap.original_h, mp="%d.02"%(pmap.original_w*pmap.original_h/1000000.0), mb="%d.1"%(pmap.original_w*pmap.original_h*3/1024**2) )
+            info = dict(w=pmap.original_w, h=pmap.original_h, mp="%d.02"%(pmap.original_w*pmap.original_h/1000000.0), mb="%d.1"%(pmap.original_w*pmap.original_h*3/1024**2) )
             clip_display = dict(
-                text=Binary(text),
+                info=info,
                 thumb = Binary(bytestring)  #Use BSON Binary to prevent UnicodeDecodeError: 'utf8' codec can't decode byte 0xeb in position 0: invalid continuation byte
             )
             
@@ -504,33 +506,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.ws_worker.terminate() #http://stackoverflow.com/questions/1898636/how-can-i-terminate-a-qthread
         event.accept() #event.ignore() #stops from exiting
         
-class PixmapThumbnail():
-    Px = 56
-    def __init__(self, original_pmap):
-        self.original_pmap = original_pmap
-        self.original_w = self.original_h = self.thumbnail = self.is_landscape = None
-        self.pixmapThumbnail()
 
-    def pixmapThumbnail(self):
-        self.original_w = self.original_pmap.width()
-        self.original_h = self.original_pmap.height()
-        is_square = self.original_w==self.original_h
-        if not is_square:
-            smallest_side = min(self.original_w, self.original_h)
-            longest_side = max(self.original_w, self.original_h)
-            shift = longest_side / 4.0
-            self.is_landscape = self.original_w > self.original_h
-            if self.is_landscape:
-                x = shift
-                y = 0
-            else:
-                x = 0
-                y = shift
-            crop = self.original_pmap.copy(x, y, smallest_side, smallest_side) #PySide.QtGui.QPixmap.copy(x, y, width, height) #https://srinikom.github.io/pyside-docs/PySide/QtGui/QPixmap.html#PySide.QtGui.PySide.QtGui.QPixmap.copy
-        else:
-            crop = self.original_pmap
-        self.thumbnail = crop.scaled(self.Px,self.Px, TransformationMode=QtCore.Qt.SmoothTransformation)
-        
 if __name__ == '__main__':
     
     app = QApplication(sys.argv) #create mainloop
