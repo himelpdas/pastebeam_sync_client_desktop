@@ -26,3 +26,5 @@ image_preview = """
 """
 
 note_label = "<i>%s</i>"
+
+icon_html = u"<img src='images/{name}.png' width={side} height={side}>"

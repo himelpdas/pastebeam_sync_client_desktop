@@ -32,7 +32,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         self.show()    
 
     def initPanel(self):
-        self.panel_tab_widget = PanelTabWidget(QtCore.QSize(PixmapThumbnail.Px,PixmapThumbnail.Px), self)
+        self.panel_tab_widget = PanelTabWidget(QtCore.QSize(self.px_to_dp(24) , self.px_to_dp(24) ), self)
         #for each in self.panel_tab_widget.panels:
         #    each.itemDoubleClicked.connect(each.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
         self.stacked_widget.addWidget(self.panel_tab_widget)
@@ -79,7 +79,9 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         editMenu.addAction(settingsAction)
 
         helpMenu = menubar.addMenu("&Help")
-        
+        helpMenu.addAction("&Check for updates")
+        helpMenu.addAction("&About")
+
         self.menu_lockables = [lockoutAction, editMenu]
         
     def initStatusBar(self):
@@ -101,7 +103,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         self.status_lbl.setText("<h3>%s...</h3>"%msg.capitalize())
         
         pmap = QPixmap("images/{icn}".format(icn=icn))
-        pmap = pmap.scaledToWidth(32, QtCore.Qt.SmoothTransformation) #antialiasing http://stackoverflow.com/questions/7623631/qt-antialiasing-png-resize
+        pmap = pmap.scaledToWidth(self.px_to_dp(16), QtCore.Qt.SmoothTransformation) #antialiasing http://stackoverflow.com/questions/7623631/qt-antialiasing-png-resize
         self.status_icn.setPixmap(pmap)
         
         #events process once every x milliseconds, this forces them to process... or we can use repaint isntead
@@ -125,6 +127,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         except OSError:
             pass
 
+        self.dpi = app.desktop().logicalDpiX()
+
         self.rsa_private_key = ""
 
         self.app = app
@@ -134,6 +138,13 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
         self.contacts_list = []
         self.updateContactsListSignal.connect(self.setContactsList)
+
+    def px_to_dp(self, px):
+        LOG.info(self.dpi)
+        dp = px*self.dpi/72.0
+        LOG.info(dp)
+        print "======================================"
+        return dp
 
     def setContactsList(self, contacts_list):
         self.contacts_list = contacts_list

@@ -795,7 +795,6 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         ["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C",
          "#2966B8", "#3923D6", "#23819C", "#FF62B0", ])  # http://www.hitmill.com/html/pastels.html
     file_icons = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files")))
-    icon_html = u"<img src='images/{name}.png' width={side} height={side}>"
 
     def __init__(self, clip, item):
         super(self.__class__, self).__init__()
@@ -1053,7 +1052,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
                 files.append(u"{icon} {file_name}".format(
                     # do NOT do "string {thing}".format(thing = u"unicode), or else unicode decode error will occur, the first string must be u"string {thing}"
                     file_name=each_filename,
-                    icon=self.icon_html.format(name=file_icon, side=24)
+                    icon=views.icon_html.format(name=file_icon, side=self.main.px_to_dp(12))
                 ))
 
             self.content = "<ol><li>{li}</ol>".format(li="<li> ".join(files))
