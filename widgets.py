@@ -1070,7 +1070,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
                     icon=views.icon_html.format(name=file_icon, side=self.main.px_to_dp(12))
                 ))
 
-            self.content = "<ol><li>{li}</ol>".format(li="<li> ".join(files))
+            self.content = u"<ol><li>{li}</ol>".format(li=u"<li> ".join(files))
 
         elif self.clip["clip_type"] == "invite":
             self.item.setIcon(AppIcon("me"))
