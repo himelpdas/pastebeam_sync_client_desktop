@@ -230,7 +230,7 @@ class WebsocketWorker(QtCore.QThread):
             not_this_device = latest["session_id"] != self.session_id
             is_clipboard = latest["system"] == "main"
             is_star = latest["system"] == "starred"
-            is_alert = latest["system"] == "alert"
+            is_notification = latest["system"] == "notification"
             is_share = latest["system"] == "share"
 
             #TODO- add user setting to disable this if he doesn't want to sync with the cloud!
@@ -247,8 +247,8 @@ class WebsocketWorker(QtCore.QThread):
                 self.statusSignalForMain.emit(("added item to bookmarks", "good"))
             elif is_share:
                 self.statusSignalForMain.emit(("you got something from %s"%latest["host_name"], "good"))
-            elif is_alert:
-                self.statusSignalForMain.emit(("you have a new alert", "good"))
+            elif is_notification:
+                self.statusSignalForMain.emit(("you have a new notification", "good"))
             """
 
         elif answer == "get_contacts!":

@@ -484,7 +484,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
     def onItemPressedSlot(self, i):
         "So that any click of an item will enable all context items"
-        self.parent.onTabChangedSlot(self.index)  # hide alert icon in tab when clicking on an item
+        self.parent.onTabChangedSlot(self.index)  # hide notification icon in tab when clicking on an item
 
     def doCommon(self):
 
@@ -531,7 +531,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         # self.previous_hash = hash #or else onClipChangeSlot will react and a duplicate new list item will occur.
 
 
-class AlertListWidget(CommonListWidget):
+class NotificationListWidget(CommonListWidget):
     def __init__(self, parent=None):
         super(self.__class__, self).__init__(parent)
         self.index = 3
@@ -587,8 +587,8 @@ class PanelTabWidget(QTabWidget):
         if clip["system"] == "starred":
             list_widget = self.star_list_widget
             # new_icon_tab = 1
-        elif clip["system"] == "alert":
-            list_widget = self.alert_list_widget
+        elif clip["system"] == "notification":
+            list_widget = self.notification_list_widget
             # new_icon_tab = 3
         elif clip["system"] == "main":
             list_widget = self.main_list_widget
@@ -611,7 +611,7 @@ class PanelTabWidget(QTabWidget):
     def onChangeTabIconSlot(self, tabs_affected):
         if "starred" in tabs_affected:
             new_icon_tab = 1
-        elif "alert" in tabs_affected:
+        elif "notification" in tabs_affected:
             new_icon_tab = 3
         elif "main" in tabs_affected:
             new_icon_tab = 0
@@ -625,14 +625,31 @@ class PanelTabWidget(QTabWidget):
         self.search.textEdited.connect(self.onSearchEditedSlot)
         search_tip = "Search through your items (preview text only)."
         self.search.setStatusTip(search_tip)
-        self.search.setPlaceholderText("Search text...")
-        """
-        search_icon = QLabel() #http://www.iconarchive.com/show/super-mono-3d-icons-by-double-j-design/search-icon.html
-        pmap = QPixmap("images/find.png")
-        pmap = pmap.scaledToWidth(32, QtCore.Qt.SmoothTransformation)
-        search_icon.setPixmap(pmap)
-        search_icon.setStatusTip(search_tip)
-        """
+        self.search.setPlaceholderText("Filter...")
+
+    def onChangeViewMenu(self, action):
+        actions = self.main.viewMenu.actions()
+        label_to_clip_type = {
+            "Text/Html":["text", "html"],
+            "Screenshots": "screenshot",
+            "Files":"files",
+        }
+        activate_clip_types = []
+        for each_action in actions:
+            if each_action.isChecked():
+                action_label = each_action.text()
+                activate_clip_types.append(label_to_clip_type[action_label])
+        for list_widget in self.panels[:-1]:
+            for item in list_widget.getItems():
+                activate = False
+                for clip_type in activate_clip_types:
+                    item_data = json.loads(item.data(QtCore.Qt.UserRole))
+                    if item_data["clip_type"] in clip_type:
+                        activate = True
+                if activate:
+                    item.setHidden(False)
+                else:
+                    item.setHidden(True)
 
     def onSearchEditedSlot(self, written):
         for list_widget in self.panels:
@@ -648,19 +665,17 @@ class PanelTabWidget(QTabWidget):
                 else:
                     item_data = json.loads(item.data(QtCore.Qt.UserRole))
 
-                    unsearchable_types = ["screenshot"]
-                    if item_data["clip_type"] in unsearchable_types:
-                        item.setHidden(True)
-                        continue
-
+                    written = written.upper()
                     any_match = False
+                    simple_search = ["text", "html", "confirmation", "invite"]
                     if item_data["clip_type"] == "files":
                         for each_display in item_data["clip_display"]:
                             # print each_display
-                            if written.upper() in each_display.replace("._folder", "").upper():
+                            if written in each_display.replace("._folder", "").upper():
                                 any_match = True
-                    elif written.upper() in item_data[
-                        "clip_display"].upper():  # make compatible with files clip display #TODO only search in searchable html class
+                    elif item_data["clip_type"] in simple_search and written in item_data["clip_display"].upper():  # make compatible with files clip display #TODO only search in searchable html class
+                        any_match = True
+                    elif item_data.get("note") and written in item_data.get("note").upper():
                         any_match = True
 
                     if any_match:
@@ -676,17 +691,17 @@ class PanelTabWidget(QTabWidget):
 
         self.friend_list_widget = FriendListWidget(self)
 
-        self.alert_list_widget = AlertListWidget(self)
+        self.notification_list_widget = NotificationListWidget(self)
 
-        self.panels = [self.main_list_widget, self.star_list_widget, self.friend_list_widget, self.alert_list_widget]
+        self.panels = [self.main_list_widget, self.star_list_widget, self.friend_list_widget, self.notification_list_widget]
         # devices star friends
 
     def addPanels(self):
         self.addTab(self.main_list_widget, QIcon("images/devices"), "Devices")
         self.addTab(self.star_list_widget, QIcon("images/star"), "Bookmarks")
         self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
-        # self.addTab(QWidget(), QIcon("images/bulb"), "Alerts")
-        self.addTab(self.alert_list_widget, QIcon("images/bulb"), "Alerts")
+        # self.addTab(QWidget(), QIcon("images/bulb"), "Notifications")
+        self.addTab(self.notification_list_widget, QIcon("images/bulb"), "Notifications")
         self.setCornerWidget(self.search)
 
     def onIncomingDelete(self, location):
@@ -698,8 +713,8 @@ class PanelTabWidget(QTabWidget):
             self.star_list_widget.takeItem(remove_row)
         elif list_widget_name == "FriendListWidget":
             self.friend_list_widget.takeItem(remove_row)
-        elif list_widget_name == "AlertListWidget":
-            self.alert_list_widget.takeItem(remove_row)
+        elif list_widget_name == "NotificationListWidget":
+            self.notification_list_widget.takeItem(remove_row)
 
     def clearAllLists(self):
         for each in self.panels:
@@ -714,7 +729,7 @@ class PanelTabWidget(QTabWidget):
                 item_data = each_item.data(QtCore.Qt.UserRole)
                 json_data = json.loads(item_data)
                 if not json_data["system"] in ["share",
-                                               "alert"]:  # DO NOT reuse shared clips, as they were encrypted with a random key, not user's password. Not reusing wil force the system to re-encrypt the container with user's password
+                                               "notification"]:  # DO NOT reuse shared clips, as they were encrypted with a random key, not user's password. Not reusing wil force the system to re-encrypt the container with user's password
                     hash_container_pair = {json_data["hash"]: json_data.get("container_name")}
                     hash_to_container.update(hash_container_pair)
                 row += 1
@@ -831,7 +846,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         super(self.__class__, self).mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
-        if not self.clip["system"] == "alert":
+        if not self.clip["system"] == "notification":
             self.list_widget.onItemDoubleClickSlot(self.item)
             # super(self.__class__, self).mouseDoubleClickEvent(event)
 
@@ -844,7 +859,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
 
     def setActions(self):
 
-        if not self.clip["system"] == "alert":
+        if not self.clip["system"] == "notification":
             self.setCopyAction()
             self.setStarAction()
             self.setShareAction()
@@ -949,7 +964,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             decryption_key = getLogin().get("password")
         elif clip_system == "share":
             return  # DONE decrypt public key encrypted random AES key
-        elif clip_system == "alert":  # cant share alerts yet
+        elif clip_system == "notification":  # cant share notifications yet
             return
 
         share_item_data["recipient"] = email
@@ -1058,14 +1073,11 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             self.content = "<ol><li>{li}</ol>".format(li="<li> ".join(files))
 
         elif self.clip["clip_type"] == "invite":
-            self.item.setIcon(QIcon("images/me.png"))
-            action = "Control" if SYSTEM == "Darwin" else "Right"
-            self.content = '<h5 style="color:maroon;">{action}-click to respond.</h5>'.format(action=action) + \
-                           self.clip["clip_display"]
+            self.item.setIcon(AppIcon("me"))
+            self.content = self.clip["clip_display"]
 
-        elif self.clip[
-            "clip_type"] == "notify":  # change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
-            self.item.setIcon(QIcon("images/bell.png"))
+        elif self.clip["clip_type"] == "confirmation":  # change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
+            self.item.setIcon(AppIcon("ok")) #todo change to check mark
             self.content = self.clip["clip_display"]
 
     def onDropDownClicked(self):
@@ -1088,7 +1100,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         def do_content():
             item_content_hbox = QHBoxLayout()
 
-            if self.clip["system"] == "alert":
+            if self.clip["system"] == "notification":
                 content_widget = QLabel(self.content)
             else:
                 content_widget = QTextBrowserForFancyListWidgetItem(self.list_widget, self.item,
@@ -1104,8 +1116,22 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             self.dropdown_widget.setIcon(AppIcon("action"))
             self.dropdown_widget.clicked.connect(self.onDropDownClicked)
             self.dropdown_widget.setMenu(QMenu())  # needed to show arrow icon
-            note_label = QLabel(views.note_label % (self.clip.get("note") or self.clip["clip_type"].capitalize() )  )
-            dropdown_hbox_layout.addWidget(note_label)
+            clip_type = self.clip["clip_type"]
+            if clip_type == "invite":
+                note_widget = QPushButton("Accept invite")
+                note_widget.clicked.connect(self.onAcceptInviteAction)
+            else:
+                note = self.clip.get("note")
+                if note:
+                    note_label = views.corner_label_note % note
+                else:
+                    if clip_type == "html":
+                        clip_type = "Text/Html"
+                    else:
+                        clip_type = clip_type.capitalize()
+                    note_label = views.corner_label_type % clip_type
+                note_widget = QLabel(note_label)
+            dropdown_hbox_layout.addWidget(note_widget)
             dropdown_hbox_layout.addStretch(1)
             dropdown_hbox_layout.addWidget(self.dropdown_widget)
             item_layout.addLayout(dropdown_hbox_layout)

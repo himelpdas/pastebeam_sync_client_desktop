@@ -1,4 +1,4 @@
-image_preview = """
+image_preview = """<i style="color:grey">
 <table>
     <tr>
         <td>
@@ -23,8 +23,9 @@ image_preview = """
         </table></td>
     </tr>
 </table>
-"""
+</i>"""
 
-note_label = "<i>%s</i>"
+corner_label_note = "<i>%s</i>"
+corner_label_type = "<i style='color:grey;'>%s</i>"
 
 icon_html = u"<img src='images/{name}.png' width={side} height={side}>"

@@ -62,7 +62,27 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         accountAction.setStatusTip('Edit login info')
         accountAction.triggered.connect(self.showAccountDialogs) #accountAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
         """
-        
+
+        self.viewMenu = viewMenu = menubar.addMenu('&View')
+        view_action_group = QActionGroup(self)
+        view_action_group.setExclusive(False)
+        show_files_action = QAction(AppIcon("files"),"Files", self)
+        show_files_action.setCheckable(True)
+        show_files_action.setChecked(True)
+        viewMenu.addAction(show_files_action)
+        view_action_group.addAction(show_files_action)
+        show_screenshots_action = QAction(AppIcon("image"),"Screenshots", self)
+        show_screenshots_action.setCheckable(True)
+        show_screenshots_action.setChecked(True)
+        viewMenu.addAction(show_screenshots_action)
+        view_action_group.addAction(show_screenshots_action)
+        show_text_action = QAction(AppIcon("text"),"Text/Html", self)
+        show_text_action.setCheckable(True)
+        show_text_action.setChecked(True)
+        viewMenu.addAction(show_text_action)
+        view_action_group.addAction(show_text_action)
+        view_action_group.triggered.connect(self.panel_tab_widget.onChangeViewMenu)
+
         settingsAction = QtGui.QAction(QtGui.QIcon("images/settings.png"), "&Settings", self)
         settingsAction.setStatusTip('Edit settings')
         settingsAction.triggered.connect(lambda:SettingsDialog.show(self))
@@ -71,9 +91,9 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         contactsAction.triggered.connect(lambda:ContactsDialog.show(self))
         contactsAction.setStatusTip("Edit your contacts")
         #contactsAction.triggered.connect(AddressBook.show)
-        
+
         editMenu = menubar.addMenu('&Edit')
-        #editMenu.addAction(accountAction)    
+        #editMenu.addAction(accountAction)
         editMenu.addAction(contactsAction)    
         editMenu.addSeparator()
         editMenu.addAction(settingsAction)
@@ -134,6 +154,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.app = app
         self.initUI()
         self.setupClip()
+
+        self.ws_worker = WebsocketWorker(self)
         self.initWorker()
 
         self.contacts_list = []
@@ -142,8 +164,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def px_to_dp(self, px):
         LOG.info(self.dpi)
         dp = px*self.dpi/72.0
-        LOG.info(dp)
-        print "======================================"
+        #LOG.info(dp)
         return dp
 
     def setContactsList(self, contacts_list):
@@ -153,7 +174,6 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.setContactsList(contacts_list)
 
     def initWorker(self):
-        self.ws_worker = WebsocketWorker(self)
         self.ws_worker.incomingClipsSignalForMain.connect(self.onIncomingSlot)
         self.ws_worker.setClipSignalForMain.connect(self.onSetNewClipSlot)
         self.ws_worker.statusSignalForMain.connect(self.onSetStatusSlot)
