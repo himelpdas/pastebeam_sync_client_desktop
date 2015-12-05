@@ -1197,3 +1197,13 @@ class PixmapPreview():
             self.thumbnail = self.original_pmap.scaledToWidth(self.Px, TransformationMode=QtCore.Qt.SmoothTransformation)
         else:
             self.thumbnail = self.original_pmap.scaledToHeight(self.Px, TransformationMode=QtCore.Qt.SmoothTransformation)
+
+class TrayIcon(QSystemTrayIcon):
+    def __init__(self, main):
+        self.main = main
+        super(self.__class__, self).__init__(main)
+        self.setIcon(AppIcon("text"))
+        self.activated.connect(self.onActivated)
+    def onActivated(self, reason):
+        if reason == self.__class__.DoubleClick:
+            self.main.setVisible(True)

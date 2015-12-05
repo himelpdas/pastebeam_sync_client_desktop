@@ -27,7 +27,9 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         
         self.setCentralWidget(self.stacked_widget)
         self.setGeometry(50, 50, 800, 600)
-        self.setWindowTitle('PasteBeam 1.0.0')    
+        self.setWindowTitle('PasteBeam 1.0.0')
+
+        self.initTrayIcon()
         
         self.show()    
 
@@ -52,7 +54,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         exitAction = QtGui.QAction(QtGui.QIcon("images/exit.png"), '&Exit', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls    
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(self.close) #exitAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
+        exitAction.triggered.connect(self.closeReal) #exitAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
         
         fileMenu.addAction(exitAction)
         
@@ -128,6 +130,10 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         
         #events process once every x milliseconds, this forces them to process... or we can use repaint isntead
         qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
+
+    def initTrayIcon(self):
+        tray_icon = TrayIcon(self)
+        tray_icon.show()
 
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
@@ -546,10 +552,14 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         return (clip or '').encode("utf-8", "replace").encode("zlib").encode("base64") #MUST ENCODE in base64 before transmitting obsfucated data #null clip causes serious looping problems, put some text! Prevent setText's TypeError: String or Unicode type required
         
     def closeEvent(self, event): #http://stackoverflow.com/questions/9249500/pyside-pyqt-detect-if-user-trying-to-close-window
+        self.hide()
+        event.ignore() #event.accept() exits #event.ignore() #stops from exiting
+        #self.close() close the main wigdget, which then cuases app.exit()
+
+    def closeReal(self):
         # if i don't terminate the worker thread, the app will crash (ex. windows will say python.exe stopped working)
         self.ws_worker.terminate() #http://stackoverflow.com/questions/1898636/how-can-i-terminate-a-qthread
-        event.accept() #event.ignore() #stops from exiting
-        
+        self.app.exit() #directly close the app
 
 if __name__ == '__main__':
     
