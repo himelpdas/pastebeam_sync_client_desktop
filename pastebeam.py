@@ -168,7 +168,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.updateContactsListSignal.connect(self.setContactsList)
 
     def px_to_dp(self, px):
-        LOG.info(self.dpi)
+        #LOG.info(self.dpi)
         dp = px*self.dpi/72.0
         #LOG.info(dp)
         return dp
@@ -221,7 +221,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             except AttributeError:
                 return
 
-            PRINT("on clip change pmap", (hash,prev))
+            LOG.info("onClipChangeSlot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.onSetStatusSlot(("image copied","good"))
                 return
@@ -258,7 +258,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             hash = format(hash128(html), "x")
             
-            PRINT("on clip change html", (hash,prev))
+            LOG.info("onClipChangeSlot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.onSetStatusSlot(("data copied","good"))
                 return
@@ -291,7 +291,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             hash = format(hash128(original), "x")
             
-            PRINT("on clip change text", (hash,prev))
+            LOG.info("onClipChangeSlot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.onSetStatusSlot(("text copied","good"))
                 return

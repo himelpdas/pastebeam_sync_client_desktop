@@ -495,12 +495,11 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         self.itemDoubleClicked.connect(
             self.onItemDoubleClickSlot)  # textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
 
-    def doStyling(self, status="Double-click an item to copy it, or right-click it for more options."):
+    def doStyling(self):
         self.setIconSize(
             self.parent.icon_size)  # http://www.qtcentre.org/threads/8733-Size-of-an-Icon #http://nullege.com/codes/search/PySide.QtGui.QListWidget.setIconSize
         self.setAlternatingRowColors(
             True)  # http://stackoverflow.com/questions/23213929/qt-qlistwidget-item-with-alternating-colors
-        self.setStatusTip(status)
 
     def getClipDataByCurrentRow(self):
         current_row = self.currentRow()
@@ -516,9 +515,9 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         double_clicked_data = json.loads(double_clicked_item.data(QtCore.Qt.UserRole))
 
-        hash, prev = double_clicked_data["hash"], self.main.previous_hash
+        hash_, prev = double_clicked_data["hash"], self.main.previous_hash
 
-        if hash == prev:
+        if hash_ == prev:
             self.main.onSetStatusSlot(("already copied", "warn"))
             return
 
@@ -1207,3 +1206,4 @@ class TrayIcon(QSystemTrayIcon):
     def onActivated(self, reason):
         if reason == self.__class__.DoubleClick:
             self.main.setVisible(True)
+            self.main.setWindowState(QtCore.Qt.WindowActive)
