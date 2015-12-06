@@ -1203,7 +1203,24 @@ class TrayIcon(QSystemTrayIcon):
         super(self.__class__, self).__init__(main)
         self.setIcon(AppIcon("text"))
         self.activated.connect(self.onActivated)
+        self.setContextMenu()
     def onActivated(self, reason):
         if reason == self.__class__.DoubleClick:
-            self.main.setVisible(True)
-            self.main.setWindowState(QtCore.Qt.WindowActive)
+            self.restore()
+    def restore(self):
+            self.main.setVisible(True)  # needed to unhide http://goo.gl/RKHlMZ
+            self.main.setWindowState(QtCore.Qt.WindowActive)  # needed to un-minimize
+            self.main.activateWindow()  # needed to bring to top
+    def setContextMenu(self, *args, **kwargs):
+        context_menu = QMenu()
+        exit_action = QAction(AppIcon("exit"), "Exit", self)
+        exit_action.triggered.connect(self.main.closeReal)
+        lock_action = QAction(AppIcon("safe"), "Lockout", self)
+        lock_action.triggered.connect(self.showLockout)
+        context_menu.addAction(lock_action)
+        context_menu.addSeparator()
+        context_menu.addAction(exit_action)
+        super(self.__class__, self).setContextMenu(context_menu)
+    def showLockout(self):
+        self.restore()  # MUST RESTORE as without it app seems to crash without warning
+        self.main.onShowLockoutSlot()
