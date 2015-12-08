@@ -94,7 +94,7 @@ class WebsocketWorker(QtCore.QThread):
 
             if not data.get("container_name"): ##CHECK HERE IF CONTAINER EXISTS IN OTHER ITEMS
                 file_names = data["file_names"]
-                self.statusSignalForMain.emit(("encrypting", "lock"))
+                self.statusSignalForMain.emit(("Encrypting", "lock"))
                 with encompress.Encompress(password = getLogin().get("password"), directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name:
                     
                     data["container_name"] = container_name
@@ -200,10 +200,10 @@ class WebsocketWorker(QtCore.QThread):
         elif answer == "Connected!":
             #if not hasattr(self,"initialized"):
             if not self.initialized:
-                self.statusSignalForMain.emit(("connected", "good"))
+                self.statusSignalForMain.emit(("Connected", "good"))
                 self.initialized = 1
             else:
-                self.statusSignalForMain.emit(("reconnected", "good"))
+                self.statusSignalForMain.emit(("Reconnected", "good"))
             rsa_private_key = data["rsa_private_key"]
             rsa_pbkdf2_salt = data["rsa_pbkdf2_salt"]
             self.SetRSAKeySignalForMain.emit(dict(rsa_private_key = rsa_private_key, rsa_pbkdf2_salt = rsa_pbkdf2_salt))
@@ -237,7 +237,7 @@ class WebsocketWorker(QtCore.QThread):
             if is_clipboard and not_this_device: #do not allow setting from the same pc
                 self.setClipSignalForMain.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
             elif is_share:
-                self.statusSignalForMain.emit(("you got something from %s"%latest["host_name"], "good"))
+                self.statusSignalForMain.emit(("You got something from %s"%latest["host_name"], "good"))
             """
             if is_clipboard:
                 self.statusSignalForMain.emit(("clipboard synced to cloud", "good"))
@@ -289,14 +289,14 @@ class WebsocketWorker(QtCore.QThread):
         return received["data"]
 
     def streamingDownloadCallback(self, progress):
-        self.statusSignalForMain.emit(("downloading %s"%progress["percent_done"], "download"))
+        self.statusSignalForMain.emit(("Downloading %s"%progress["percent_done"], "download"))
 
     def streamingUploadCallback(self, monitor, container_size): #FIXME App can CRASH if freq too high!
         bytes_read = float(monitor.bytes_read)
         percent_done = "%.2f"%(bytes_read/container_size*100.0)
         #print "%s%%"%percent_done
         if once_every_second.check(): #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
-            self.statusSignalForMain.emit(("uploading %s%%"%percent_done, "upload"))
+            self.statusSignalForMain.emit(("Uploading %s%%"%percent_done, "upload"))
 
     def ensureContainerUpload(self, container_name):
 
@@ -341,7 +341,7 @@ class WebsocketWorker(QtCore.QThread):
 
         if question == "Share?":
 
-            self.statusSignalForMain.emit(("sharing", "share"))
+            self.statusSignalForMain.emit(("Sharing", "share"))
 
             email = data_out["recipient"]
 
@@ -366,7 +366,7 @@ class WebsocketWorker(QtCore.QThread):
                 data = data_out
             ))
             if data_in['success']:
-                self.statusSignalForMain.emit(("your item was sent", "good"))
+                self.statusSignalForMain.emit(("Your item was sent", "good"))
             else:
                 #print "sh"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
@@ -377,25 +377,25 @@ class WebsocketWorker(QtCore.QThread):
 
             self.ensureContainerUpload(container_name)
 
-            self.statusSignalForMain.emit(("updating clip to server", "sync"))
+            self.statusSignalForMain.emit(("Updating clip to server", "sync"))
 
             data_in = self.requestResponse(send)
 
             if data_in["success"]:
-                 self.statusSignalForMain.emit(("updated!", "good"))
+                 self.statusSignalForMain.emit(("Updated", "good"))
             else:
                 #print "upd"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
 
         elif question=="Delete?":
 
-            self.statusSignalForMain.emit(("deleting", "trash"))
+            self.statusSignalForMain.emit(("Deleting", "trash"))
 
             data_in = self.requestResponse(send)
 
             if data_in["success"] == True:
                 LOG.debug("DELETE!")
-                self.statusSignalForMain.emit(("deleted from server", "good"))
+                self.statusSignalForMain.emit(("Deleted from server", "good"))
             else:
                 #print "del"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))
@@ -406,7 +406,7 @@ class WebsocketWorker(QtCore.QThread):
             data_in = self.requestResponse(send)
             
             if data_in["success"]:
-                self.statusSignalForMain.emit(("added to your bookmarks!", "good"))
+                self.statusSignalForMain.emit(("Added to your bookmarks!", "good"))
             else:
                 #print "star"+data_in["reason"]
                 self.statusSignalForMain.emit((data_in["reason"], "warn"))

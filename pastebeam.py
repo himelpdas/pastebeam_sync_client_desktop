@@ -122,7 +122,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
                 
     def onSetStatusSlot(self, msg_icn):
         msg,icn = msg_icn
-        self.status_lbl.setText("<h3>%s...</h3>"%msg.capitalize())
+        self.status_lbl.setText("<h3>%s...</h3>"%msg)
         
         pmap = QPixmap("images/{icn}".format(icn=icn))
         pmap = pmap.scaledToWidth(self.px_to_dp(16), QtCore.Qt.SmoothTransformation) #antialiasing http://stackoverflow.com/questions/7623631/qt-antialiasing-png-resize
@@ -426,7 +426,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         #image.destroy()
 
     def streamingDownloadCallback(self, progress):
-        self.onSetStatusSlot(("downloading %s"%progress["percent_done"], "download"))
+        self.onSetStatusSlot(("Downloading %s"%progress["percent_done"], "download"))
 
     def blockClipChangeDetection(func):
         """When incoming, this will invoke dataChanged, which will in turn invoke a push, therefore a race condition
@@ -449,8 +449,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         
         #downloading modal
         downloadContainerIfNotExist(new_clip, self.streamingDownloadCallback) #TODO show error message if download not found on server
-        
-        self.onSetStatusSlot(("decrypting", "unlock"))
+
+        self.onSetStatusSlot(("Decrypting", "unlock"))
         if system == "share":
             ciphertext = new_clip["decryption_key"]
             password = self.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
@@ -521,9 +521,9 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         except tarfile.ReadError as e:
             #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
             LOG.error("tar"+e[0])
-            self.onSetStatusSlot(("Decryption failed. Did you change your password?","bad"))
+            self.onSetStatusSlot(("Decryption failed. Current password is not compatible with this item","bad"))
         except ValueError:
-            self.onSetStatusSlot(("Decryption failed. Some data is missing or corrupt.","bad")) #ie. server returned a 404.html document
+            self.onSetStatusSlot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
                 
     @staticmethod
     def truncateTextLines(txt, max_lines=15):

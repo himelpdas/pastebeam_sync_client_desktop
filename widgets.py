@@ -129,8 +129,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         self.current_login = getLogin()
         self.setWindowTitle("Edit Settings")
         self.doAccountWidget()
-        self.doSystemWidget()
-        self.doStartupWidget()
+        self.doPreferencesWidget()
         self.doTabWidget()
         self.doOkCancelWidget()
         self.doSettingsLayout()
@@ -174,7 +173,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         self.account_widget = QWidget()
         self.account_widget.setLayout(account_vbox)
 
-    def doSystemWidget(self):
+    def doPreferencesWidget(self):
         device_name_label = QLabel("Device Name:")
         self.device_name_line = QLineEdit()
         self.device_name_line.setText(getDeviceNameFromKeyring())
@@ -184,7 +183,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         device_name_widget = QWidget()
         device_name_widget.setLayout(device_name_hbox)
 
-        sync_label = QLabel("Sync device clipboard with the cloud ")
+        sync_label = QLabel("Enable universal copy and paste")
         sync_check = QCheckBox()
         sync_hbox = QHBoxLayout()
         sync_hbox.addWidget(sync_label)
@@ -192,9 +191,18 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         sync_widget = QWidget()
         sync_widget.setLayout(sync_hbox)
 
+        run_label = QLabel("Run PasteBeam on system startup")
+        run_check = QCheckBox()
+        run_hbox = QHBoxLayout()
+        run_hbox.addWidget(run_label)
+        run_hbox.addWidget(run_check)
+        run_widget = QWidget()
+        run_widget.setLayout(run_hbox)
+
         master_vbox = QVBoxLayout()
         master_vbox.addWidget(device_name_widget)
         master_vbox.addWidget(sync_widget)
+        master_vbox.addWidget(run_widget)
 
         self.system_widget = QWidget()
         self.system_widget.setLayout(master_vbox)
@@ -204,36 +212,10 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
                              self.device_name_line.text().strip() or HOST_NAME  # strip removes trailing spaces
                              )
 
-    def doStartupWidget(self):
-
-        run_label = QLabel("Run PasteBeam on startup")
-        run_check = QCheckBox()
-        run_hbox = QHBoxLayout()
-        run_hbox.addWidget(run_label)
-        run_hbox.addWidget(run_check)
-        run_widget = QWidget()
-        run_widget.setLayout(run_hbox)
-
-        updates_label = QLabel("Periodically check for updates")
-        updates_check = QCheckBox()
-        updates_hbox = QHBoxLayout()
-        updates_hbox.addWidget(updates_label)
-        updates_hbox.addWidget(updates_check)
-        updates_widget = QWidget()
-        updates_widget.setLayout(updates_hbox)
-
-        self.startup_layout = QVBoxLayout()
-        self.startup_layout.addWidget(run_widget)
-        self.startup_layout.addWidget(updates_widget)
-
-        self.startup_widget = QWidget()
-        self.startup_widget.setLayout(self.startup_layout)
-
     def doTabWidget(self):
         self.tab_widget = QTabWidget()
-        self.tab_widget.addTab(self.account_widget, QIcon("images/account"), "Account")
-        self.tab_widget.addTab(self.system_widget, QIcon("images/system"), "Device")
-        self.tab_widget.addTab(self.startup_widget, QIcon("images/controls"), "Preferences")
+        self.tab_widget.addTab(self.account_widget, AppIcon("account"), "Account")
+        self.tab_widget.addTab(self.system_widget, AppIcon("controls"), "Preferences")
 
     def doSettingsLayout(self):
         self.settings_layout = QVBoxLayout()
@@ -264,10 +246,10 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
             "password": typed_password,
         }))
 
-        if hasattr(self.main, "ws_worker") and hasattr(self.main.ws_worker, "WSOCK"):  # maybe not initialized yet
-            if self.main.ws_worker.WSOCK:
-                self.main.ws_worker.WSOCK.close()
-            self.main.ws_worker.KEEP_RUNNING = 1
+        #if hasattr(self.main, "ws_worker") and hasattr(self.main.ws_worker, "WSOCK"):  # maybe not initialized yet
+        if self.main.ws_worker.WSOCK:
+            self.main.ws_worker.WSOCK.close()
+        self.main.ws_worker.KEEP_RUNNING = 1
 
 
 class WaitForSignalDialogMixin(object):
@@ -518,7 +500,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         hash_, prev = double_clicked_data["hash"], self.main.previous_hash
 
         if hash_ == prev:
-            self.main.onSetStatusSlot(("already copied", "warn"))
+            self.main.onSetStatusSlot(("Already copied", "warn"))
             return
 
         # container name is already in double_clicked_clip
