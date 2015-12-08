@@ -197,13 +197,15 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         passphrase = PBKDF2(password, rsa_pbkdf2_salt, dkLen=24, count=1000, prf=lambda p, s: HMAC.new(p, s, SHA512).digest()).encode("hex")
 
         self.rsa_private_key = RSA.importKey(des_rsa_private_key, passphrase)
-            
+
+
     def setupClip(self):
         self.previous_hash = {}
         
         self.clipboard = self.app.clipboard() #clipboard is in the QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
         self.clipboard.dataChanged.connect(self.onClipChangeSlot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
-        
+
+
     def onClipChangeSlot(self):
         #test if identical
 
@@ -425,8 +427,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.previous_hash = hash
         #image.destroy()
 
+
     def streamingDownloadCallback(self, progress):
         self.onSetStatusSlot(("Downloading %s"%progress["percent_done"], "download"))
+
 
     def blockClipChangeDetection(func):
         """When incoming, this will invoke dataChanged, which will in turn invoke a push, therefore a race condition
@@ -434,11 +438,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         def closure(self, clip_dict):
             new_clip, block = clip_dict["new_clip"], clip_dict["block_clip_change_detection"]
             if block:
-                self.clipboard.dataChanged.disconnect(self.onClipChangeSlot)
+                self.clipboard.dataChanged.disconnect()
             func(self, new_clip)
             self.clipboard.dataChanged.connect(self.onClipChangeSlot)
             self.previous_hash = new_clip["hash"] #needed since an incoming will not set self.previous_hash
         return closure
+
 
     @blockClipChangeDetection
     def onSetNewClipSlot(self, new_clip): #happens when new incoming clip or when user double clicks an item
@@ -524,7 +529,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             self.onSetStatusSlot(("Decryption failed. Current password is not compatible with this item","bad"))
         except ValueError:
             self.onSetStatusSlot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
-                
+        else:
+            self.onSetStatusSlot(("Decrypted new item", "good"))
+
+
     @staticmethod
     def truncateTextLines(txt, max_lines=15):
         line_count = txt.count("\n")

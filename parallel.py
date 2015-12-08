@@ -6,7 +6,7 @@ from gevent.event import AsyncResult
 #from gevent.queue import Queue #CANNOT USE QUEUE BECAUSE GEVENT CANNOT SWITCH CONTEXTS BETWEEN THREADS
 
 from functions import *
-from widgets import FancyListWidgetItem
+from widgets import FancyListItemWidget
 
 import requests, datetime, socket
 from requests_toolbelt import MultipartEncoderMonitor
@@ -36,7 +36,7 @@ class WebsocketWorkerMixinForMain(object):
         list_widget.insertItem(0,new_list_widget_item) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
         list_widget.takeItem(5) #TODO replace 5 with user settings #removes last item
 
-        new_widget = FancyListWidgetItem(new_clip, new_list_widget_item)
+        new_widget = FancyListItemWidget(new_clip, new_list_widget_item)
 
         list_widget.setItemWidget(new_list_widget_item, new_widget ) #add the label
 
@@ -193,11 +193,11 @@ class WebsocketWorker(QtCore.QThread):
         #Keep alive is handled by the websocket library itself (ie. it sends "alive?" pings that was done manually befor)
     
         #PUB SUB STYLE
-        if answer == "Error!":
+        if answer == "@error":
             self.KEEP_RUNNING = 0
             self.statusSignalForMain.emit((data, "bad"))
             
-        elif answer == "Connected!":
+        elif answer == "@connected":
             #if not hasattr(self,"initialized"):
             if not self.initialized:
                 self.statusSignalForMain.emit(("Connected", "good"))
@@ -209,7 +209,7 @@ class WebsocketWorker(QtCore.QThread):
             self.SetRSAKeySignalForMain.emit(dict(rsa_private_key = rsa_private_key, rsa_pbkdf2_salt = rsa_pbkdf2_salt))
             self.InitializeContactsListSignalForMain.emit(data["initial_contacts"])
 
-        elif answer == "Newest!":
+        elif answer == "@newest_clips":
             data.reverse() #so the clips can be displayed top down since each clip added gets pushed down in listwidget
 
             tabs_affected = set([])
@@ -238,28 +238,16 @@ class WebsocketWorker(QtCore.QThread):
                 self.setClipSignalForMain.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
             elif is_share:
                 self.statusSignalForMain.emit(("You got something from %s"%latest["host_name"], "good"))
-            """
-            if is_clipboard:
-                self.statusSignalForMain.emit(("clipboard synced to cloud", "good"))
-                if not_this_device: #do not allow setting from the same pc
-                    self.setClipSignalForMain.emit(latest) #this will set the newest clip only, thanks to self.main.new_clip!!!
-            elif is_star:
-                self.statusSignalForMain.emit(("added item to bookmarks", "good"))
-            elif is_share:
-                self.statusSignalForMain.emit(("you got something from %s"%latest["host_name"], "good"))
-            elif is_notification:
-                self.statusSignalForMain.emit(("you have a new notification", "good"))
-            """
 
-        elif answer == "get_contacts!":
+        elif answer == "@get_contacts":
             contacts_list = data
             self.InitializeContactsListSignalForMain.emit(contacts_list)
 
-        elif answer == "delete_local":
+        elif answer == "@delete_local":
             self.deleteClipSignalForMain.emit(data["location"])
 
         #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
-        elif answer in ["Upload!", "Update!", "Delete!", "Star!", "Contacts!", "Invite!", "Accept!", "Publickey!", "Share!"]: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
+        elif "!" in answer: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
         
     def requestResponse(self, send): #todo change name

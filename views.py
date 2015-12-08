@@ -29,3 +29,9 @@ corner_label_note = u"<i>%s</i>"
 corner_label_type = u"<i style='color:grey;'>%s</i>"
 
 icon_html = u"<img src='images/{name}.png' width={side} height={side}>"
+
+header_timestamp = u"<h3 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h3>"
+
+header_datestamp = u"<h3 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h3>"
+
+header_sender = u"<h3 style='color:{color}'>{host_name}</h3>"

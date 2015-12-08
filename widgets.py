@@ -198,11 +198,20 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         run_hbox.addWidget(run_check)
         run_widget = QWidget()
         run_widget.setLayout(run_hbox)
+        
+        dclick_label = QLabel("Double-click an item to copy")
+        dclick_check = QCheckBox()
+        dclick_hbox = QHBoxLayout()
+        dclick_hbox.addWidget(dclick_label)
+        dclick_hbox.addWidget(dclick_check)
+        dclick_widget = QWidget()
+        dclick_widget.setLayout(dclick_hbox)
 
         master_vbox = QVBoxLayout()
         master_vbox.addWidget(device_name_widget)
         master_vbox.addWidget(sync_widget)
         master_vbox.addWidget(run_widget)
+        master_vbox.addWidget(dclick_widget)
 
         self.system_widget = QWidget()
         self.system_widget.setLayout(master_vbox)
@@ -682,7 +691,7 @@ class PanelTabWidget(QTabWidget):
         self.addTab(self.star_list_widget, QIcon("images/star"), "Bookmarks")
         self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
         # self.addTab(QWidget(), QIcon("images/bulb"), "Notifications")
-        self.addTab(self.notification_list_widget, QIcon("images/bulb"), "Notifications")
+        self.addTab(self.notification_list_widget, AppIcon("bulb"), "Notifications")
         self.setCornerWidget(self.search)
 
     def onIncomingDelete(self, location):
@@ -769,7 +778,7 @@ class WaitForSignalDialog(QDialog):
         self.done(1)
 
 
-class QTextBrowserForFancyListWidgetItem(QTextBrowser):
+class QTextBrowserForFancyListItemWidget(QTextBrowser):
     def __init__(self, list_widget, item, content, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
         self.list_widget = list_widget
@@ -786,7 +795,7 @@ class QTextBrowserForFancyListWidgetItem(QTextBrowser):
         self.list_widget.setCurrentItem(self.item)
 
 
-class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
+class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
     host_colors = sorted(
         ["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C",
          "#2966B8", "#3923D6", "#23819C", "#FF62B0", ])  # http://www.hitmill.com/html/pastels.html
@@ -806,7 +815,10 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         self.copy_action = self.accept_invite_action = self.delete_action = self.share_action = self.star_action = None
 
         self.setHeaderFromClip()
+
+        self.item_icon = AppIcon("action")
         self.setContentFromClip()
+        
         self.doLayout()
 
         self.item_menu = QMenu()
@@ -1006,13 +1018,12 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
 
     def setHeaderFromClip(self):
         seed = hash32(self.clip["host_name"])
-        reproducible_random_color = random.Random(seed).choice(self.host_colors)  # REPRODUCABLE RANDOM COLOR FROM SEED
+        reproducible_random_color = random.Random(seed).choice(self.host_colors)  # REPRODUCIBLE RANDOM COLOR FROM SEED
 
         datetime_stamp = datetime.datetime.fromtimestamp(self.clip["timestamp_server"])
-        self.timestamp = u"<h3 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h3>".format(dt=datetime_stamp)
-        self.datestamp = u"<h3 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h3>".format(dt=datetime_stamp)
-        self.sender = u"<h3 style='color:{color}'>{host_name}</h3>".format(color=reproducible_random_color,
-                                                                           host_name=self.clip["host_name"])
+        self.timestamp = views.header_timestamp.format(dt=datetime_stamp)
+        self.datestamp = views.header_datestamp.format(dt=datetime_stamp)
+        self.sender = views.header_sender.format(color=reproducible_random_color, host_name=self.clip["host_name"])
 
     def setContentFromClip(self):
         if self.clip["clip_type"] == "screenshot":
@@ -1020,7 +1031,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             # image = QImage()
             # LOG.info(image.loadFromData(self.clip["clip_display"]["thumb"]) )
             # self.item.setIcon(QIcon(QPixmap(image)))
-            self.item.setIcon(AppIcon("image"))
+            self.item_icon = AppIcon("image")
             self.content = views.image_preview.format(
                 b64 = self.clip["clip_display"]["thumb"].encode('base64'),
                 **self.clip["clip_display"]["info"]
@@ -1028,15 +1039,15 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             # print self.content
 
         elif self.clip["clip_type"] == "html":
-            self.item.setIcon(QIcon("images/text.png"))
+            self.item_icon = QIcon("images/text.png")
             self.content = self.clip["clip_display"]
 
         elif self.clip["clip_type"] == "text":
-            self.item.setIcon(QIcon("images/text.png"))
+            self.item_icon = QIcon("images/text.png")
             self.content = self.clip["clip_display"]
 
         elif self.clip["clip_type"] == "files":
-            self.item.setIcon(QIcon("images/files.png"))
+            self.item_icon = QIcon("images/files.png")
             files = []
             for each_filename in self.clip["clip_display"]:
                 ext = each_filename.split(".")[-1]
@@ -1054,11 +1065,11 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             self.content = u"<ol><li>{li}</ol>".format(li=u"<li> ".join(files))
 
         elif self.clip["clip_type"] == "invite":
-            self.item.setIcon(AppIcon("me"))
+            self.item_icon = AppIcon("me")
             self.content = self.clip["clip_display"]
 
         elif self.clip["clip_type"] == "confirmation":  # change to "accepted" and get updated contacts here by appending "Contacts?" to outgoing queue
-            self.item.setIcon(AppIcon("ok")) #todo change to check mark
+            self.item_icon = AppIcon("ok") #todo change to check mark
             self.content = self.clip["clip_display"]
 
     def onDropDownClicked(self):
@@ -1074,7 +1085,13 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         def do_header():
             item_header_hbox = QHBoxLayout()
             item_header_hbox.addWidget(QLabel(self.sender))
+            item_header_hbox.addStretch()
+            item_header_hbox.addStretch()
+            item_header_hbox.addStretch()
+            item_header_hbox.addStretch()
+            item_header_hbox.addStretch()
             item_header_hbox.addWidget(QLabel(self.timestamp))
+            item_header_hbox.addStretch()
             item_header_hbox.addWidget(QLabel(self.datestamp))
             item_layout.addLayout(item_header_hbox)
 
@@ -1084,7 +1101,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
             if self.clip["system"] == "notification":
                 content_widget = QLabel(self.content)
             else:
-                content_widget = QTextBrowserForFancyListWidgetItem(self.list_widget, self.item,
+                content_widget = QTextBrowserForFancyListItemWidget(self.list_widget, self.item,
                                                                     self.content)  # http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
 
             # content_widget.setWordWrapMode(QTextOption.NoWrap)
@@ -1094,7 +1111,7 @@ class FancyListWidgetItem(QWidget, WaitForSignalDialogMixin):
         def do_dropdown():
             dropdown_hbox_layout = QHBoxLayout()
             self.dropdown_widget = QToolButton()
-            self.dropdown_widget.setIcon(AppIcon("action"))
+            self.dropdown_widget.setIcon(self.item_icon)
             self.dropdown_widget.clicked.connect(self.onDropDownClicked)
             self.dropdown_widget.setMenu(QMenu())  # needed to show arrow icon
             clip_type = self.clip["clip_type"]
