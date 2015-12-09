@@ -201,7 +201,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
     def setupClip(self):
         self.previous_hash = {}
-        
+
         self.clipboard = self.app.clipboard() #clipboard is in the QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
         self.clipboard.dataChanged.connect(self.onClipChangeSlot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
 
@@ -438,7 +438,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         def closure(self, clip_dict):
             new_clip, block = clip_dict["new_clip"], clip_dict["block_clip_change_detection"]
             if block:
-                self.clipboard.dataChanged.disconnect()
+                try:
+                    self.clipboard.dataChanged.disconnect()
+                except RuntimeError:  # already disconnected
+                    pass
             func(self, new_clip)
             self.clipboard.dataChanged.connect(self.onClipChangeSlot)
             self.previous_hash = new_clip["hash"] #needed since an incoming will not set self.previous_hash
@@ -466,7 +469,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         try:
             with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
 
-                mimeData = QtCore.QMimeData()
+                mimeData = QtCore.QMimeData(self)  # NEED the self to prevent garbage collection
 
                 if clip_type == "html":
 
@@ -521,7 +524,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                     PRINT("SETTING URLS", urls)
                     mimeData.setUrls(urls)
 
-    
+                #http://stackoverflow.com/questions/5339062/python-pyside-internal-c-object-already-deleted
+                #mimedata should be held in a parent object or self
                 self.clipboard.setMimeData(mimeData)
         except tarfile.ReadError as e:
             #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
