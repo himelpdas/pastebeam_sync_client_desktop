@@ -44,7 +44,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         
-        lockoutAction = QtGui.QAction(QtGui.QIcon("images/safe.png"), '&Lockout', self)
+        lockoutAction = QtGui.QAction(AppIcon("safe"), '&Lock', self)
         lockoutAction.setStatusTip('Lock the application')
         lockoutAction.triggered.connect(self.onShowLockoutSlot )
         
@@ -137,13 +137,12 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
 
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
-    FILE_IGNORE_LIST = map(lambda each: each.upper(), ["desktop.ini","thumbs.db",".ds_store","icon\r",".dropbox",".dropbox.attr"])
+    file_ignore_list = map(lambda each: each.upper(), ["desktop.ini","thumbs.db",".ds_store","icon\r",".dropbox",".dropbox.attr"])
 
-    MAX_FILE_SIZE = 1024*1024*50
-    
-    SENDER_UUID = uuid.uuid4()
+    max_file_size = 1024*1024*50
 
-    updateContactsListSignal = QtCore.Signal(list)
+    update_contacts_list_signal = QtCore.Signal(list)
+    show_settings_dialog_signal = QtCore.Signal()
     
     def __init__(self, app):
         super(Main, self).__init__()
@@ -165,7 +164,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.initWorker()
 
         self.contacts_list = []
-        self.updateContactsListSignal.connect(self.setContactsList)
+        self.update_contacts_list_signal.connect(self.setContactsList)
+        self.show_settings_dialog_signal.connect(lambda:SettingsDialog.show(self))
 
     def px_to_dp(self, px):
         #LOG.info(self.dpi)
@@ -193,7 +193,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def onSetRSAKeys(self, private_key_and_salt):
         des_rsa_private_key = private_key_and_salt["rsa_private_key"]
         rsa_pbkdf2_salt = private_key_and_salt["rsa_pbkdf2_salt"]
-        password = getLogin().get("password")
+        password = settings.account.get("password")
         passphrase = PBKDF2(password, rsa_pbkdf2_salt, dkLen=24, count=1000, prf=lambda p, s: HMAC.new(p, s, SHA512).digest()).encode("hex")
 
         self.rsa_private_key = RSA.importKey(des_rsa_private_key, passphrase)
@@ -212,6 +212,13 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.onSetStatusSlot(("Waiting for change", "scan"))
         
         mimeData = self.clipboard.mimeData()
+
+        pastebeam_mime = mimeData.retrieveData("pastebeam", unicode) #preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
+        if pastebeam_mime:
+            block_detection = json.loads(str(pastebeam_mime)).get("block_detection")
+            if block_detection:
+                # prevents redundant updating when clip is incomming from another device, no need to update to server what was just received
+                return
                 
         if mimeData.hasImage():
             #image = pmap.toImage() #just like wxpython do not allow this to del, or else .bits() will crash
@@ -335,12 +342,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             os_file_paths_new.sort()
             
             try:
-                os_file_sizes_new = map(lambda each_os_path: getFolderSize(each_os_path, max=self.MAX_FILE_SIZE) if os.path.isdir(each_os_path) else os.path.getsize(each_os_path), os_file_paths_new)
+                os_file_sizes_new = map(lambda each_os_path: getFolderSize(each_os_path, max=self.max_file_size) if os.path.isdir(each_os_path) else os.path.getsize(each_os_path), os_file_paths_new)
             except ZeroDivisionError:
                 PRINT("failure",213)
                 return
             
-            if sum(os_file_sizes_new) > self.MAX_FILE_SIZE:
+            if sum(os_file_sizes_new) > self.max_file_size:
                 #self.sb.toggleStatusIcon(msg='Files not uploaded. Maximum files size is 50 megabytes.', icon="bad")
                 self.onSetStatusSlot(("Files bigger than 50MB","warn"))
                 PRINT("failure",218)
@@ -365,7 +372,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                     for dirName, subdirList, fileList in os.walk(each_path, topdown=False):
                         #subdirList = filter(...) #filer out any temp or hidden folders
                         for fname in fileList:
-                            if fname.upper() not in self.FILE_IGNORE_LIST: #DO NOT calculate hash for system files as they are always changing, and if a folder is in clipboard, a new upload may be initiated each time a system file is changed
+                            if fname.upper() not in self.file_ignore_list: #DO NOT calculate hash for system files as they are always changing, and if a folder is in clipboard, a new upload may be initiated each time a system file is changed
                                 each_sub_path = os.path.join(dirName, fname)
                                 with open(each_sub_path, 'rb') as each_sub_file:
                                     each_relative_path = each_sub_path.split(each_path)[1].replace("\\", "/") #windows and *nix use different slashes, therefore different hashes, use one type of slash #c:/python27/lib/ - c:/python27/lib/bin/abc.pyc = bin/abc.pyc
@@ -413,7 +420,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             )
 
         else:
-            self.onSetStatusSlot(("Clipping is incompatible","warn"))
+            self.onSetStatusSlot(("The item in your clipboard is incompatible and can't be synced","warn"))
             return
 
         prepare["hash"]= hash
@@ -437,19 +444,20 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         will occur with multiple devices. This decorator will block redundant reupload from clipboard.dataChanged"""
         def closure(self, clip_dict):
             new_clip, block = clip_dict["new_clip"], clip_dict["block_clip_change_detection"]
+
+            #http://stackoverflow.com/questions/5339062/python-pyside-internal-c-object-already-deleted
+            #mimedata should be held in a parent object or self
+            #http://doc.qt.io/qt-4.8/qmimedata.html
+            mimeData = QtCore.QMimeData(self)  # NEED the self to prevent garbage collection
             if block:
-                try:
-                    self.clipboard.dataChanged.disconnect()
-                except RuntimeError:  # already disconnected
-                    pass
-            func(self, new_clip)
-            self.clipboard.dataChanged.connect(self.onClipChangeSlot)
+                mimeData.setData("pastebeam", json.dumps({'block_detection':True}))
+            func(self, new_clip, mimeData)
             self.previous_hash = new_clip["hash"] #needed since an incoming will not set self.previous_hash
         return closure
 
 
     @blockClipChangeDetection
-    def onSetNewClipSlot(self, new_clip): #happens when new incoming clip or when user double clicks an item
+    def onSetNewClipSlot(self, new_clip, mimeData): #happens when new incoming clip or when user double clicks an item
 
         container_name = new_clip["container_name"]
         clip_type = new_clip["clip_type"]
@@ -464,12 +472,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             password = self.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
             print password
         else:
-            password = getLogin().get("password")
+            password = settings.account.get("password")
 
         try:
             with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
-
-                mimeData = QtCore.QMimeData(self)  # NEED the self to prevent garbage collection
 
                 if clip_type == "html":
 
@@ -524,9 +530,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                     PRINT("SETTING URLS", urls)
                     mimeData.setUrls(urls)
 
-                #http://stackoverflow.com/questions/5339062/python-pyside-internal-c-object-already-deleted
-                #mimedata should be held in a parent object or self
-                self.clipboard.setMimeData(mimeData)
+                try:
+                    self.clipboard.setMimeData(mimeData)
+                except RuntimeError: #sometimes mimeData can be garbage collected despite passing it to the parent object to prevent GC
+                    pass
         except tarfile.ReadError as e:
             #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
             LOG.error("tar"+e[0])

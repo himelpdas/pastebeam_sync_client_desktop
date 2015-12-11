@@ -106,7 +106,10 @@ class Encompress():
 		#	pass#os.remove(each_path)
 			
 		if self.archive_path:
-			os.remove(self.archive_path)
+			try:
+				os.remove(self.archive_path)
+			except OSError:
+				pass
 		
 	@timeit
 	def makeIV(self):

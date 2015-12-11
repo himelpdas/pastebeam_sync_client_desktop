@@ -35,3 +35,7 @@ header_timestamp = u"<h3 style='color:grey'>{dt:%I}:{dt:%M}:{dt:%S}{dt:%p}</h3>"
 header_datestamp = u"<h3 style='color:grey'>{dt.month}-{dt.day}-{dt.year}</h3>"
 
 header_sender = u"<h3 style='color:{color}'>{host_name}</h3>"
+
+not_connected_msg = u"You are not connected! Check your account info."
+
+disconnected_msg = u"Got disconnected! Check your internet connection."

@@ -6,6 +6,7 @@ from gevent.event import AsyncResult
 #from gevent.queue import Queue #CANNOT USE QUEUE BECAUSE GEVENT CANNOT SWITCH CONTEXTS BETWEEN THREADS
 
 from functions import *
+import views
 from widgets import FancyListItemWidget
 
 import requests, datetime, socket
@@ -70,7 +71,6 @@ class WebsocketWorker(QtCore.QThread):
         self.main = main
         self.initialized = 0
         self.refilling_list = True
-        self.current_login = getLogin()
         self.OUTGOING_QUEUE = deque() # must use alternative Queue for non standard library thread and greenlets
 
         self.main.outgoingSignalForWorker.connect(self.onOutgoingSlot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
@@ -80,6 +80,12 @@ class WebsocketWorker(QtCore.QThread):
     
     def onOutgoingSlot(self, async_process):
         #PRINT("onOutgoingSlot", prepare)
+
+        try:
+            account = settings.account
+        except AttributeError:
+            self.statusSignalForMain.emit((views.not_connected_msg,"bad"))
+            return
         
         data = async_process["data"]
         question = async_process["question"]
@@ -95,7 +101,7 @@ class WebsocketWorker(QtCore.QThread):
             if not data.get("container_name"): ##CHECK HERE IF CONTAINER EXISTS IN OTHER ITEMS
                 file_names = data["file_names"]
                 self.statusSignalForMain.emit(("Encrypting", "lock"))
-                with encompress.Encompress(password = getLogin().get("password"), directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name:
+                with encompress.Encompress(password = account.get("password"), directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name:
                     
                     data["container_name"] = container_name
                     PRINT("encompress", container_name)
@@ -111,7 +117,10 @@ class WebsocketWorker(QtCore.QThread):
                     data['container_name'] = container_name_new
                     data["decryption_key"] = password_new #still raw need to encrypt with recipients public key in outgoing greenlet!
 
-        data['host_name'] = getDeviceNameFromKeyring()#self.main.HOST_NAME
+        try:
+            data['host_name'] = settings.device_name
+        except AttributeError:
+            data["host_name"] = host_name
 
         data["timestamp_client"] = time.time()    
         
@@ -123,15 +132,23 @@ class WebsocketWorker(QtCore.QThread):
         )
         
         self.OUTGOING_QUEUE.append(send)
-    
+
+    def reconnect(self):
+        try:
+            account = settings.account
+        except AttributeError:
+            self.KEEP_RUNNING = 0
+            self.main.show_settings_dialog_signal.emit()
+        else:
+            return create_connection(URL("ws",DEFAULT_DOMAIN, DEFAULT_PORT, "ws", email=account.get("email"), password=account.get("password"), ) ) #The geventclient's websocket MUST be runned here, as running it in __init__ would put websocket in main thread
+
+
     def run(self): #It arranges for the object’s run() method to be invoked in a separate thread of control.
         #GEVENT OBJECTS CANNOT BE RUNNED OUTSIDE OF THIS THREAD, OR ELSE CONTEXT SWITCHING (COROUTINE YIELDING) WILL FAIL! THIS IS BECAUSE QTHREAD IS NOT MONKEY_PATCHABLE
-    
+
         self.RESPONDED_EVENT = AsyncResult() #keep events separate, as other incoming events may interfere and crash the app! Though TCP/IP guarantees in-order sending and receiving, non-determanistic events like "new clips" will definitely fuck up the order!
         #self.RESPONDED_LIVING_EVENT = AsyncResult()
-        
-        self.RECONNECT = lambda: create_connection(URL("ws",DEFAULT_DOMAIN, DEFAULT_PORT, "ws", email=getLogin().get("email"), password=getLogin().get("password"), ) ) #The geventclient's websocket MUST be runned here, as running it in __init__ would put websocket in main thread
-        
+
         self.WSOCK = None
         
         self.KEEP_RUNNING = 1
@@ -154,7 +171,7 @@ class WebsocketWorker(QtCore.QThread):
                     try:
                         workerGreenlet(self)
                     except (socket.error, _exceptions.WebSocketConnectionClosedException):
-                        PRINT("failure in", workerGreenlet.__name__)
+                        LOG.error("failure in: %s"%workerGreenlet.__name__)
                         self.statusSignalForMain.emit(("Reconnecting", "connect"))
                         self.WSOCK.close() #close the WSOCK
 
@@ -162,14 +179,14 @@ class WebsocketWorker(QtCore.QThread):
                     else:
                         continue
                 try: #TODO INVOKE CLIP READING ON STARTUP! AFTER CONNECTION
-                    self.WSOCK = self.RECONNECT()
+                    self.WSOCK = self.reconnect()
                     self.clearListSignalForMain.emit() #clear list on reconnect or else a new list will be sent on top of previous
                 except: #previous try will handle later
                     LOG.info("Couldn't connect!")
                     LOG.info("Closing modal dialogs")
                     self.closeWaitDialogSignalForMain.emit(dict(
                             success=False,
-                            reason = "Got disconnected!")
+                            reason = views.disconnected_msg)
                     )
                     pass #block thread until there is a connection
         return closure
@@ -183,7 +200,7 @@ class WebsocketWorker(QtCore.QThread):
 
         try:
             received = json.loads(str(dump)) #blocks
-        except ValueError: #occurs when socket closes unexpectedly
+        except ValueError: #ValueError, occurs when socket closes unexpectedly
             raise socket.error
     
         answer = received["answer"]
@@ -303,8 +320,8 @@ class WebsocketWorker(QtCore.QThread):
             container_size = os.path.getsize(container_path)
 
             try:
-                email = self.current_login.get("email")
-                password = self.current_login.get("password")
+                email = settings.account.get("email")
+                password = settings.account.get("password")
                 m = MultipartEncoderMonitor.from_fields(
                     fields={'email': email, 'password': password,
                             'upload': (container_name, open(container_path, 'rb'), "application/pastebeam")},
@@ -342,7 +359,6 @@ class WebsocketWorker(QtCore.QThread):
             if not recipient_public_key:
                 return #SHOW MESSAGE HERE
 
-
             container_name = data_out["container_name"]
             self.ensureContainerUpload(container_name)
 
@@ -365,7 +381,7 @@ class WebsocketWorker(QtCore.QThread):
 
             self.ensureContainerUpload(container_name)
 
-            self.statusSignalForMain.emit(("Updating clip to server", "sync"))
+            self.statusSignalForMain.emit(("Updating item to server", "sync"))
 
             data_in = self.requestResponse(send)
 

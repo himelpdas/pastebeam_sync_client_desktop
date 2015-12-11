@@ -20,7 +20,7 @@ from Crypto import Random
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import HMAC, SHA512
 
-import validators
+import validators, keyring
 
 from spooky import hash128, hash32
 
@@ -148,20 +148,48 @@ def getFile(url, container_path, progress_callback=None,
                     progress_callback(
                         progress)
 
-import keyring
 
-HOST_NAME = u"{system} {release}".format(system=platform.system(),
+host_name = u"{system} {release}".format(system=platform.system(),
                                          release=platform.release())  # self.getLogin().get("device_name"),
 
+device_uuid = uuid.getnode()  # MAC address #http://stackoverflow.com/questions/2461141/get-a-unique-computer-id-in-python-on-windows-and-linux
+print device_uuid
 
-def getLogin():
-    ring = keyring.get_password("pastebeam", "account")
-    login = json.loads(ring) if ring else {}  # todo store email locally, and access only password!
-    return login
+class Settings(object): #http://stackoverflow.com/questions/9698614/super-raises-typeerror-must-be-type-not-classobj-for-new-style-class
+    attrs = ["_app_name"]
+    error = 'Could not find field "%s" in the keyring "%s"'
 
+    def __init__(self, app_name):
+        self._app_name = app_name
 
-def getDeviceNameFromKeyring():
-    return keyring.get_password("pastebeam", "device_name") or HOST_NAME
+    def __getattr__(self, field):
+        # __getattr__ is last resort if _app_name was not found! Also there is no super __getattr__ # http://stackoverflow.com/questions/12047847/super-object-not-calling-getattr
+        # no super __getattr__ needed since if the attr was already set in init, if you still want to override that feature, use __getattribute__ http://stackoverflow.com/questions/3278077/difference-between-getattr-vs-getattribute
+        value = self._get_field(field)
+        if not value:
+            raise AttributeError, self.__class__.error % (field, self._app_name)
+        return value
 
-    # from http://stackoverflow.com/questions/22408237/named-colors-in-matplotlib
-    # COLORS={'indigo': '#4B0082', 'gold': '#FFD700', 'hotpink': '#FF69B4', 'firebrick': '#B22222', 'indianred': '#CD5C5C', 'yellow': '#FFFF00', 'darkolivegreen': '#556B2F', 'olive': '#808000', 'darkseagreen': '#8FBC8F', 'pink': '#FFC0CB', 'tomato': '#FF6347', 'lightcoral': '#F08080', 'orangered': '#FF4500', 'navajowhite': '#FFDEAD', 'lime': '#00FF00', 'palegreen': '#98FB98', 'greenyellow': '#ADFF2F', 'burlywood': '#DEB887', 'mediumspringgreen': '#00FA9A', 'fuchsia': '#FF00FF', 'papayawhip': '#FFEFD5', 'blanchedalmond': '#FFEBCD', 'chartreuse': '#7FFF00', 'dimgray': '#696969', 'black': '#000000', 'peachpuff': '#FFDAB9', 'springgreen': '#00FF7F', 'aquamarine': '#7FFFD4', 'orange': '#FFA500', 'lightsalmon': '#FFA07A', 'darkslategray': '#2F4F4F', 'brown': '#A52A2A', 'dodgerblue': '#1E90FF', 'peru': '#CD853F', 'lawngreen': '#7CFC00', 'chocolate': '#D2691E', 'crimson': '#DC143C', 'forestgreen': '#228B22', 'slateblue': '#6A5ACD', 'lightseagreen': '#20B2AA', 'cyan': '#00FFFF', 'silver': '#C0C0C0', 'antiquewhite': '#FAEBD7', 'mediumorchid': '#BA55D3', 'skyblue': '#87CEEB', 'gray': '#808080', 'darkturquoise': '#00CED1', 'goldenrod': '#DAA520', 'darkgreen': '#006400', 'darkviolet': '#9400D3', 'darkgray': '#A9A9A9', 'moccasin': '#FFE4B5', 'saddlebrown': '#8B4513', 'darkslateblue': '#483D8B', 'lightskyblue': '#87CEFA', 'lightpink': '#FFB6C1', 'mediumvioletred': '#C71585', 'red': '#FF0000', 'deeppink': '#FF1493', 'limegreen': '#32CD32', 'darkmagenta': '#8B008B', 'palegoldenrod': '#EEE8AA', 'plum': '#DDA0DD', 'turquoise': '#40E0D0', 'lightgoldenrodyellow': '#FAFAD2', 'darkgoldenrod': '#B8860B', 'lavender': '#E6E6FA', 'maroon': '#800000', 'yellowgreen': '#9ACD32', 'sandybrown': '#FAA460', 'thistle': '#D8BFD8', 'violet': '#EE82EE', 'navy': '#000080', 'magenta': '#FF00FF', 'tan': '#D2B48C', 'rosybrown': '#BC8F8F', 'olivedrab': '#6B8E23', 'blue': '#0000FF', 'lightblue': '#ADD8E6', 'cornflowerblue': '#6495ED', 'linen': '#FAF0E6', 'darkblue': '#00008B', 'powderblue': '#B0E0E6', 'seagreen': '#2E8B57', 'darkkhaki': '#BDB76B', 'sienna': '#A0522D', 'mediumblue': '#0000CD', 'royalblue': '#4169E1', 'lightcyan': '#E0FFFF', 'green': '#008000', 'mediumpurple': '#9370DB', 'midnightblue': '#191970', 'paleturquoise': '#AFEEEE', 'bisque': '#FFE4C4', 'slategray': '#708090', 'darkcyan': '#008B8B', 'khaki': '#F0E68C', 'wheat': '#F5DEB3', 'teal': '#008080', 'darkorchid': '#9932CC', 'deepskyblue': '#00BFFF', 'salmon': '#FA8072', 'darkred': '#8B0000', 'steelblue': '#4682B4', 'palevioletred': '#DB7093', 'lightslategray': '#778899', 'aliceblue': '#F0F8FF', 'lightgreen': '#90EE90', 'orchid': '#DA70D6', 'gainsboro': '#DCDCDC', 'mediumseagreen': '#3CB371', 'lightgray': '#D3D3D3', 'mediumturquoise': '#48D1CC', 'lemonchiffon': '#FFFACD', 'cadetblue': '#5F9EA0', 'lavenderblush': '#FFF0F5', 'coral': '#FF7F50', 'purple': '#800080', 'aqua': '#00FFFF', 'mediumslateblue': '#7B68EE', 'darkorange': '#FF8C00', 'mediumaquamarine': '#66CDAA', 'darksalmon': '#E9967A', 'beige': '#F5F5DC', 'blueviolet': '#8A2BE2', 'azure': '#F0FFFF', 'lightsteelblue': '#B0C4DE', 'oldlace': '#FDF5E6'}
+    def __setattr__(self, field, value):
+        if field in self.__class__.attrs:
+            super(self.__class__, self).__setattr__(field, value)
+            return
+        self._set_field(field, value)
+
+    def __delattr__(self, field):
+        try:
+            self._del_field(field)
+        except keyring.errors.PasswordDeleteError:
+            raise AttributeError, self.__class__.error % (field, self._app_name)
+
+    def _del_field(self, field):
+        keyring.delete_password(self._app_name, field)
+
+    def _get_field(self, field):
+        dump = keyring.get_password(self._app_name, field)
+        return json.loads(dump or "null")
+
+    def _set_field(self, field, value):
+        keyring.set_password(self._app_name,field,json.dumps(value))
+
+settings = Settings(app_name = "pastebeam")

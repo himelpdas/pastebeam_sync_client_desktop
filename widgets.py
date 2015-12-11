@@ -80,7 +80,7 @@ class LockoutMixin(object):
         self.stacked_widget.addWidget(self.lockout_widget)
 
     def onLockoutPinTypedSlot(self, written):
-        login = getLogin().get("password")
+        login = settings.account.get("password")
         if not login:
             pass  # no password was set yet
         elif login != written:
@@ -109,6 +109,11 @@ class OkCancelWidgetMixin(object):
         self.okcancel_widget = QWidget()
         self.okcancel_widget.setLayout(okcancel_hbox)
 
+    def center_to_parent(self):
+        # http://stackoverflow.com/questions/18302025/derrived-widget-not-centered-on-parent-when-shown-as-dialog
+        move_location = self.main.frameGeometry().topLeft() + self.main.rect().center() - self.rect().center()
+        self.move(move_location)
+
     def onOkButtonClickedSlot(self):
         self.done(1)
 
@@ -126,7 +131,6 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
     def __init__(self, parent=None, f=0):
         super(self.__class__, self).__init__()
         self.main = parent
-        self.current_login = getLogin()
         self.setWindowTitle("Edit Settings")
         self.doAccountWidget()
         self.doPreferencesWidget()
@@ -134,12 +138,23 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         self.doOkCancelWidget()
         self.doSettingsLayout()
         self.setLayout(self.settings_layout)
+
+        QtCore.QTimer.singleShot(10, self.center_to_parent)  # not truly centered without the timer, let the dialog load up first
         self.exec_()
 
     def doAccountWidget(self):
+        try:
+            account = settings.account
+            email = account.get("email")
+            password = account.get("password")
+        except AttributeError:
+            email = ""
+            password = ""
+
+
         email_hbox = QHBoxLayout()
         email_label = QLabel("Email:")
-        self.email_line = QLineEdit(self.current_login.get("email"))
+        self.email_line = QLineEdit(email)
         email_hbox.addWidget(email_label)
         email_hbox.addWidget(self.email_line)
         email_widget = QWidget()
@@ -147,7 +162,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
 
         password_hbox = QHBoxLayout()
         password_label = QLabel("Password:")
-        self.password_line = QLineEdit(self.current_login.get("password"))
+        self.password_line = QLineEdit(password)
         self.password_line.setEchoMode(QLineEdit.Password)
         password_hbox.addWidget(password_label)
         password_hbox.addWidget(self.password_line)
@@ -176,7 +191,11 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
     def doPreferencesWidget(self):
         device_name_label = QLabel("Device Name:")
         self.device_name_line = QLineEdit()
-        self.device_name_line.setText(getDeviceNameFromKeyring())
+        try:
+            device_name = settings.device_name
+        except AttributeError:
+            device_name = host_name
+        self.device_name_line.setText(device_name)
         device_name_hbox = QHBoxLayout()
         device_name_hbox.addWidget(device_name_label)
         device_name_hbox.addWidget(self.device_name_line)
@@ -217,9 +236,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         self.system_widget.setLayout(master_vbox)
 
     def setDeviceNameToKeyRing(self):
-        keyring.set_password("pastebeam", "device_name",
-                             self.device_name_line.text().strip() or HOST_NAME  # strip removes trailing spaces
-                             )
+        settings.device_name = self.device_name_line.text().strip() or host_name  # strip removes trailing spaces
 
     def doTabWidget(self):
         self.tab_widget = QTabWidget()
@@ -234,29 +251,27 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
     def onOkButtonClickedSlot(self):
         self.setAccountInfoToKeyring()
         self.setDeviceNameToKeyRing()
-        self.done(1)
+        super(self.__class__, self).onOkButtonClickedSlot()
 
     def onCancelButtonClickedSlot(self):
-
-        self.done(0)
+        if not self.main.ws_worker.KEEP_RUNNING:
+            self.main.onSetStatusSlot((views.not_connected_msg, "bad"))
+        super(self.__class__, self).onCancelButtonClickedSlot()
 
     def setAccountInfoToKeyring(self):
-
-        login = getLogin()
 
         typed_email = self.email_line.text()
         typed_password = self.password_line.text()
 
-        if not typed_email and typed_password:  # TODO STRONGER VALIDATION HERE
-            return
+        if (typed_email and typed_password):  # TODO STRONGER VALIDATION HERE
 
-        keyring.set_password("pastebeam", "account", json.dumps({
-            "email": typed_email,
-            "password": typed_password,
-        }))
+            settings.account = {
+                "email": typed_email,
+                "password": typed_password,
+            }
 
         #if hasattr(self.main, "ws_worker") and hasattr(self.main.ws_worker, "WSOCK"):  # maybe not initialized yet
-        if self.main.ws_worker.WSOCK:
+        if self.main.ws_worker.WSOCK: #can be None if closed
             self.main.ws_worker.WSOCK.close()
         self.main.ws_worker.KEEP_RUNNING = 1
 
@@ -290,7 +305,16 @@ class WaitForSignalDialogMixin(object):
 class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
     @classmethod
     def show(cls, parent):
-        cls(parent)
+        if parent.ws_worker.KEEP_RUNNING:
+            cls(parent)
+        else:
+            QMessageBox.warning(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+                parent, # so it doesn't get garbage collected
+                "Warning",
+                views.not_connected_msg
+            )
+            parent.onSetStatusSlot((views.not_connected_msg, "bad"))
+
 
     def __init__(self, parent):
         super(self.__class__, self).__init__(parent)
@@ -311,6 +335,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
 
         self.doPreExecGetContactsList()
         if self.success:
+            QtCore.QTimer.singleShot(10, self.center_to_parent)
             self.exec_()
 
     def doPreExecGetContactsList(self):
@@ -772,7 +797,7 @@ class WaitForSignalDialog(QDialog):
     def onCloseWaitDialogSlot(self, result):
         self.parent.success = result
         try:
-            self.main.updateContactsListSignal.emit(sorted(result["contacts"]))
+            self.main.update_contacts_list_signal.emit(sorted(result["contacts"]))
         except KeyError:
             pass
         self.done(1)
@@ -918,7 +943,6 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
     def onAddStarAction(self, note, *args):
         current_item = json.loads(self.item.data(QtCore.Qt.UserRole))
         current_item["note"] = note
-        del current_item["_id"]
         async_process = dict(
             question="Star?",
             data=current_item
@@ -954,7 +978,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         # now get decryption keys
         clip_system = share_item_data["system"]
         if clip_system in ["main", "starred"]:
-            decryption_key = getLogin().get("password")
+            decryption_key = settings.account.get("password")
         elif clip_system == "share":
             return  # DONE decrypt public key encrypted random AES key
         elif clip_system == "notification":  # cant share notifications yet
@@ -1214,7 +1238,7 @@ class TrayIcon(QSystemTrayIcon):
         context_menu = QMenu()
         exit_action = QAction(AppIcon("exit"), "Exit", self)
         exit_action.triggered.connect(self.main.closeReal)
-        lock_action = QAction(AppIcon("safe"), "Lockout", self)
+        lock_action = QAction(AppIcon("safe"), "Lock", self)
         lock_action.triggered.connect(self.showLockout)
         context_menu.addAction(lock_action)
         context_menu.addSeparator()
