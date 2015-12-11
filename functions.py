@@ -166,8 +166,6 @@ class Settings(object): #http://stackoverflow.com/questions/9698614/super-raises
         # __getattr__ is last resort if _app_name was not found! Also there is no super __getattr__ # http://stackoverflow.com/questions/12047847/super-object-not-calling-getattr
         # no super __getattr__ needed since if the attr was already set in init, if you still want to override that feature, use __getattribute__ http://stackoverflow.com/questions/3278077/difference-between-getattr-vs-getattribute
         value = self._get_field(field)
-        if not value:
-            raise AttributeError, self.__class__.error % (field, self._app_name)
         return value
 
     def __setattr__(self, field, value):
@@ -187,7 +185,9 @@ class Settings(object): #http://stackoverflow.com/questions/9698614/super-raises
 
     def _get_field(self, field):
         dump = keyring.get_password(self._app_name, field)
-        return json.loads(dump or "null")
+        if not dump:  # the json can be 'null', but if keyring.get_password is None, then raise
+            raise AttributeError, self.__class__.error % (field, self._app_name)
+        return json.loads(dump)  # json.loads(dump or "null") # not used anymore since dump is True, but useful trick
 
     def _set_field(self, field, value):
         keyring.set_password(self._app_name,field,json.dumps(value))
