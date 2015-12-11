@@ -425,7 +425,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
         prepare["hash"]= hash
 
-        prepare["container_name"] = self.panel_tab_widget.getMatchingContainerForHash(hash)
+        prepare["container_name"] = self.panel_tab_widget.get_matching_container_for_hash(hash)
 
         async_process = dict(question="Update?", data=prepare)
 

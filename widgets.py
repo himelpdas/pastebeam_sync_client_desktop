@@ -492,7 +492,9 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
     def getItems(self):
         # http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
         for index in xrange(self.count()):
-            yield self.item(index)
+            item = self.item(index) #RACE? COULD BE NONE!
+            if item:
+                 yield item
 
     def resizeEvent(self, event):
         super(CommonListWidget, self).resizeEvent(event)
@@ -520,16 +522,15 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
     def getClipDataByCurrentRow(self):
         current_row = self.currentRow()
         current_item = self.currentItem()
-        current_item = json.loads(current_item.data(
-            QtCore.Qt.UserRole))  # http://stackoverflow.com/questions/25452125/is-it-possible-to-add-a-hidden-value-to-every-item-of-qlistwidget
-        return current_row, current_item
+        current_item_data = current_item.get_data()  # http://stackoverflow.com/questions/25452125/is-it-possible-to-add-a-hidden-value-to-every-item-of-qlistwidget
+        return current_row, current_item_data
 
     def onItemDoubleClickSlot(self, double_clicked_item):
 
         # current_item = self.item(0)
         # current_clip = json.loads(current_item.data(QtCore.Qt.UserRole))
 
-        double_clicked_data = json.loads(double_clicked_item.data(QtCore.Qt.UserRole))
+        double_clicked_data = double_clicked_item.get_data()
 
         hash_, prev = double_clicked_data["hash"], self.main.previous_hash
 
@@ -658,7 +659,7 @@ class PanelTabWidget(QTabWidget):
             for item in list_widget.getItems():
                 activate = False
                 for clip_type in activate_clip_types:
-                    item_data = json.loads(item.data(QtCore.Qt.UserRole))
+                    item_data = item.get_data()
                     if item_data["clip_type"] in clip_type:
                         activate = True
                 if activate:
@@ -678,7 +679,7 @@ class PanelTabWidget(QTabWidget):
                 if is_blank:
                     item.setHidden(False)  # unhide all
                 else:
-                    item_data = json.loads(item.data(QtCore.Qt.UserRole))
+                    item_data = item.get_data()
 
                     written = written.upper()
                     any_match = False
@@ -720,38 +721,33 @@ class PanelTabWidget(QTabWidget):
         self.setCornerWidget(self.search)
 
     def onIncomingDelete(self, location):
-        list_widget_name, remove_row = location
 
-        if list_widget_name == "MainListWidget":
-            self.main_list_widget.takeItem(remove_row)  # POSSIBLE RACE CONDITION
-        elif list_widget_name == "StarListWidget":
-            self.star_list_widget.takeItem(remove_row)
-        elif list_widget_name == "FriendListWidget":
-            self.friend_list_widget.takeItem(remove_row)
-        elif list_widget_name == "NotificationListWidget":
-            self.notification_list_widget.takeItem(remove_row)
+        for list_widget in self.panels:
+            for each_item in list_widget.getItems():
+                if location == each_item.get_data_id():
+                    row = list_widget.row(each_item)
+                    list_widget.takeItem(row)
 
     def clearAllLists(self):
         for each in self.panels:
             each.clear()
 
-    def getMatchingContainerForHash(self, hash):
-        hash_to_container = {}
-        for list_widget in self.panels:  # the reason why it's in panel tab widget
-            row = 0
-            while row < list_widget.count():  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
-                each_item = list_widget.item(row)
-                item_data = each_item.data(QtCore.Qt.UserRole)
-                json_data = json.loads(item_data)
-                if not json_data["system"] in ["share",
-                                               "notification"]:  # DO NOT reuse shared clips, as they were encrypted with a random key, not user's password. Not reusing wil force the system to re-encrypt the container with user's password
-                    hash_container_pair = {json_data["hash"]: json_data.get("container_name")}
-                    hash_to_container.update(hash_container_pair)
-                row += 1
+    def get_matching_container_for_hash(self, find_hash):
+        """prevent the recreating of the container, if it already exists in server"""
+        for list_widget in self.panels[:-2]:  #  # DO NOT reuse shared clips, as they were encrypted with a random key, not user's password. Not reusing wil force the system to re-encrypt the container with user's password
+            for each_item in list_widget.getItems():  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
+                each_item_hash = each_item.get_data_hash()
+                if find_hash == each_item_hash:
+                    each_item_data = each_item.get_data()
+                    return each_item_data.get("container_name")
 
-        container = hash_to_container.get(hash)  # or None
-        del hash_to_container
-        return container
+
+    def get_matching_items_for_data_id(self, find_data_id):
+        for list_widget in self.panels:
+            for each_item in list_widget.getItems():
+                each_item_data_id = each_item.get_data_id()
+                if each_item_data_id == find_data_id:
+                    yield each_item  # use yield instead of return if we just want to stop at the first match
 
 
 class LockoutStackedWidget(StackedWidgetFader):
@@ -818,6 +814,34 @@ class QTextBrowserForFancyListItemWidget(QTextBrowser):
     def mousePressEvent(self, event):
         super(self.__class__, self).mousePressEvent(event)
         self.list_widget.setCurrentItem(self.item)
+
+class FancyListItem(QListWidgetItem):
+    """cannot override data and setData directly, due to unknown behavior. Using horizontal methods instead."""
+    def __init__(self):
+        super(self.__class__, self).__init__()
+
+    def set_data(self, clip_data, *args, **kwargs):
+        id_and_clip_data = "{_id}|{hash}|{data}".format(_id=str(clip_data["_id"]), hash=clip_data["hash"], data=json.dumps(clip_data))  # use bson util's json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
+
+        # json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
+        self.setData(QtCore.Qt.UserRole, id_and_clip_data)
+
+    def get_data(self, *args, **kwargs):
+        id_and_clip_data = self.data(QtCore.Qt.UserRole)
+        raw_data = id_and_clip_data.split('|', 2)[-1]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
+        data = json.loads(raw_data)
+        return data
+
+    def get_data_id(self):
+        id_and_clip_data = self.data(QtCore.Qt.UserRole)
+        _id = id_and_clip_data.split('|', 2)[0]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
+        return _id
+
+    def get_data_hash(self):
+        id_and_clip_data = self.data(QtCore.Qt.UserRole)
+        _id = id_and_clip_data.split('|', 2)[1]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
+        return _id
+
 
 
 class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
@@ -925,7 +949,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             sub_menu.addSeparator()
             action_names = []
             for each_item in history_list_widget.getItems(): #self.main.panel_tab_widget.star_list_widget.getItems():
-                each_item_data = json.loads(each_item.data(QtCore.Qt.UserRole))
+                each_item_data = each_item.get_data()
                 each_item_note = each_item_data.get("note")
                 if each_item_note and each_item_note not in action_names:
 
@@ -941,11 +965,11 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         return sub_menu
 
     def onAddStarAction(self, note, *args):
-        current_item = json.loads(self.item.data(QtCore.Qt.UserRole))
-        current_item["note"] = note
+        current_item_data = self.item.get_data()
+        current_item_data["note"] = note
         async_process = dict(
             question="Star?",
-            data=current_item
+            data=current_item_data
         )
         self.main.outgoingSignalForWorker.emit(async_process)
 
@@ -958,10 +982,10 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.accept_invite_action.setDisabled(True)
 
     def onAcceptInviteAction(self):
-        current_item = json.loads(self.item.data(QtCore.Qt.UserRole))
-        if not current_item["clip_type"] == "invite":
+        current_item_data = self.item.get_data()
+        if not current_item_data["clip_type"] == "invite":
             return
-        email = current_item["host_name"]
+        email = current_item_data["host_name"]
 
         self.showWaitForSignalDialog("Accept?", {"email": email}, "could not accept invitation", success_msg=False)
 
@@ -972,7 +996,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
     def onShareSubMenuTriggeredSlot(self, note, action):
         email = action.text()
-        share_item_data = json.loads(self.item.data(QtCore.Qt.UserRole))
+        share_item_data = self.item.get_data()
         share_item_data["note"] = note
 
         # now get decryption keys
@@ -1012,7 +1036,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             self.share_action.setMenu(share_sub_menu)
 
     def setCopyAction(self):
-        self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy all", self)
+        self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy item", self)
         copy_action.triggered.connect(self.onCopyActionSlot)
         self.item_menu.addAction(copy_action)
         separator = QAction(self)
@@ -1035,8 +1059,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         remove_id = current_item["_id"]
         async_process = dict(
             question="Delete?",
-            data={"remove_id": remove_id, "remove_row": current_row,
-                  "list_widget_name": self.list_widget.__class__.__name__}
+            data={"remove_id": remove_id}
         )
         self.main.outgoingSignalForWorker.emit(async_process)
 

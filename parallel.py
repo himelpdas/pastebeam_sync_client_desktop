@@ -7,7 +7,7 @@ from gevent.event import AsyncResult
 
 from functions import *
 import views
-from widgets import FancyListItemWidget
+from widgets import FancyListItemWidget, FancyListItem
 
 import requests, datetime, socket
 from requests_toolbelt import MultipartEncoderMonitor
@@ -32,8 +32,8 @@ class WebsocketWorkerMixinForMain(object):
 
         #self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
 
-        new_list_widget_item =  QListWidgetItem()
-        new_list_widget_item.setData(QtCore.Qt.UserRole, json.dumps(new_clip)) #json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
+        new_list_widget_item =  FancyListItem()
+        new_list_widget_item.set_data(new_clip)
         list_widget.insertItem(0,new_list_widget_item) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
         list_widget.takeItem(5) #TODO replace 5 with user settings #removes last item
 
