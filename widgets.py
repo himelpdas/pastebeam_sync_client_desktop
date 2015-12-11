@@ -114,52 +114,51 @@ class LockoutWidget(QWidget):
 
 
 class OkCancelWidgetMixin(object):
-    def doOkCancelWidget(self):
+    def do_ok_cancel_widget(self):
         ok_button = QPushButton("Ok")
-        ok_button.clicked.connect(self.onOkButtonClickedSlot)
+        ok_button.clicked.connect(self.on_ok_button_clicked_slot)
         cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(self.onCancelButtonClickedSlot)
-        okcancel_hbox = QHBoxLayout()
-        okcancel_hbox.addStretch(1)
-        okcancel_hbox.addWidget(ok_button)
-        okcancel_hbox.addWidget(cancel_button)
-        self.okcancel_widget = QWidget()
-        self.okcancel_widget.setLayout(okcancel_hbox)
+        cancel_button.clicked.connect(self.on_cancel_button_clicked_slot)
+        ok_cancel_hbox = QHBoxLayout()
+        ok_cancel_hbox.addStretch(1)
+        ok_cancel_hbox.addWidget(ok_button)
+        ok_cancel_hbox.addWidget(cancel_button)
+        self.ok_cancel_widget = QWidget()
+        self.ok_cancel_widget.setLayout(ok_cancel_hbox)
 
     def center_to_parent(self):
         # http://stackoverflow.com/questions/18302025/derrived-widget-not-centered-on-parent-when-shown-as-dialog
         move_location = self.main.frameGeometry().topLeft() + self.main.rect().center() - self.rect().center()
         self.move(move_location)
 
-    def onOkButtonClickedSlot(self):
+    def on_ok_button_clicked_slot(self):
         self.done(1)
 
-    def onCancelButtonClickedSlot(self):
+    def on_cancel_button_clicked_slot(self):
         self.done(0)
 
 
 class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/threads/37058-modal-QWidget
 
     @classmethod
-    def show(cls,
-             parent):  # THE CLASS ITSELF IS AN OBJECT WITH ITS OWN NAMESPACE, AND CALLING THE CLASS RETURNS (INSTANTIATES) A NEW INSTANCE OBJECT HELD IN THE CLASSES NAMESPACE
+    def show(cls, parent):  # THE CLASS ITSELF IS AN OBJECT WITH ITS OWN NAMESPACE, AND CALLING THE CLASS RETURNS (INSTANTIATES) A NEW INSTANCE OBJECT HELD IN THE CLASSES NAMESPACE
         cls(parent)
 
-    def __init__(self, parent=None, f=0):
-        super(self.__class__, self).__init__()
-        self.main = parent
+    def __init__(self, *args, **kwargs):
+        super(self.__class__, self).__init__(*args, **kwargs)
+        self.main = args[0]
         self.setWindowTitle("Edit Settings")
-        self.doAccountWidget()
-        self.doPreferencesWidget()
-        self.doTabWidget()
-        self.doOkCancelWidget()
-        self.doSettingsLayout()
+        self.do_account_widget()
+        self.do_preferences_widget()
+        self.do_tab_widget()
+        self.do_ok_cancel_widget()
+        self.do_settings_layout()
         self.setLayout(self.settings_layout)
 
         QtCore.QTimer.singleShot(10, self.center_to_parent)  # not truly centered without the timer, let the dialog load up first
         self.exec_()
 
-    def doAccountWidget(self):
+    def do_account_widget(self):
         try:
             account = settings.account
             email = account.get("email")
@@ -167,7 +166,6 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         except AttributeError:
             email = ""
             password = ""
-
 
         email_hbox = QHBoxLayout()
         email_label = QLabel("Email:")
@@ -205,7 +203,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         self.account_widget = QWidget()
         self.account_widget.setLayout(account_vbox)
 
-    def doPreferencesWidget(self):
+    def do_preferences_widget(self):
         device_name_label = QLabel("Device Name:")
         self.device_name_line = QLineEdit()
         try:
@@ -219,8 +217,14 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         device_name_widget = QWidget()
         device_name_widget.setLayout(device_name_hbox)
 
+        try:
+            synchronize = settings.synchronize
+        except AttributeError:
+            synchronize = False
+
         sync_label = QLabel("Enable universal copy and paste")
-        sync_check = QCheckBox()
+        self.sync_check = sync_check = QCheckBox()
+        sync_check.setChecked(synchronize)
         sync_hbox = QHBoxLayout()
         sync_hbox.addWidget(sync_label)
         sync_hbox.addWidget(sync_check)
@@ -252,30 +256,34 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         self.system_widget = QWidget()
         self.system_widget.setLayout(master_vbox)
 
-    def setDeviceNameToKeyRing(self):
+    def set_device_name_to_keyring(self):
         settings.device_name = self.device_name_line.text().strip() or host_name  # strip removes trailing spaces
 
-    def doTabWidget(self):
+    def do_tab_widget(self):
         self.tab_widget = QTabWidget()
         self.tab_widget.addTab(self.account_widget, AppIcon("account"), "Account")
         self.tab_widget.addTab(self.system_widget, AppIcon("controls"), "Preferences")
 
-    def doSettingsLayout(self):
+    def do_settings_layout(self):
         self.settings_layout = QVBoxLayout()
         self.settings_layout.addWidget(self.tab_widget)
-        self.settings_layout.addWidget(self.okcancel_widget)
+        self.settings_layout.addWidget(self.ok_cancel_widget)
 
-    def onOkButtonClickedSlot(self):
-        self.setAccountInfoToKeyring()
-        self.setDeviceNameToKeyRing()
-        super(self.__class__, self).onOkButtonClickedSlot()
+    def on_ok_button_clicked_slot(self):
+        self.set_account_to_keyring()
+        self.set_device_name_to_keyring()
+        self.set_checkables_to_keyring()
+        super(self.__class__, self).on_ok_button_clicked_slot()
 
-    def onCancelButtonClickedSlot(self):
+    def on_cancel_button_clicked_slot(self):
         if not self.main.ws_worker.KEEP_RUNNING:
             self.main.onSetStatusSlot((views.not_connected_msg, "bad"))
-        super(self.__class__, self).onCancelButtonClickedSlot()
+        super(self.__class__, self).on_cancel_button_clicked_slot()
 
-    def setAccountInfoToKeyring(self):
+    def set_checkables_to_keyring(self):
+        settings.synchronize = self.sync_check.isChecked()
+
+    def set_account_to_keyring(self):
 
         typed_email = self.email_line.text()
         typed_password = self.password_line.text()
@@ -294,7 +302,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
 
 
 class WaitForSignalDialogMixin(object):
-    def showWaitForSignalDialog(self, question, data_dict, error_msg, success_msg=False):
+    def show_wait_for_signal_dialog(self, question, data_dict, error_msg, success_msg=False):
         "shows an unclosable dialog until closeWaitDialogSignalForMain"
         self.main.outgoingSignalForWorker.emit(
             dict(
@@ -340,23 +348,23 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.contacts_list = []
 
         self.setWindowTitle('Edit Contacts')
-        self.doAddContactWidget()
-        self.doListWidget()
-        self.doOkCancelWidget()
-        self.doContactsWidget()
+        self.do_add_contact_widget()
+        self.do_list_widget()
+        self.do_ok_cancel_widget()
+        self.do_contacts_widget()
 
         # self.bindEvents()
 
         self.setLayout(self.contacts_layout)
-        self.resizeMinWindowSizeForListWidget()
+        self.resize_min_window_size_for_list_widget()
 
-        self.doPreExecGetContactsList()
+        self.do_pre_exec_get_contacts_list()
         if self.success:
             QtCore.QTimer.singleShot(10, self.center_to_parent)
             self.exec_()
 
-    def doPreExecGetContactsList(self):
-        self.showWaitForSignalDialog("Contacts?", {"contacts_list": None}, "could not get contacts list",
+    def do_pre_exec_get_contacts_list(self):
+        self.show_wait_for_signal_dialog("Contacts?", {"contacts_list": None}, "could not get contacts list",
                                      success_msg=False)
 
         if self.success["success"]:
@@ -366,7 +374,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
 
             self.list_widget.sortItems()
 
-    def onFriendRequestButtonClickSlot(self):
+    def on_friend_request_button_clicked_slot(self):
         email = self.email_line.text()
         if not validators.email(email):
             QMessageBox.warning(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
@@ -376,10 +384,10 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
             )
             return
 
-        self.showWaitForSignalDialog("Invite?", {"email": email}, "failed to send friend invite",
+        self.show_wait_for_signal_dialog("Invite?", {"email": email}, "failed to send friend invite",
                                      success_msg="friend request sent")
 
-    def onFriendRequestReceivedByServerSlot(self):
+    def on_friend_request_received_slot(self):
         self.friend_request_wait_dialog.done(1)
         QMessageBox.information(self, "Success", "Friend request sent!")
 
@@ -390,31 +398,31 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
             items.append(self.list_widget.item(index).text())
         return items
 
-    def onOkButtonClickedSlot(self):
+    def on_ok_button_clicked_slot(self):
         # guaranteed thread safe as this window wouldn't even appear without self.contacts_list
         current_items = self.currentItems()
 
         if set(current_items) == set(self.contacts_list):  # no need to contact server
-            super(self.__class__, self).onOkButtonClickedSlot()
+            super(self.__class__, self).on_ok_button_clicked_slot()
             return
 
-        self.showWaitForSignalDialog("Contacts?", {"contacts_list": current_items}, "failed to save contacts to server",
+        self.show_wait_for_signal_dialog("Contacts?", {"contacts_list": current_items}, "failed to save contacts to server",
                                      success_msg="contacts saved to server")
 
         if self.success["success"]:
-            super(self.__class__, self).onOkButtonClickedSlot()
+            super(self.__class__, self).on_ok_button_clicked_slot()
 
-    def resizeMinWindowSizeForListWidget(self):
+    def resize_min_window_size_for_list_widget(self):
         default_height = self.sizeHint().height()
         new_height = default_height * 1.15
         self.setMinimumHeight(new_height)
 
-    def doAddContactWidget(self):
+    def do_add_contact_widget(self):
         email_label = QLabel("Friend's Email:")
         self.email_line = email_line = QLineEdit()
 
         friend_request_button = QPushButton("Send friend invite")
-        friend_request_button.clicked.connect(self.onFriendRequestButtonClickSlot)
+        friend_request_button.clicked.connect(self.on_friend_request_button_clicked_slot)
 
         lines_vbox = QVBoxLayout()
         lines_vbox.addWidget(email_label)
@@ -424,7 +432,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.add_user_widget = QWidget()
         self.add_user_widget.setLayout(lines_vbox)
 
-    def doListWidget(self):
+    def do_list_widget(self):
         contacts_list_label = QLabel("Friends list:")
         self.list_widget = QListWidget()
         # for letter in range(65,91):
@@ -438,7 +446,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.contacts_list_widget = QListWidget()
         self.contacts_list_widget.setLayout(contacts_list_layout)
 
-    def doContactsWidget(self):
+    def do_contacts_widget(self):
         # how_label = QLabel("For your security, clips from other PasteBeam users are automatically blocked without notice. To unblock a friend, add his email to your contacts list here. Likewise, for him to receive your clips, he must add your login email to his own contacts list.")
         # how_label.setWordWrap(True)
 
@@ -446,7 +454,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         # self.contacts_layout.addWidget(how_label)
         self.contacts_layout.addWidget(self.add_user_widget)
         self.contacts_layout.addWidget(self.contacts_list_widget)
-        self.contacts_layout.addWidget(self.okcancel_widget)
+        self.contacts_layout.addWidget(self.ok_cancel_widget)
 
     def onDeleteClickedSlot(self):
         current_row = self.list_widget.currentRow()
@@ -504,7 +512,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         self.setVerticalScrollMode(
             QAbstractItemView.ScrollPerPixel)  # http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
 
-        self.itemPressed.connect(self.onItemPressedSlot)  # ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
+        self.itemPressed.connect(self.on_item_pressed_slot)  # ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 
     def getItems(self):
         # http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
@@ -517,32 +525,32 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         super(CommonListWidget, self).resizeEvent(event)
         # do something on resize!
 
-    def onItemPressedSlot(self, i):
+    def on_item_pressed_slot(self, i):
         "So that any click of an item will enable all context items"
         self.parent.onTabChangedSlot(self.index)  # hide notification icon in tab when clicking on an item
 
-    def doCommon(self):
+    def do_common(self):
 
-        self.doStyling()
+        self.do_styling()
 
-        self.doUncommon()  # do uncommon here
+        self.do_uncommon()  # do uncommon here
 
         self.itemDoubleClicked.connect(
-            self.onItemDoubleClickSlot)  # textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
+            self.on_item_double_click_slot)  # textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
 
-    def doStyling(self):
+    def do_styling(self):
         self.setIconSize(
             self.parent.icon_size)  # http://www.qtcentre.org/threads/8733-Size-of-an-Icon #http://nullege.com/codes/search/PySide.QtGui.QListWidget.setIconSize
         self.setAlternatingRowColors(
             True)  # http://stackoverflow.com/questions/23213929/qt-qlistwidget-item-with-alternating-colors
 
-    def getClipDataByCurrentRow(self):
+    def get_clip_data_by_current_row(self):
         current_row = self.currentRow()
         current_item = self.currentItem()
         current_item_data = current_item.get_data()  # http://stackoverflow.com/questions/25452125/is-it-possible-to-add-a-hidden-value-to-every-item-of-qlistwidget
         return current_row, current_item_data
 
-    def onItemDoubleClickSlot(self, double_clicked_item):
+    def on_item_double_click_slot(self, double_clicked_item):
 
         # current_item = self.item(0)
         # current_clip = json.loads(current_item.data(QtCore.Qt.UserRole))
@@ -561,16 +569,16 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         self.main.onSetNewClipSlot(dict(new_clip = double_clicked_data, block_clip_change_detection = False))
 
-        # self.previous_hash = hash #or else onClipChangeSlot will react and a duplicate new list item will occur.
+        # self.previous_hash = hash #or else on_clip_change_slot will react and a duplicate new list item will occur.
 
 
 class NotificationListWidget(CommonListWidget):
     def __init__(self, parent=None):
         super(self.__class__, self).__init__(parent)
         self.index = 3
-        self.doCommon()
+        self.do_common()
 
-    def doUncommon(self):
+    def do_uncommon(self):
         pass
 
 
@@ -578,9 +586,9 @@ class StarListWidget(CommonListWidget):
     def __init__(self, parent=None):
         super(self.__class__, self).__init__(parent)
         self.index = 1
-        self.doCommon()
+        self.do_common()
 
-    def doUncommon(self):
+    def do_uncommon(self):
         pass
 
 
@@ -588,9 +596,9 @@ class MainListWidget(CommonListWidget):
     def __init__(self, parent=None):
         super(self.__class__, self).__init__(parent)
         self.index = 0
-        self.doCommon()
+        self.do_common()
 
-    def doUncommon(self):
+    def do_uncommon(self):
         pass
 
 
@@ -598,9 +606,9 @@ class FriendListWidget(CommonListWidget):
     def __init__(self, parent=None):
         super(self.__class__, self).__init__(parent)
         self.index = 2
-        self.doCommon()
+        self.do_common()
 
-    def doUncommon(self):
+    def do_uncommon(self):
         pass
 
 
@@ -905,7 +913,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
     def mouseDoubleClickEvent(self, event):
         if not self.clip["system"] == "notification":
-            self.list_widget.onItemDoubleClickSlot(self.item)
+            self.list_widget.on_item_double_click_slot(self.item)
             # super(self.__class__, self).mouseDoubleClickEvent(event)
 
     def resetActions(self):
@@ -1003,7 +1011,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             return
         email = current_item_data["host_name"]
 
-        self.showWaitForSignalDialog("Accept?", {"email": email}, "could not accept invitation", success_msg=False)
+        self.show_wait_for_signal_dialog("Accept?", {"email": email}, "could not accept invitation", success_msg=False)
 
     def setShareAction(self):
         self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
@@ -1060,7 +1068,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.item_menu.addAction(separator)
 
     def onCopyActionSlot(self):
-        self.list_widget.onItemDoubleClickSlot(self.item)  # listwidgetitems don't have signals, so must use parent
+        self.list_widget.on_item_double_click_slot(self.item)  # listwidgetitems don't have signals, so must use parent
 
     def setDeleteAction(self):
         separator = QAction(self)
@@ -1071,7 +1079,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.item_menu.addAction(self.delete_action)
 
     def onDeleteAction(self):
-        current_row, current_item = self.list_widget.getClipDataByCurrentRow()
+        current_row, current_item = self.list_widget.get_clip_data_by_current_row()
         remove_id = current_item["_id"]
         async_process = dict(
             question="Delete?",
@@ -1282,12 +1290,12 @@ class TrayIcon(QSystemTrayIcon):
         exit_action = QAction(AppIcon("exit"), "Exit", self)
         exit_action.triggered.connect(self.main.closeReal)
         lock_action = QAction(AppIcon("safe"), "Lock", self)
-        lock_action.triggered.connect(self.showLockout)
+        lock_action.triggered.connect(self.show_lockout)
         context_menu.addAction(lock_action)
         context_menu.addSeparator()
         context_menu.addAction(exit_action)
         super(self.__class__, self).setContextMenu(context_menu)
 
-    def showLockout(self):
+    def show_lockout(self):
         self.restore()  # MUST RESTORE as without it app seems to crash without warning
         self.main.lockout_widget.on_show_lockout_slot()

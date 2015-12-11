@@ -47,7 +47,7 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         self.panel_tab_widget = PanelTabWidget(QtCore.QSize(self.px_to_dp(24) , self.px_to_dp(24) ), self)
         self.lockout_widget = LockoutWidget(self)
         #for each in self.panel_tab_widget.panels:
-        #    each.itemDoubleClicked.connect(each.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
+        #    each.itemDoubleClicked.connect(each.on_item_double_click_slot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
         self.stacked_widget.addWidget(self.panel_tab_widget)
         self.stacked_widget.addWidget(self.lockout_widget)
 
@@ -215,10 +215,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.previous_hash = {}
 
         self.clipboard = self.app.clipboard() #clipboard is in the QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
-        self.clipboard.dataChanged.connect(self.onClipChangeSlot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
+        self.clipboard.dataChanged.connect(self.on_clip_change_slot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
 
 
-    def onClipChangeSlot(self):
+    def on_clip_change_slot(self):
         #test if identical
 
         self.onSetStatusSlot(("Scanning", "scan"))
@@ -242,7 +242,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             except AttributeError:
                 return
 
-            LOG.info("onClipChangeSlot: hash:%s, prev:%s"%(hash, prev))
+            LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.onSetStatusSlot(("image copied","good"))
                 return
@@ -279,13 +279,13 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             hash = format(hash128(html), "x")
             
-            LOG.info("onClipChangeSlot: hash:%s, prev:%s"%(hash, prev))
+            LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.onSetStatusSlot(("data copied","good"))
                 return
             
             preview = cgi.escape(text) #crashes with big data
-            preview = self.truncateTextLines(preview)
+            #preview = self.truncateTextLines(preview)
             preview = self.anchorUrls(preview)
                         
             html_file_name = "%s.json"%hash
@@ -312,7 +312,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             hash = format(hash128(original), "x")
             
-            LOG.info("onClipChangeSlot: hash:%s, prev:%s"%(hash, prev))
+            LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.onSetStatusSlot(("text copied","good"))
                 return
@@ -444,8 +444,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
         prepare["hash"]= hash
 
-        for hash in self.panel_tab_widget.get_matching_containers_for_hash(hash):
-            prepare["container_name"] = hash  # only need first
+        for container_name in self.panel_tab_widget.get_matching_containers_for_hash(hash):
+            prepare["container_name"] = container_name  # only need first
             break
 
         async_process = dict(question="Update?", data=prepare)
