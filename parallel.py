@@ -26,12 +26,6 @@ class WebsocketWorkerMixinForMain(object):
 
     def onIncomingSlot(self, emitted):
 
-        try:
-            if not settings.universal_clipboard:
-                return
-        except AttributeError:
-                pass
-
         new_clip = emitted
 
         list_widget = self.panel_tab_widget.getListWidgetFromClip(new_clip)
@@ -256,11 +250,17 @@ class WebsocketWorker(QtCore.QThread):
             is_notification = latest["system"] == "notification"
             is_share = latest["system"] == "share"
 
-            #TODO- add user setting to disable this if he doesn't want to sync with the cloud!
+            # Done: Add user setting to disable this if he doesn't want to sync with the cloud!
             if is_clipboard and not_this_device: #do not allow setting from the same pc
-                self.setClipSignalForMain.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
+                try:
+                    if not settings.universal_clipboard:
+                        return
+                except AttributeError:
+                    pass
+                else:
+                    self.setClipSignalForMain.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
             elif is_share:
-                self.statusSignalForMain.emit(("You got something from %s"%latest["host_name"], "good"))
+                self.statusSignalForMain.emit(("You got an item from %s"%latest["host_name"], "good"))
 
         elif answer == "@get_contacts":
             contacts_list = data
