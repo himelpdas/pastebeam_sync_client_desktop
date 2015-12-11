@@ -218,13 +218,13 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         device_name_widget.setLayout(device_name_hbox)
 
         try:
-            synchronize = settings.synchronize
+            universal_clipboard = settings.universal_clipboard
         except AttributeError:
-            synchronize = False
+            universal_clipboard = True
 
         sync_label = QLabel("Enable universal copy and paste")
         self.sync_check = sync_check = QCheckBox()
-        sync_check.setChecked(synchronize)
+        sync_check.setChecked(universal_clipboard)
         sync_hbox = QHBoxLayout()
         sync_hbox.addWidget(sync_label)
         sync_hbox.addWidget(sync_check)
@@ -281,7 +281,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         super(self.__class__, self).on_cancel_button_clicked_slot()
 
     def set_checkables_to_keyring(self):
-        settings.synchronize = self.sync_check.isChecked()
+        settings.universal_clipboard = self.sync_check.isChecked()
 
     def set_account_to_keyring(self):
 

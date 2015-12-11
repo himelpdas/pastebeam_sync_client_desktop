@@ -26,6 +26,12 @@ class WebsocketWorkerMixinForMain(object):
 
     def onIncomingSlot(self, emitted):
 
+        try:
+            if not settings.universal_clipboard:
+                return
+        except AttributeError:
+                pass
+
         new_clip = emitted
 
         list_widget = self.panel_tab_widget.getListWidgetFromClip(new_clip)
