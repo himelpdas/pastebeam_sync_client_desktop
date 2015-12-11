@@ -73,13 +73,13 @@ class WebsocketWorker(QtCore.QThread):
         self.refilling_list = True
         self.OUTGOING_QUEUE = deque() # must use alternative Queue for non standard library thread and greenlets
 
-        self.main.outgoingSignalForWorker.connect(self.onOutgoingSlot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
+        self.main.outgoingSignalForWorker.connect(self.on_outgoing_slot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
         
     #A QThread is run by calling it's start() function, which calls this run()
     #function in it's own "thread".
     
-    def onOutgoingSlot(self, async_process):
-        #PRINT("onOutgoingSlot", prepare)
+    def on_outgoing_slot(self, async_process):
+        #PRINT("on_outgoing_slot", prepare)
 
         try:
             account = settings.account
@@ -108,7 +108,7 @@ class WebsocketWorker(QtCore.QThread):
 
         if question == "Share?":
 
-            container_name_old = data["container_name"]
+            container_name_old = data["container_name"] #guaranteed to have a container name
             password_old = data["decryption_key"]
             with encompress.Encompress(password = password_old, directory = CONTAINER_DIR, container_name=container_name_old):
                 password_new = Random.new().read(16)

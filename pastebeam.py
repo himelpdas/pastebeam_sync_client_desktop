@@ -14,39 +14,51 @@ from widgets import *
 
 import platform, distutils.dir_util, distutils.errors, distutils.file_util #distutil over shututil http://stackoverflow.com/questions/15034151/copy-directory-contents-into-a-directory-with-python #import error on linux http://stackoverflow.com/questions/19097235/backing-up-copying-an-entire-folder-tree-in-batch-or-python
 
-class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
+class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
     #SLOT IS A QT TERM MEANING EVENT
     def initUI(self):
         
-        self.stacked_widget = LockoutStackedWidget()
+        self.stacked_widget = LockoutStackedWidget(self)
         
-        self.initPanel()
-        self.initLockoutWidget()
-        self.initMenuBar()
-        self.initStatusBar()
+        self.init_panel()
+        self.init_menu_bar()
+        self.init_status_bar()
         
         self.setCentralWidget(self.stacked_widget)
         self.setGeometry(50, 50, 800, 600)
         self.setWindowTitle('PasteBeam 1.0.0')
 
-        self.initTrayIcon()
+        self.init_tray_icon()
         
-        self.show()    
+        self.show()
 
-    def initPanel(self):
+        self.lock_on_start()
+
+
+    def lock_on_start(self):
+        """Will show lock widget if settings.is_locked is True"""
+        try:
+            if settings.is_locked:
+                self.lockout_widget.on_show_lockout_slot()
+        except AttributeError:
+            pass
+
+    def init_panel(self):
         self.panel_tab_widget = PanelTabWidget(QtCore.QSize(self.px_to_dp(24) , self.px_to_dp(24) ), self)
+        self.lockout_widget = LockoutWidget(self)
         #for each in self.panel_tab_widget.panels:
         #    each.itemDoubleClicked.connect(each.onItemDoubleClickSlot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
         self.stacked_widget.addWidget(self.panel_tab_widget)
-        
-    def initMenuBar(self):
+        self.stacked_widget.addWidget(self.lockout_widget)
+
+    def init_menu_bar(self):
     
         menubar = self.menuBar()
         fileMenu = menubar.addMenu('&File')
         
         lockoutAction = QtGui.QAction(AppIcon("safe"), '&Lock', self)
         lockoutAction.setStatusTip('Lock the application')
-        lockoutAction.triggered.connect(self.onShowLockoutSlot )
+        lockoutAction.triggered.connect(self.lockout_widget.on_show_lockout_slot )
         
         fileMenu.addAction(lockoutAction)
         fileMenu.addSeparator()
@@ -104,9 +116,9 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         helpMenu.addAction("&Check for updates")
         helpMenu.addAction("&About")
 
-        self.menu_lockables = [lockoutAction, editMenu]
+        self.menu_lockables = [lockoutAction, editMenu, viewMenu]
         
-    def initStatusBar(self):
+    def init_status_bar(self):
         
         self.sbar = sb = self.statusBar()
         
@@ -131,7 +143,7 @@ class UIMixin(QtGui.QMainWindow, LockoutMixin,): #AccountMixin): #handles menuba
         #events process once every x milliseconds, this forces them to process... or we can use repaint isntead
         qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
 
-    def initTrayIcon(self):
+    def init_tray_icon(self):
         tray_icon = TrayIcon(self)
         tray_icon.show()
 
@@ -209,7 +221,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def onClipChangeSlot(self):
         #test if identical
 
-        self.onSetStatusSlot(("Waiting for change", "scan"))
+        self.onSetStatusSlot(("Scanning", "scan"))
         
         mimeData = self.clipboard.mimeData()
 
@@ -357,9 +369,14 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             os_file_names_new = []
             display_file_names =[]
+
+            def _keep_ui_alive():
+                """calling this at the rate that os.walk would will crash QT, this prevents that."""
+                if once_every_second.check():
+                    self.app.processEvents()  # YIELDS TO MAINLOOP # SIMILAR TO WX.YIELD # http://stackoverflow.com/questions/12410433/forcing-the-qt-gui-to-update-before-entering-a-separate-function
             
             for each_path in os_file_paths_new:
-            
+                _keep_ui_alive()
                 each_file_name = os.path.basename(each_path) #instead of os.path.split(each_path)[1]
 
                 os_file_names_new.append(each_file_name)
@@ -370,8 +387,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                     os_folder_hashes = []
                     for dirName, subdirList, fileList in os.walk(each_path, topdown=False):
+                        _keep_ui_alive()
                         #subdirList = filter(...) #filer out any temp or hidden folders
                         for fname in fileList:
+                            _keep_ui_alive()
                             if fname.upper() not in self.file_ignore_list: #DO NOT calculate hash for system files as they are always changing, and if a folder is in clipboard, a new upload may be initiated each time a system file is changed
                                 each_sub_path = os.path.join(dirName, fname)
                                 with open(each_sub_path, 'rb') as each_sub_file:
@@ -425,7 +444,9 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
         prepare["hash"]= hash
 
-        prepare["container_name"] = self.panel_tab_widget.get_matching_container_for_hash(hash)
+        for hash in self.panel_tab_widget.get_matching_containers_for_hash(hash):
+            prepare["container_name"] = hash  # only need first
+            break
 
         async_process = dict(question="Update?", data=prepare)
 

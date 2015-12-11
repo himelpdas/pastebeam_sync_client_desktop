@@ -44,25 +44,34 @@ class AccountMixin(object):
 """
 
 
-class LockoutMixin(object):
-    def initLockoutWidget(self):
+class LockoutWidget(QWidget):
 
-        self.lockout_pin = lockout_pin = QLineEdit()
-        lockout_pin.setAlignment(
+    def __init__(self, main, *args, **kwargs):
+        self.main = main
+        self.stacked_widget = main.stacked_widget
+
+        super(self.__class__, self).__init__(*args, **kwargs)
+
+        self.lockout_pin = QLineEdit()
+        self.do_layout()
+
+    def do_layout(self):
+
+        self.lockout_pin.setAlignment(
             QtCore.Qt.AlignHCenter)  # http://www.codeprogress.com/cpp/libraries/qt/QLineEditCenterText.php#.VcnX9M7RtyN
         # self.lockout_pin.setValidator(QIntValidator(0, 9999)) #OLD# http://doc.qt.io/qt-4.8/qlineedit.html#inputMask-prop
         # self.lockout_pin.setMaxLength(4) #still need it despite setValidator or else you can keep typing
-        lockout_pin.setEchoMode(
+        self.lockout_pin.setEchoMode(
             QLineEdit.Password)  # hide with bullets #http://stackoverflow.com/questions/4663207/masking-qlineedit-text
-        lockout_pin.setStatusTip("Type your account password to unlock.")
-        lockout_pin.textEdited.connect(self.onLockoutPinTypedSlot)
+        self.lockout_pin.setStatusTip("Type your account password to unlock.")
+        self.lockout_pin.textEdited.connect(self.on_lockout_pin_typed_slot)
 
         get_in_label = QLabel("<a href='#'>Can't get in?</a>")
         get_in_label.setAlignment(QtCore.Qt.AlignCenter)
 
         lines_vbox = QVBoxLayout()
         lines_vbox.addStretch(1)
-        lines_vbox.addWidget(lockout_pin)
+        lines_vbox.addWidget(self.lockout_pin)
         lines_vbox.addWidget(get_in_label)
         lines_vbox.addStretch(1)
 
@@ -74,26 +83,34 @@ class LockoutMixin(object):
         lockout_vbox = QVBoxLayout()
         lockout_vbox.addLayout(lockout_hbox)
 
-        self.lockout_widget = QWidget()
-        self.lockout_widget.setLayout(lockout_vbox)
-        # self.lockout_widget.hide()
-        self.stacked_widget.addWidget(self.lockout_widget)
+        self.setLayout(lockout_vbox)
+        self.stacked_widget.addWidget(self)
 
-    def onLockoutPinTypedSlot(self, written):
-        login = settings.account.get("password")
-        if not login:
+    def on_lockout_pin_typed_slot(self, written):
+        try:
+            login = settings.account.get("password")
+        except AttributeError:
             pass  # no password was set yet
-        elif login != written:
-            return
-        self.stacked_widget.switchToMainWidget()
+        else:
+            if login != written:
+                return
+
+        self.stacked_widget.switch_to_main_widget()
         self.lockout_pin.clear()
-        for each in self.menu_lockables:
+
+        for each in self.main.menu_lockables:
             each.setDisabled(False)
 
-    def onShowLockoutSlot(self):
-        for each in self.menu_lockables:
+        settings.is_locked = False
+
+
+    def on_show_lockout_slot(self):
+        for each in self.main.menu_lockables:
             each.setDisabled(True)
-        self.stacked_widget.switchToLockoutWidget()
+
+        settings.is_locked = True
+
+        self.stacked_widget.switch_to_lockout_widget()
 
 
 class OkCancelWidgetMixin(object):
@@ -732,36 +749,35 @@ class PanelTabWidget(QTabWidget):
         for each in self.panels:
             each.clear()
 
-    def get_matching_container_for_hash(self, find_hash):
+    def get_matching_containers_for_hash(self, find_hash):
         """prevent the recreating of the container, if it already exists in server"""
         for list_widget in self.panels[:-2]:  #  # DO NOT reuse shared clips, as they were encrypted with a random key, not user's password. Not reusing wil force the system to re-encrypt the container with user's password
             for each_item in list_widget.getItems():  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
                 each_item_hash = each_item.get_data_hash()
                 if find_hash == each_item_hash:
                     each_item_data = each_item.get_data()
-                    return each_item_data.get("container_name")
+                    yield each_item_data.get("container_name") # use yield instead of return if we just want to stop at the first match
 
 
-    def get_matching_items_for_data_id(self, find_data_id):
+    def get_matching_item_for_data_id(self, find_data_id):
         for list_widget in self.panels:
             for each_item in list_widget.getItems():
                 each_item_data_id = each_item.get_data_id()
                 if each_item_data_id == find_data_id:
-                    yield each_item  # use yield instead of return if we just want to stop at the first match
+                    return each_item
 
 
 class LockoutStackedWidget(StackedWidgetFader):
+    """lets you swap between 2 main widgets"""
     # https://wiki.python.org/moin/PyQt/Fading%20Between%20Widgets
     # http://www.qtcentre.org/threads/30830-setCentralWidget()-without-deleting-prev-widget
-    def __init__(self, parent=None):
-        # QStackedWidget.__init__(self, parent)
-        super(LockoutStackedWidget, self).__init__(
-            parent)  # it's better to use super method instead of explicitly calling the parent class, because the former allows to add another parent and "push up" the previous parent up the ladder without making any changes to the code here
+    def __init__(self, *args, **kwargs):
+        super(self.__class__, self).__init__(*args, **kwargs)  # it's better to use super method instead of explicitly calling the parent class, because the former allows to add another parent and "push up" the previous parent up the ladder without making any changes to the code here
 
-    def switchToMainWidget(self):
+    def switch_to_main_widget(self):
         self.setCurrentIndex(0)
 
-    def switchToLockoutWidget(self):
+    def switch_to_lockout_widget(self):
         self.setCurrentIndex(1)
 
 
@@ -1244,19 +1260,23 @@ class PixmapPreview():
             self.thumbnail = self.original_pmap.scaledToHeight(self.Px, TransformationMode=QtCore.Qt.SmoothTransformation)
 
 class TrayIcon(QSystemTrayIcon):
+
     def __init__(self, main):
         self.main = main
         super(self.__class__, self).__init__(main)
         self.setIcon(AppIcon("text"))
         self.activated.connect(self.onActivated)
         self.setContextMenu()
+
     def onActivated(self, reason):
         if reason == self.__class__.DoubleClick:
             self.restore()
+
     def restore(self):
             self.main.setVisible(True)  # needed to unhide http://goo.gl/RKHlMZ
             self.main.setWindowState(QtCore.Qt.WindowActive)  # needed to un-minimize
             self.main.activateWindow()  # needed to bring to top
+
     def setContextMenu(self, *args, **kwargs):
         context_menu = QMenu()
         exit_action = QAction(AppIcon("exit"), "Exit", self)
@@ -1267,6 +1287,7 @@ class TrayIcon(QSystemTrayIcon):
         context_menu.addSeparator()
         context_menu.addAction(exit_action)
         super(self.__class__, self).setContextMenu(context_menu)
+
     def showLockout(self):
         self.restore()  # MUST RESTORE as without it app seems to crash without warning
-        self.main.onShowLockoutSlot()
+        self.main.lockout_widget.on_show_lockout_slot()
