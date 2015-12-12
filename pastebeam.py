@@ -16,7 +16,7 @@ import platform, distutils.dir_util, distutils.errors, distutils.file_util #dist
 
 class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
     #SLOT IS A QT TERM MEANING EVENT
-    def initUI(self):
+    def init_ui(self):
         
         self.stacked_widget = LockoutStackedWidget(self)
         
@@ -77,23 +77,23 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         accountAction.triggered.connect(self.showAccountDialogs) #accountAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
         """
 
-        self.viewMenu = viewMenu = menubar.addMenu('&View')
+        self.view_menu = view_menu = menubar.addMenu('&View')
         view_action_group = QActionGroup(self)
         view_action_group.setExclusive(False)
         show_files_action = QAction(AppIcon("files"),"Files", self)
         show_files_action.setCheckable(True)
         show_files_action.setChecked(True)
-        viewMenu.addAction(show_files_action)
+        view_menu.addAction(show_files_action)
         view_action_group.addAction(show_files_action)
         show_screenshots_action = QAction(AppIcon("image"),"Screenshots", self)
         show_screenshots_action.setCheckable(True)
         show_screenshots_action.setChecked(True)
-        viewMenu.addAction(show_screenshots_action)
+        view_menu.addAction(show_screenshots_action)
         view_action_group.addAction(show_screenshots_action)
         show_text_action = QAction(AppIcon("text"),"Text/Html", self)
         show_text_action.setCheckable(True)
         show_text_action.setChecked(True)
-        viewMenu.addAction(show_text_action)
+        view_menu.addAction(show_text_action)
         view_action_group.addAction(show_text_action)
         view_action_group.triggered.connect(self.panel_tab_widget.onChangeViewMenu)
 
@@ -116,7 +116,7 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         helpMenu.addAction("&Check for updates")
         helpMenu.addAction("&About")
 
-        self.menu_lockables = [lockoutAction, editMenu, viewMenu]
+        self.menu_lockables = [lockoutAction, editMenu, view_menu]
         
     def init_status_bar(self):
         
@@ -169,14 +169,14 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.rsa_private_key = ""
 
         self.app = app
-        self.initUI()
-        self.setupClip()
+        self.init_ui()
+        self.init_clipboard()
 
         self.ws_worker = WebsocketWorker(self)
         self.initWorker()
 
         self.contacts_list = []
-        self.update_contacts_list_signal.connect(self.setContactsList)
+        self.update_contacts_list_signal.connect(self.set_contacts_list)
         self.show_settings_dialog_signal.connect(lambda:SettingsDialog.show(self))
 
     def px_to_dp(self, px):
@@ -185,24 +185,24 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         #LOG.info(dp)
         return dp
 
-    def setContactsList(self, contacts_list):
+    def set_contacts_list(self, contacts_list):
         self.contacts_list = contacts_list
 
-    def onContactsListIncoming(self, contacts_list):
-        self.setContactsList(contacts_list)
+    def on_contacts_list_incoming(self, contacts_list):
+        self.set_contacts_list(contacts_list)
 
     def initWorker(self):
-        self.ws_worker.incomingClipsSignalForMain.connect(self.onIncomingSlot)
+        self.ws_worker.incoming_clip_signal_for_main.connect(self.on_incoming_slot)
         self.ws_worker.setClipSignalForMain.connect(self.onSetNewClipSlot)
         self.ws_worker.statusSignalForMain.connect(self.onSetStatusSlot)
         self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncomingDelete)
         self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
-        self.ws_worker.InitializeContactsListSignalForMain.connect(self.onContactsListIncoming)
+        self.ws_worker.InitializeContactsListSignalForMain.connect(self.on_contacts_list_incoming)
         self.ws_worker.changeTabIconSignalForMain.connect(self.panel_tab_widget.onChangeTabIconSlot)
-        self.ws_worker.SetRSAKeySignalForMain.connect(self.onSetRSAKeys)
+        self.ws_worker.SetRSAKeySignalForMain.connect(self.on_set_rsa_keys)
         self.ws_worker.start()
 
-    def onSetRSAKeys(self, private_key_and_salt):
+    def on_set_rsa_keys(self, private_key_and_salt):
         des_rsa_private_key = private_key_and_salt["rsa_private_key"]
         rsa_pbkdf2_salt = private_key_and_salt["rsa_pbkdf2_salt"]
         password = settings.account.get("password")
@@ -211,7 +211,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.rsa_private_key = RSA.importKey(des_rsa_private_key, passphrase)
 
 
-    def setupClip(self):
+    def init_clipboard(self):
         self.previous_hash = {}
 
         self.clipboard = self.app.clipboard() #clipboard is in the QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
@@ -485,7 +485,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         system = new_clip["system"]
         
         #downloading modal
-        downloadContainerIfNotExist(new_clip, self.streamingDownloadCallback) #TODO show error message if download not found on server
+        download_container_if_not_exist(new_clip, self.streamingDownloadCallback) #TODO show error message if download not found on server
 
         self.onSetStatusSlot(("Decrypting", "unlock"))
         if system == "share":

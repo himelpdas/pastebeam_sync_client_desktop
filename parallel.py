@@ -24,7 +24,7 @@ class WebsocketWorkerMixinForMain(object):
 
     outgoingSignalForWorker = QtCore.Signal(dict)
 
-    def onIncomingSlot(self, emitted):
+    def on_incoming_slot(self, emitted):
 
         new_clip = emitted
 
@@ -50,7 +50,7 @@ class WebsocketWorker(QtCore.QThread):
     #This is the signal that will be emitted during the processing.
     #By including int as an argument, it lets the signal know to expect
     #an integer argument when emitting.
-    incomingClipsSignalForMain = QtCore.Signal(dict)
+    incoming_clip_signal_for_main = QtCore.Signal(dict)
     setClipSignalForMain = QtCore.Signal(dict)
     statusSignalForMain = QtCore.Signal(tuple)
     deleteClipSignalForMain = QtCore.Signal(list)
@@ -232,8 +232,8 @@ class WebsocketWorker(QtCore.QThread):
             tabs_affected = set([])
             for each in data:
             
-                #downloadContainerIfNotExist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
-                self.incomingClipsSignalForMain.emit(each) #TODO DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
+                #download_container_if_not_exist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
+                self.incoming_clip_signal_for_main.emit(each) #TODO DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
 
                 tabs_affected.add(each["system"])
 
@@ -304,7 +304,10 @@ class WebsocketWorker(QtCore.QThread):
 
     def streamingUploadCallback(self, monitor, container_size): #FIXME App can CRASH if freq too high!
         bytes_read = float(monitor.bytes_read)
-        percent_done = "%.2f"%(bytes_read/container_size*100.0)
+        done = (bytes_read/container_size*100.0)
+        if done > 100.0:
+            done = 100.0
+        percent_done = "%.2f"%done
         #print "%s%%"%percent_done
         if once_every_second.check(): #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
             self.statusSignalForMain.emit(("Uploading %s%%"%percent_done, "upload"))

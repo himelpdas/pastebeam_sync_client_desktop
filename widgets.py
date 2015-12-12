@@ -669,7 +669,7 @@ class PanelTabWidget(QTabWidget):
         self.search.setPlaceholderText("Filter...")
 
     def onChangeViewMenu(self, action):
-        actions = self.main.viewMenu.actions()
+        actions = self.main.view_menu.actions()
         label_to_clip_type = {
             "Text/Html":["text", "html"],
             "Screenshots": "screenshot",

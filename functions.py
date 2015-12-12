@@ -99,7 +99,7 @@ class OnceEveryX():
 
 once_every_second = OnceEveryX(1)
 
-def downloadContainerIfNotExist(data, progress_callback=None):
+def download_container_if_not_exist(data, progress_callback=None):
     if not data.get("container_name"):
         return
     container_name = data["container_name"]
@@ -114,18 +114,17 @@ def downloadContainerIfNotExist(data, progress_callback=None):
             # urllib.urlretrieve(URL(arg="static/%s"%container_name,port=8084,scheme="http"), container_path)
             # urllib.URLopener().retrieve(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "static", container_name), container_path) #http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
             url = URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "static", container_name)
-            getFile(url, container_path, progress_callback)
+            get_file(url, container_path, progress_callback)
         except IOError:
             pass
         else:
             return container_path
 
-def getFile(url, container_path, progress_callback=None,
+def get_file(url, container_path, progress_callback=None,
             callback_frequency=55):  # 8192 bytes * 100 / 1024 / 1024 ~ every 0.8 mb it'll callback. Too quickly and app will CRASH!
     """http://stackoverflow.com/questions/16694907/how-to-download-large-file-in-python-with-requests-py"""
     if not progress_callback:  # no need to breakup the request into smaller bits for progress, so just use reliable urllib
-        urllib.URLopener().retrieve(url,
-                                    container_path)  # http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
+        urllib.URLopener().retrieve(url, container_path)  # http://stackoverflow.com/questions/1308542/how-to-catch-404-error-in-urllib-urlretrieve
         return
     # progress report wanted so do progress callback will run once every <frequency>
     r = requests.get(url, stream=True)
