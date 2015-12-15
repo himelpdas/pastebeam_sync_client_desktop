@@ -32,13 +32,6 @@ class WebsocketWorkerMixinForMain(object):
 
         #self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
 
-        """
-        if not new_clip["system"] == "notification":
-            for each_item in list_widget.get_matching_items_for_hash(new_clip["hash"]):
-                if each_item["hash"] == new_clip["hash"]:
-                    list_widget.takeItem(each_item)
-        """
-
         new_list_widget_item =  FancyListItem()
         new_list_widget_item.set_data(new_clip)
 

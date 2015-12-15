@@ -764,10 +764,10 @@ class PanelTabWidget(QTabWidget):
         self.setCornerWidget(self.search)
 
     def on_incoming_delete(self, location):
-        item_to_delete = get_matching_item_for_data_id(location)
+        item_to_delete = self.get_matching_item_for_data_id(location)
         if item_to_delete:
             list_widget = self.get_list_widget_from_clip_data(item_to_delete.get_data())
-            row = list_widget.row(item_to_delete)
+            row = list_widget.row(item_to_delete)  # even though there's no previous matching hash for new item, there may be more than max_free_limit clips, that need deleting
             list_widget.takeItem(row)
             list_widget.scroll_to_top()
 

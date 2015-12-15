@@ -130,9 +130,9 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         
         sb.addPermanentWidget(icn)
         
-        self.onSetStatusSlot(("Connecting", "connect"))
+        self.on_set_status_slot(("Connecting", "connect"))
                 
-    def onSetStatusSlot(self, msg_icn):
+    def on_set_status_slot(self, msg_icn):
         msg,icn = msg_icn
         self.status_lbl.setText("<h3>%s...</h3>"%msg)
         
@@ -194,7 +194,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def initWorker(self):
         self.ws_worker.incoming_clip_signal_for_main.connect(self.on_incoming_slot)
         self.ws_worker.set_clip_signal_for_main.connect(self.on_set_new_clip_slot)
-        self.ws_worker.status_signal_for_main.connect(self.onSetStatusSlot)
+        self.ws_worker.status_signal_for_main.connect(self.on_set_status_slot)
         self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.on_incoming_delete)
         self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
         self.ws_worker.initialize_contacts_list_signal_for_main.connect(self.on_contacts_list_incoming)
@@ -221,7 +221,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def on_clip_change_slot(self):
         #test if identical
 
-        self.onSetStatusSlot(("Scanning", "scan"))
+        self.on_set_status_slot(("Scanning", "scan"))
         
         mimeData = self.clipboard.mimeData()
 
@@ -243,7 +243,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
             LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
-                #self.onSetStatusSlot(("image copied","good"))
+                #self.on_set_status_slot(("image copied","good"))
                 return
                 
             #secure_hash = hashlib.new("ripemd160", hash + "ACCOUNT_SALT").hexdigest() #use pdkbf2 #to prevent rainbow table attacks of known files and their hashes, will also cause decryption to fail if file name is changed
@@ -280,7 +280,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
-                #self.onSetStatusSlot(("data copied","good"))
+                #self.on_set_status_slot(("data copied","good"))
                 return
             
             preview = cgi.escape(text) #crashes with big data
@@ -313,7 +313,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
-                #self.onSetStatusSlot(("text copied","good"))
+                #self.on_set_status_slot(("text copied","good"))
                 return
             
             preview = cgi.escape(original) #prevent html from styling in qlabel
@@ -360,7 +360,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             if sum(os_file_sizes_new) > self.max_file_size:
                 #self.sb.toggleStatusIcon(msg='Files not uploaded. Maximum files size is 50 megabytes.', icon="bad")
-                self.onSetStatusSlot(("Files bigger than 50MB","warn"))
+                self.on_set_status_slot(("Files bigger than 50MB","warn"))
                 PRINT("failure",218)
                 return #upload error clip
                             
@@ -414,7 +414,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             checksum = format(sum(os_file_hashes_new), "x")
             if self.previous_hash == checksum:  #checks to make sure if name and file are the same
                 PRINT("failure",262)
-                #self.onSetStatusSlot(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
+                #self.on_set_status_slot(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
                 return
             else:
                 hash = checksum
@@ -438,7 +438,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             )
 
         else:
-            self.onSetStatusSlot(("The item in your clipboard is incompatible and can't be synced","warn"))
+            self.on_set_status_slot(("The item in your clipboard is incompatible and can't be synced","warn"))
             return
 
         prepare["hash"]= hash
@@ -458,7 +458,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 
     def streaming_download_callback(self, progress):
-        self.onSetStatusSlot(("Downloading %s"%progress["percent_done"], "download"))
+        self.on_set_status_slot(("Downloading %s"%progress["percent_done"], "download"))
 
 
     def block_clip_change_detection(func):
@@ -483,11 +483,11 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             except tarfile.ReadError as e:
                 #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
                 LOG.error("tarfile: "+e[0])
-                self.onSetStatusSlot(("Decryption failed. Current password is not compatible with this item","bad"))
+                self.on_set_status_slot(("Decryption failed. Current password is not compatible with this item","bad"))
             except ValueError:
-                self.onSetStatusSlot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
+                self.on_set_status_slot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
             else:
-                self.onSetStatusSlot(("Decrypted new item", "good"))
+                self.on_set_status_slot(("Decrypted new item", "good"))
         return closure
 
 
@@ -501,7 +501,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         #downloading modal
         download_container_if_not_exist(new_clip, self.streaming_download_callback) #TODO show error message if download not found on server
 
-        self.onSetStatusSlot(("Decrypting", "unlock"))
+        self.on_set_status_slot(("Decrypting", "unlock"))
         if system == "share":
             ciphertext = new_clip["decryption_key"]
             password = self.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
