@@ -470,13 +470,24 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             #http://stackoverflow.com/questions/5339062/python-pyside-internal-c-object-already-deleted
             #mimedata should be held in a parent object or self
             #http://doc.qt.io/qt-4.8/qmimedata.html
-            mimeData = QtCore.QMimeData(self)  # NEED the self to prevent garbage collection
+            mimeData = QtCore.QMimeData()  # NEED the self to prevent garbage collection
             pastebeam_mime = {'previous_id':new_clip["_id"]}  # not needed, but good to know. # _id MUST exist, so enforce it
             if block_detection:
                 pastebeam_mime["block_detection"] = True
                 mimeData.setData("__pastebeam__", json.dumps(pastebeam_mime))
-            func(self, new_clip, mimeData)
-            self.previous_hash = new_clip["hash"] #needed since an incoming will not set self.previous_hash
+            try:
+                func(self, new_clip, mimeData)
+                self.previous_hash = new_clip["hash"]  # so that we don't get a redundant on_clip_change_slot, and a hit to the server. needed since an incoming will not set self.previous_hash
+            except RuntimeError, e: #sometimes mimeData can be garbage collected despite passing it to the parent object to prevent GC
+                LOG.error(e)
+            except tarfile.ReadError as e:
+                #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
+                LOG.error("tarfile: "+e[0])
+                self.onSetStatusSlot(("Decryption failed. Current password is not compatible with this item","bad"))
+            except ValueError:
+                self.onSetStatusSlot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
+            else:
+                self.onSetStatusSlot(("Decrypted new item", "good"))
         return closure
 
 
@@ -498,74 +509,62 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         else:
             password = settings.account.get("password")
 
-        try:
-            with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
+        with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
 
-                if clip_type == "html":
+            if clip_type == "html":
 
-                    clip_file_path = file_paths_decrypt[0]
+                clip_file_path = file_paths_decrypt[0]
 
-                    with open(clip_file_path, 'r') as clip_file:
+                with open(clip_file_path, 'r') as clip_file:
 
-                        clip_json = json.loads(clip_file.read()) #json handles encode and decode of UTF8
+                    clip_json = json.loads(clip_file.read()) #json handles encode and decode of UTF8
 
-                        clip_text = clip_json["html_and_text"]["text"]
-                        clip_html = clip_json["html_and_text"]["html"]
+                    clip_text = clip_json["html_and_text"]["text"]
+                    clip_html = clip_json["html_and_text"]["html"]
 
-                        mimeData.setText(clip_text) #set text cannot automatically truncate html (or rich text tags) like with mimeData.text(). This is probably due to the operating system providing both text and html, and it's not Qt's concern. So I decided to store getText on json file and setText here.
-                        mimeData.setHtml(clip_html)
-
-
-                if clip_type == "text":
-
-                    clip_file_path = file_paths_decrypt[0]
-
-                    with open(clip_file_path, 'r') as clip_file:
-
-                        clip_text = clip_file.read().decode("utf8") #http://stackoverflow.com/questions/6048085/python-write-unicode-text-to-a-text-file #needed to keep conistant hash, or else inifnite upload/update loop will occur
-
-                        mimeData.setText(clip_text)
+                    mimeData.setText(clip_text) #set text cannot automatically truncate html (or rich text tags) like with mimeData.text(). This is probably due to the operating system providing both text and html, and it's not Qt's concern. So I decided to store getText on json file and setText here.
+                    mimeData.setHtml(clip_html)
 
 
-                if clip_type == "screenshot":
+            if clip_type == "text":
 
-                    clip_file_path = file_paths_decrypt[0]
+                clip_file_path = file_paths_decrypt[0]
 
-                    image = QImage(clip_file_path)
+                with open(clip_file_path, 'r') as clip_file:
 
-                    mimeData.setImageData(image)
+                    clip_text = clip_file.read().decode("utf8") #http://stackoverflow.com/questions/6048085/python-write-unicode-text-to-a-text-file #needed to keep conistant hash, or else inifnite upload/update loop will occur
 
-                self.clipboard.setMimeData(mimeData)
+                    mimeData.setText(clip_text)
 
 
-                if clip_type == "files":
+            if clip_type == "screenshot":
 
-                    urls = []
+                clip_file_path = file_paths_decrypt[0]
 
-                    for each_path in file_paths_decrypt:
+                image = QImage(clip_file_path)
 
-                        QUrl = QtCore.QUrl()
-                        #QUrl.setUrl(each_path)
-                        #QUrl.setPath(each_path)
-                        QUrl = QUrl.fromLocalFile(each_path) #Returns a QUrl representation of localFile #http://stackoverflow.com/questions/6062382/pyqt-copy-file-to-clipboard
-                        #QUrl.toEncoded()
-                        urls.append(QUrl)
+                mimeData.setImageData(image)
 
-                    PRINT("SETTING URLS", urls)
-                    mimeData.setUrls(urls)
+            self.clipboard.setMimeData(mimeData)
 
-                try:
-                    self.clipboard.setMimeData(mimeData)
-                except RuntimeError: #sometimes mimeData can be garbage collected despite passing it to the parent object to prevent GC
-                    pass
-        except tarfile.ReadError as e:
-            #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
-            LOG.error("tar"+e[0])
-            self.onSetStatusSlot(("Decryption failed. Current password is not compatible with this item","bad"))
-        except ValueError:
-            self.onSetStatusSlot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
-        else:
-            self.onSetStatusSlot(("Decrypted new item", "good"))
+
+            if clip_type == "files":
+
+                urls = []
+
+                for each_path in file_paths_decrypt:
+
+                    QUrl = QtCore.QUrl()
+                    #QUrl.setUrl(each_path)
+                    #QUrl.setPath(each_path)
+                    QUrl = QUrl.fromLocalFile(each_path) #Returns a QUrl representation of localFile #http://stackoverflow.com/questions/6062382/pyqt-copy-file-to-clipboard
+                    #QUrl.toEncoded()
+                    urls.append(QUrl)
+
+                PRINT("SETTING URLS", urls)
+                mimeData.setUrls(urls)
+
+            self.clipboard.setMimeData(mimeData)
 
 
     @staticmethod

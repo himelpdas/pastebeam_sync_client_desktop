@@ -763,7 +763,7 @@ class PanelTabWidget(QTabWidget):
         self.addTab(self.notification_list_widget, AppIcon("bulb"), "Notifications")
         self.setCornerWidget(self.search)
 
-    def onIncomingDelete(self, location):
+    def on_incoming_delete(self, location):
         item_to_delete = get_matching_item_for_data_id(location)
         if item_to_delete:
             list_widget = self.get_list_widget_from_clip_data(item_to_delete.get_data())
