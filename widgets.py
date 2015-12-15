@@ -277,7 +277,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
 
     def on_cancel_button_clicked_slot(self):
         if not self.main.ws_worker.KEEP_RUNNING:
-            self.main.onSetStatusSlot((views.not_connected_msg, "bad"))
+            self.main.on_set_status_slot((views.not_connected_msg, "bad"))
         super(self.__class__, self).on_cancel_button_clicked_slot()
 
     def set_checkables_to_keyring(self):
@@ -338,7 +338,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
                 "Warning",
                 views.not_connected_msg
             )
-            parent.onSetStatusSlot((views.not_connected_msg, "bad"))
+            parent.on_set_status_slot((views.not_connected_msg, "bad"))
 
 
     def __init__(self, parent):
@@ -576,7 +576,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         hash_, prev = double_clicked_data["hash"], self.main.previous_hash
 
         if hash_ == prev:
-            self.main.onSetStatusSlot(("Already copied", "warn"))
+            self.main.on_set_status_slot(("Already copied", "warn"))
             return
 
         # container name is already in double_clicked_clip
