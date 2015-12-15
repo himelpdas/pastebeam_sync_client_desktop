@@ -28,22 +28,28 @@ class WebsocketWorkerMixinForMain(object):
 
         new_clip = emitted
 
-        list_widget = self.panel_tab_widget.getListWidgetFromClip(new_clip)
+        list_widget = self.panel_tab_widget.get_list_widget_from_clip_data(new_clip)
 
         #self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
 
+        """
+        if not new_clip["system"] == "notification":
+            for each_item in list_widget.get_matching_items_for_hash(new_clip["hash"]):
+                if each_item["hash"] == new_clip["hash"]:
+                    list_widget.takeItem(each_item)
+        """
+
         new_list_widget_item =  FancyListItem()
         new_list_widget_item.set_data(new_clip)
+
         list_widget.insertItem(0,new_list_widget_item) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
-        list_widget.takeItem(5) #TODO replace 5 with user settings #removes last item
+        #list_widget.takeItem(5) #TODO replace 5 with user settings #removes last item
 
         new_widget = FancyListItemWidget(new_clip, new_list_widget_item)
 
         list_widget.setItemWidget(new_list_widget_item, new_widget ) #add the label
 
-        #move the scrollbar to top
-        list_widget_scrollbar = list_widget.verticalScrollBar() #http://stackoverflow.com/questions/8698174/how-to-control-the-scroll-bar-with-qlistwidget
-        list_widget_scrollbar.setValue(0)
+        list_widget.scroll_to_top()
 
 class WebsocketWorker(QtCore.QThread):
 
@@ -51,13 +57,13 @@ class WebsocketWorker(QtCore.QThread):
     #By including int as an argument, it lets the signal know to expect
     #an integer argument when emitting.
     incoming_clip_signal_for_main = QtCore.Signal(dict)
-    setClipSignalForMain = QtCore.Signal(dict)
-    statusSignalForMain = QtCore.Signal(tuple)
+    set_clip_signal_for_main = QtCore.Signal(dict)
+    status_signal_for_main = QtCore.Signal(tuple)
     deleteClipSignalForMain = QtCore.Signal(list)
     StarClipSignalForMain = QtCore.Signal(dict)
     clearListSignalForMain = QtCore.Signal()
     closeWaitDialogSignalForMain = QtCore.Signal(dict)
-    InitializeContactsListSignalForMain = QtCore.Signal(list)
+    initialize_contacts_list_signal_for_main = QtCore.Signal(list)
     SetRSAKeySignalForMain = QtCore.Signal(dict)
     changeTabIconSignalForMain = QtCore.Signal(set)
     
@@ -84,23 +90,16 @@ class WebsocketWorker(QtCore.QThread):
         try:
             account = settings.account
         except AttributeError:
-            self.statusSignalForMain.emit((views.not_connected_msg,"bad"))
+            self.status_signal_for_main.emit((views.not_connected_msg,"bad"))
             return
         
         data = async_process["data"]
         question = async_process["question"]
-                
-        if question == "Delete?":
-            pass #nothing to process
-            
-        if question == "Star?":
-            pass
         
         if question == "Update?": #do cpu intesive data modification before sending
-
             if not data.get("container_name"): ##CHECK HERE IF CONTAINER EXISTS IN OTHER ITEMS
                 file_names = data["file_names"]
-                self.statusSignalForMain.emit(("Encrypting", "lock"))
+                self.status_signal_for_main.emit(("Encrypting", "lock"))
                 with encompress.Encompress(password = account.get("password"), directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name:
                     
                     data["container_name"] = container_name
@@ -172,7 +171,7 @@ class WebsocketWorker(QtCore.QThread):
                         workerGreenlet(self)
                     except (socket.error, _exceptions.WebSocketConnectionClosedException):
                         LOG.error("failure in: %s"%workerGreenlet.__name__)
-                        self.statusSignalForMain.emit(("Reconnecting", "connect"))
+                        self.status_signal_for_main.emit(("Reconnecting", "connect"))
                         self.WSOCK.close() #close the WSOCK
 
                         self.refilling_list = True
@@ -212,27 +211,26 @@ class WebsocketWorker(QtCore.QThread):
         #PUB SUB STYLE
         if answer == "@error":
             self.KEEP_RUNNING = 0
-            self.statusSignalForMain.emit((data, "bad"))
+            self.status_signal_for_main.emit((data, "bad"))
             
         elif answer == "@connected":
             #if not hasattr(self,"initialized"):
             if not self.initialized:
-                self.statusSignalForMain.emit(("Connected", "good"))
+                self.status_signal_for_main.emit(("Connected", "good"))
                 self.initialized = 1
             else:
-                self.statusSignalForMain.emit(("Reconnected", "good"))
+                self.status_signal_for_main.emit(("Reconnected", "good"))
             rsa_private_key = data["rsa_private_key"]
             rsa_pbkdf2_salt = data["rsa_pbkdf2_salt"]
             self.SetRSAKeySignalForMain.emit(dict(rsa_private_key = rsa_private_key, rsa_pbkdf2_salt = rsa_pbkdf2_salt))
-            self.InitializeContactsListSignalForMain.emit(data["initial_contacts"])
+            self.initialize_contacts_list_signal_for_main.emit(data["initial_contacts"])
 
         elif answer == "@newest_clips":
             data.reverse() #so the clips can be displayed top down since each clip added gets pushed down in listwidget
 
             tabs_affected = set([])
             for each in data:
-            
-                #download_container_if_not_exist(each, self.streamingDownloadCallback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
+                #download_container_if_not_exist(each, self.streaming_download_callback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
                 self.incoming_clip_signal_for_main.emit(each) #TODO DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
 
                 tabs_affected.add(each["system"])
@@ -258,22 +256,23 @@ class WebsocketWorker(QtCore.QThread):
                 except AttributeError:
                     pass
                 else:
-                    self.setClipSignalForMain.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
+                    self.set_clip_signal_for_main.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
             elif is_share:
-                self.statusSignalForMain.emit(("You got an item from %s"%latest["host_name"], "good"))
+                self.status_signal_for_main.emit(("You got an item from %s"%latest["host_name"], "good"))
 
         elif answer == "@get_contacts":
             contacts_list = data
-            self.InitializeContactsListSignalForMain.emit(contacts_list)
+            self.initialize_contacts_list_signal_for_main.emit(contacts_list)
 
         elif answer == "@delete_local":
+            LOG.info(data["location"])
             self.deleteClipSignalForMain.emit(data["location"])
 
         #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif "!" in answer: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
             self.RESPONDED_EVENT.set(received) #true or false    
         
-    def requestResponse(self, send): #todo change name
+    def request_response(self, send): #todo change name
         #while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
 
         expect = uuid.uuid4()
@@ -299,8 +298,8 @@ class WebsocketWorker(QtCore.QThread):
 
         return received["data"]
 
-    def streamingDownloadCallback(self, progress):
-        self.statusSignalForMain.emit(("Downloading %s"%progress["percent_done"], "download"))
+    def streaming_download_callback(self, progress):
+        self.status_signal_for_main.emit(("Downloading %s"%progress["percent_done"], "download"))
 
     def streamingUploadCallback(self, monitor, container_size): #FIXME App can CRASH if freq too high!
         bytes_read = float(monitor.bytes_read)
@@ -310,12 +309,12 @@ class WebsocketWorker(QtCore.QThread):
         percent_done = "%.2f"%done
         #print "%s%%"%percent_done
         if once_every_second.check(): #WITHOUT THIS TOO MANY SIGNALS WILL BE SENT AND APP WILL CRASH
-            self.statusSignalForMain.emit(("Uploading %s%%"%percent_done, "upload"))
+            self.status_signal_for_main.emit(("Uploading %s%%"%percent_done, "upload"))
 
-    def ensureContainerUpload(self, container_name):
+    def ensure_container_upload(self, container_name):
 
         #first check if upload needed before updating
-        data = self.requestResponse(dict(
+        data = self.request_response(dict(
             question = "Upload?",
             data = container_name
         ))
@@ -353,13 +352,15 @@ class WebsocketWorker(QtCore.QThread):
             data_out = send.get("data")
             question = send["question"]
 
+        LOG.debug(data_out)
+
         if question == "Share?":
 
-            self.statusSignalForMain.emit(("Sharing", "share"))
+            self.status_signal_for_main.emit(("Sharing", "share"))
 
             email = data_out["recipient"]
 
-            public_key_success = self.requestResponse(dict(
+            public_key_success = self.request_response(dict(
                 question = "Publickey?",
                 data = email
             ))
@@ -369,76 +370,76 @@ class WebsocketWorker(QtCore.QThread):
                 return #SHOW MESSAGE HERE
 
             container_name = data_out["container_name"]
-            self.ensureContainerUpload(container_name)
+            self.ensure_container_upload(container_name)
 
             rsa_public_key = RSA.importKey(recipient_public_key)
             data_out["decryption_key"] = Binary(rsa_public_key.encrypt(data_out["decryption_key"], K=None)[0]) #K is ignored, but needed for compatibility
 
-            data_in = self.requestResponse(dict(
+            data_in = self.request_response(dict(
                 question = "Share?",
                 data = data_out
             ))
             if data_in['success']:
-                self.statusSignalForMain.emit(("Your item was sent", "good"))
+                self.status_signal_for_main.emit(("Your item was sent", "good"))
             else:
                 #print "sh"+data_in["reason"]
-                self.statusSignalForMain.emit((data_in["reason"], "warn"))
+                self.status_signal_for_main.emit((data_in["reason"], "warn"))
 
         if question == "Update?":
                     
             container_name = data_out["container_name"]
 
-            self.ensureContainerUpload(container_name)
+            self.ensure_container_upload(container_name)
 
-            self.statusSignalForMain.emit(("Updating item to server", "sync"))
+            self.status_signal_for_main.emit(("Updating item to server", "sync"))
 
-            data_in = self.requestResponse(send)
+            data_in = self.request_response(send)
 
             if data_in["success"]:
-                 self.statusSignalForMain.emit(("Updated", "good"))
+                 self.status_signal_for_main.emit(("Updated", "good"))
             else:
                 #print "upd"+data_in["reason"]
-                self.statusSignalForMain.emit((data_in["reason"], "warn"))
+                self.status_signal_for_main.emit((data_in["reason"], "warn"))
 
         elif question=="Delete?":
 
-            self.statusSignalForMain.emit(("Deleting", "trash"))
+            self.status_signal_for_main.emit(("Deleting", "trash"))
 
-            data_in = self.requestResponse(send)
+            data_in = self.request_response(send)
 
             if data_in["success"] == True:
-                LOG.debug("DELETE!")
-                self.statusSignalForMain.emit(("Deleted from server", "good"))
+                LOG.debug("DELETE! %s")
+                self.status_signal_for_main.emit(("Deleted from server", "good"))
             else:
                 #print "del"+data_in["reason"]
-                self.statusSignalForMain.emit((data_in["reason"], "warn"))
+                self.status_signal_for_main.emit((data_in["reason"], "warn"))
                     
         elif question=="Star?":
         
-            self.statusSignalForMain.emit(("Adding to bookmarks", "star"))
-            data_in = self.requestResponse(send)
+            self.status_signal_for_main.emit(("Adding to bookmarks", "star"))
+            data_in = self.request_response(send)
             
             if data_in["success"]:
-                self.statusSignalForMain.emit(("Added to your bookmarks!", "good"))
+                self.status_signal_for_main.emit(("Added to your bookmarks!", "good"))
             else:
                 #print "star"+data_in["reason"]
-                self.statusSignalForMain.emit((data_in["reason"], "warn"))
+                self.status_signal_for_main.emit((data_in["reason"], "warn"))
 
         elif question=="Contacts?": #change to set_contacts?
             
-            data_in = self.requestResponse(send)
+            data_in = self.request_response(send)
             
             self.closeWaitDialogSignalForMain.emit(data_in)
 
         elif question=="Invite?":
             
-            data_in = self.requestResponse(send)
+            data_in = self.request_response(send)
 
             self.closeWaitDialogSignalForMain.emit(data_in)
             
         elif question =="Accept?":
             
-            data_in = self.requestResponse(send)
+            data_in = self.request_response(send)
             
             self.closeWaitDialogSignalForMain.emit(data_in)
             

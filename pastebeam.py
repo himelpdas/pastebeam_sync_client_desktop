@@ -193,11 +193,11 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
     def initWorker(self):
         self.ws_worker.incoming_clip_signal_for_main.connect(self.on_incoming_slot)
-        self.ws_worker.setClipSignalForMain.connect(self.onSetNewClipSlot)
-        self.ws_worker.statusSignalForMain.connect(self.onSetStatusSlot)
-        self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.onIncomingDelete)
+        self.ws_worker.set_clip_signal_for_main.connect(self.on_set_new_clip_slot)
+        self.ws_worker.status_signal_for_main.connect(self.onSetStatusSlot)
+        self.ws_worker.deleteClipSignalForMain.connect(self.panel_tab_widget.on_incoming_delete)
         self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
-        self.ws_worker.InitializeContactsListSignalForMain.connect(self.on_contacts_list_incoming)
+        self.ws_worker.initialize_contacts_list_signal_for_main.connect(self.on_contacts_list_incoming)
         self.ws_worker.changeTabIconSignalForMain.connect(self.panel_tab_widget.onChangeTabIconSlot)
         self.ws_worker.SetRSAKeySignalForMain.connect(self.on_set_rsa_keys)
         self.ws_worker.start()
@@ -225,13 +225,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         
         mimeData = self.clipboard.mimeData()
 
-        pastebeam_mime = mimeData.retrieveData("pastebeam", unicode) #preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
-        if pastebeam_mime:
-            block_detection = json.loads(str(pastebeam_mime)).get("block_detection")
-            if block_detection:
-                # prevents redundant updating when clip is incomming from another device, no need to update to server what was just received
-                return
-                
+        pastebeam_mime = json.loads(str(mimeData.retrieveData("__pastebeam__", unicode) or {}))  #unicode is preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
+        block_detection = pastebeam_mime.get("block_detection")
+        if block_detection:
+            # prevents redundant updating when clip is incomming from another device, no need to update to server what was just received
+            return
+
         if mimeData.hasImage():
             #image = pmap.toImage() #just like wxpython do not allow this to del, or else .bits() will crash
             image = mimeData.imageData()
@@ -444,9 +443,11 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
         prepare["hash"]= hash
 
-        for container_name in self.panel_tab_widget.get_matching_containers_for_hash(hash):
+        try:
+            container_name = self.panel_tab_widget.get_matching_containers_for_hash(hash).next()
             prepare["container_name"] = container_name  # only need first
-            break
+        except StopIteration:
+            pass
 
         async_process = dict(question="Update?", data=prepare)
 
@@ -456,36 +457,38 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         #image.destroy()
 
 
-    def streamingDownloadCallback(self, progress):
+    def streaming_download_callback(self, progress):
         self.onSetStatusSlot(("Downloading %s"%progress["percent_done"], "download"))
 
 
-    def blockClipChangeDetection(func):
+    def block_clip_change_detection(func):
         """When incoming, this will invoke dataChanged, which will in turn invoke a push, therefore a race condition
         will occur with multiple devices. This decorator will block redundant reupload from clipboard.dataChanged"""
         def closure(self, clip_dict):
-            new_clip, block = clip_dict["new_clip"], clip_dict["block_clip_change_detection"]
+            new_clip, block_detection = clip_dict["new_clip"], clip_dict["block_clip_change_detection"]
 
             #http://stackoverflow.com/questions/5339062/python-pyside-internal-c-object-already-deleted
             #mimedata should be held in a parent object or self
             #http://doc.qt.io/qt-4.8/qmimedata.html
             mimeData = QtCore.QMimeData(self)  # NEED the self to prevent garbage collection
-            if block:
-                mimeData.setData("pastebeam", json.dumps({'block_detection':True}))
+            pastebeam_mime = {'previous_id':new_clip["_id"]}  # not needed, but good to know. # _id MUST exist, so enforce it
+            if block_detection:
+                pastebeam_mime["block_detection"] = True
+                mimeData.setData("__pastebeam__", json.dumps(pastebeam_mime))
             func(self, new_clip, mimeData)
             self.previous_hash = new_clip["hash"] #needed since an incoming will not set self.previous_hash
         return closure
 
 
-    @blockClipChangeDetection
-    def onSetNewClipSlot(self, new_clip, mimeData): #happens when new incoming clip or when user double clicks an item
+    @block_clip_change_detection
+    def on_set_new_clip_slot(self, new_clip, mimeData): #happens when new incoming clip or when user double clicks an item
 
         container_name = new_clip["container_name"]
         clip_type = new_clip["clip_type"]
         system = new_clip["system"]
         
         #downloading modal
-        download_container_if_not_exist(new_clip, self.streamingDownloadCallback) #TODO show error message if download not found on server
+        download_container_if_not_exist(new_clip, self.streaming_download_callback) #TODO show error message if download not found on server
 
         self.onSetStatusSlot(("Decrypting", "unlock"))
         if system == "share":

@@ -521,13 +521,30 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
             if item:
                  yield item
 
+    def get_matching_item_for_data_id(self, find_data_id):
+        for each_item in self.getItems():
+            each_item_data_id = each_item.get_data_id()
+            if each_item_data_id == find_data_id:
+                return each_item
+
+    def get_matching_items_for_hash(self, find_hash):
+        for each_item in self.getItems():  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
+            each_item_hash = each_item.get_data_hash()
+            if find_hash == each_item_hash:
+                yield each_item
+
     def resizeEvent(self, event):
         super(CommonListWidget, self).resizeEvent(event)
         # do something on resize!
 
     def on_item_pressed_slot(self, i):
         "So that any click of an item will enable all context items"
-        self.parent.onTabChangedSlot(self.index)  # hide notification icon in tab when clicking on an item
+        self.parent.on_tab_changed_slot(self.index)  # hide notification icon in tab when clicking on an item
+
+    def scroll_to_top(self):
+        #move the scrollbar to top
+        list_widget_scrollbar = self.verticalScrollBar() #http://stackoverflow.com/questions/8698174/how-to-control-the-scroll-bar-with-qlistwidget
+        list_widget_scrollbar.setValue(0)
 
     def do_common(self):
 
@@ -535,8 +552,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         self.do_uncommon()  # do uncommon here
 
-        self.itemDoubleClicked.connect(
-            self.on_item_double_click_slot)  # textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
+        self.itemDoubleClicked.connect(self.on_item_double_click_slot)  # textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
 
     def do_styling(self):
         self.setIconSize(
@@ -567,7 +583,9 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         # double_clicked_clip = self.convertToDeviceClip(double_clicked_clip)
 
-        self.main.onSetNewClipSlot(dict(new_clip = double_clicked_data, block_clip_change_detection = False))
+        # _id is in data, but not on_clip_change since that's created from scratch
+
+        self.main.on_set_new_clip_slot(dict(new_clip = double_clicked_data, block_clip_change_detection = False))
 
         # self.previous_hash = hash #or else on_clip_change_slot will react and a duplicate new list item will occur.
 
@@ -617,13 +635,13 @@ class PanelTabWidget(QTabWidget):
         super(self.__class__, self).__init__(parent)
         self.main = parent
         self.icon_size = icon_size
-        self.doSearchWidget()
-        self.doPanels()
-        self.addPanels()
+        self.do_search_widget()
+        self.do_panels()
+        self.add_panels()
 
-        self.currentChanged.connect(self.onTabChangedSlot)
+        self.currentChanged.connect(self.on_tab_changed_slot)
 
-    def getListWidgetFromClip(self, clip):
+    def get_list_widget_from_clip_data(self, clip):
         list_widget = None
         if clip["system"] == "starred":
             list_widget = self.star_list_widget
@@ -639,7 +657,7 @@ class PanelTabWidget(QTabWidget):
             # new_icon_tab = 2
         return list_widget
 
-    def onTabChangedSlot(self, index):
+    def on_tab_changed_slot(self, index):
         if index == 0:
             self.setTabIcon(0, QIcon("images/devices.png"))
         if index == 1:
@@ -661,9 +679,9 @@ class PanelTabWidget(QTabWidget):
 
         self.setTabIcon(new_icon_tab, QIcon("images/new.png"))
 
-    def doSearchWidget(self):
+    def do_search_widget(self):
         self.search = QLineEdit()
-        self.search.textEdited.connect(self.onSearchEditedSlot)
+        self.search.textEdited.connect(self.on_search_edited_slot)
         search_tip = "Search through your items (preview text only)."
         self.search.setStatusTip(search_tip)
         self.search.setPlaceholderText("Filter...")
@@ -692,7 +710,7 @@ class PanelTabWidget(QTabWidget):
                 else:
                     item.setHidden(True)
 
-    def onSearchEditedSlot(self, written):
+    def on_search_edited_slot(self, written):
         for list_widget in self.panels:
             # items = [] #http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
             # for index in xrange(list_widget.count()):
@@ -724,7 +742,7 @@ class PanelTabWidget(QTabWidget):
                     else:
                         item.setHidden(True)
 
-    def doPanels(self):
+    def do_panels(self):
 
         self.main_list_widget = MainListWidget(self)
 
@@ -737,7 +755,7 @@ class PanelTabWidget(QTabWidget):
         self.panels = [self.main_list_widget, self.star_list_widget, self.friend_list_widget, self.notification_list_widget]
         # devices star friends
 
-    def addPanels(self):
+    def add_panels(self):
         self.addTab(self.main_list_widget, QIcon("images/devices"), "Devices")
         self.addTab(self.star_list_widget, QIcon("images/star"), "Bookmarks")
         self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
@@ -746,33 +764,29 @@ class PanelTabWidget(QTabWidget):
         self.setCornerWidget(self.search)
 
     def onIncomingDelete(self, location):
-
-        for list_widget in self.panels:
-            for each_item in list_widget.getItems():
-                if location == each_item.get_data_id():
-                    row = list_widget.row(each_item)
-                    list_widget.takeItem(row)
+        item_to_delete = get_matching_item_for_data_id(location)
+        if item_to_delete:
+            list_widget = self.get_list_widget_from_clip_data(item_to_delete.get_data())
+            row = list_widget.row(item_to_delete)
+            list_widget.takeItem(row)
+            list_widget.scroll_to_top()
 
     def clearAllLists(self):
         for each in self.panels:
             each.clear()
 
     def get_matching_containers_for_hash(self, find_hash):
-        """prevent the recreating of the container, if it already exists in server"""
+        """SEARCHES ALL LIST_WIDGETS
+        prevent the recreating of the container, if it already exists in server"""
         for list_widget in self.panels[:-2]:  #  # DO NOT reuse shared clips, as they were encrypted with a random key, not user's password. Not reusing wil force the system to re-encrypt the container with user's password
-            for each_item in list_widget.getItems():  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
-                each_item_hash = each_item.get_data_hash()
-                if find_hash == each_item_hash:
-                    each_item_data = each_item.get_data()
-                    yield each_item_data.get("container_name") # use yield instead of return if we just want to stop at the first match
+            for each_item in list_widget.get_matching_items_for_hash(find_hash):  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
+                each_item_data = each_item.get_data()
+                yield each_item_data.get("container_name") # use yield instead of return if we just want to stop at the first match
 
 
     def get_matching_item_for_data_id(self, find_data_id):
         for list_widget in self.panels:
-            for each_item in list_widget.getItems():
-                each_item_data_id = each_item.get_data_id()
-                if each_item_data_id == find_data_id:
-                    return each_item
+            return list_widget.get_matching_item_for_data_id(find_data_id)
 
 
 class LockoutStackedWidget(StackedWidgetFader):
@@ -1083,7 +1097,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         remove_id = current_item["_id"]
         async_process = dict(
             question="Delete?",
-            data={"remove_id": remove_id}
+            data={"remove_id": remove_id}  # user wanted to explicitly delete clip so delete associated files
         )
         self.main.outgoingSignalForWorker.emit(async_process)
 

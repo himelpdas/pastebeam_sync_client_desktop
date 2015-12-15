@@ -12,6 +12,8 @@ SYSTEM = platform.system()  # returns Windows, Darwin, Linux
 
 import bson.json_util as json
 from bson.binary import Binary
+from itertools import islice
+
 
 import hashlib, uuid, time, sys, cgi, tempfile, itertools, datetime
 
