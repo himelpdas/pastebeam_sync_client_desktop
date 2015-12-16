@@ -477,7 +477,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 mimeData.setData("__pastebeam__", json.dumps(pastebeam_mime))
             try:
                 func(self, new_clip, mimeData)
-                self.previous_hash = new_clip["hash"]  # so that we don't get a redundant on_clip_change_slot, and a hit to the server. needed since an incoming will not set self.previous_hash
+                #self.previous_hash = new_clip["hash"]  # so that we don't get a redundant on_clip_change_slot, and a hit to the server. needed since an incoming will not set self.previous_hash
             except RuntimeError, e: #sometimes mimeData can be garbage collected despite passing it to the parent object to prevent GC
                 LOG.error(e)
             except tarfile.ReadError as e:

@@ -163,7 +163,7 @@ class WebsocketWorker(QtCore.QThread):
                     try:
                         workerGreenlet(self)
                     except (socket.error, _exceptions.WebSocketConnectionClosedException):
-                        LOG.error("failure in: %s"%workerGreenlet.__name__)
+                        LOG.error("socket failure in: %s"%workerGreenlet.__name__)
                         self.status_signal_for_main.emit(("Reconnecting", "connect"))
                         self.WSOCK.close() #close the WSOCK
 
@@ -401,7 +401,7 @@ class WebsocketWorker(QtCore.QThread):
             data_in = self.request_response(send)
 
             if data_in["success"] == True:
-                LOG.debug("DELETE! %s")
+                LOG.debug("DELETE! %s" % data_in)
                 self.status_signal_for_main.emit(("Deleted from server", "good"))
             else:
                 #print "del"+data_in["reason"]
