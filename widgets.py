@@ -786,7 +786,9 @@ class PanelTabWidget(QTabWidget):
 
     def get_matching_item_for_data_id(self, find_data_id):
         for list_widget in self.panels:
-            return list_widget.get_matching_item_for_data_id(find_data_id)
+            matched_item = list_widget.get_matching_item_for_data_id(find_data_id)
+            if matched_item:
+                return matched_item
 
 
 class LockoutStackedWidget(StackedWidgetFader):

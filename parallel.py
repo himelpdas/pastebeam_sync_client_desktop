@@ -52,7 +52,7 @@ class WebsocketWorker(QtCore.QThread):
     incoming_clip_signal_for_main = QtCore.Signal(dict)
     set_clip_signal_for_main = QtCore.Signal(dict)
     status_signal_for_main = QtCore.Signal(tuple)
-    deleteClipSignalForMain = QtCore.Signal(list)
+    delete_clip_signal_for_main = QtCore.Signal(list)
     StarClipSignalForMain = QtCore.Signal(dict)
     clearListSignalForMain = QtCore.Signal()
     closeWaitDialogSignalForMain = QtCore.Signal(dict)
@@ -259,7 +259,7 @@ class WebsocketWorker(QtCore.QThread):
 
         elif answer == "@delete_local":
             LOG.info(data["location"])
-            self.deleteClipSignalForMain.emit(data["location"])
+            self.delete_clip_signal_for_main.emit(data["location"])
 
         #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
         elif "!" in answer: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
