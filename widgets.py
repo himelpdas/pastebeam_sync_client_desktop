@@ -1,47 +1,7 @@
-import bson.json_util as json
 from functions import *
 from PySide.QtGui import *
 from PySide import QtCore
 import views
-"""
-class AccountMixin(object):
-
-    @staticmethod
-    def getLogin():
-        ring = keyring.get_password("pastebeam","account")
-        login = json.loads(ring) if ring else {} #todo store email locally, and access only password!
-        return login
-
-    def showAccountDialogs(self):
-        
-        login = self.getLogin()
-        
-        email, e = QInputDialog.getText(self, 'Account',
-            'Enter your <b>email</b>:',
-            text = login.get("email"),
-        )
-        
-        if not e:
-            return
-        
-        password, p = QInputDialog.getText(self, 'Account',
-            'Enter your <b>password</b>:',
-            text = login.get("password"),
-            echo=QLineEdit.Password
-        )
-        
-        if not p:
-            return
-        
-        keyring.set_password("pastebeam","account",json.dumps({
-            "email":email,
-            "password":password,
-        }))
-        
-        if hasattr(self, "ws_worker") and hasattr(self.ws_worker, "WSOCK"): #maybe not initialized yet
-            self.ws_worker.WSOCK.close()
-            self.ws_worker.KEEP_RUNNING = 1
-"""
 
 
 class LockoutWidget(QWidget):
@@ -855,6 +815,10 @@ class QTextBrowserForFancyListItemWidget(QTextBrowser):
         super(self.__class__, self).mousePressEvent(event)
         self.list_widget.setCurrentItem(self.item)
 
+    def wheelEvent(self, event):  # http://stackoverflow.com/questions/3241830/qt-how-to-disable-mouse-scrolling-of-qcombobox
+        """ignore mouse scrolling here, and leave it to the parent listwidget"""
+        event.ignore()
+
 class FancyListItem(QListWidgetItem):
     """cannot override data and setData directly, due to unknown behavior. Using horizontal methods instead."""
     def __init__(self):
@@ -1226,7 +1190,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         do_content()
         do_dropdown()
         self.setLayout(item_layout)
-        self.item.setSizeHint(
+        self.item.setSizeHint(  # size hint is the preferred size of the widget, layouts will try to keep it as close to this as possible.
             self.sizeHint())  # resize the listwidget item to fit the custom widget, using Qlabel's sizehint
 
 
