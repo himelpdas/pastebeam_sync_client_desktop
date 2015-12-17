@@ -646,7 +646,7 @@ class PanelTabWidget(QTabWidget):
         self.search.setStatusTip(search_tip)
         self.search.setPlaceholderText("Filter...")
 
-    def onChangeViewMenu(self, action):
+    def on_change_view_menu(self, action):
         actions = self.main.view_menu.actions()
         label_to_clip_type = {
             "Text/Html":["text", "html"],
@@ -777,20 +777,20 @@ class WaitForSignalDialog(QDialog):
         self.parent = parent
         self.parent.success = False  # always set false since self.success is shared
         self.label = label
-        self.doLayout()
+        self.do_layout()
         self.setLayout(self.layout)
         self.bindEvents()
         self.exec_()
 
-    def doLayout(self):
+    def do_layout(self):
         wait_label = QLabel("<h1>%s...</h1>" % self.label.capitalize())
         self.layout = QVBoxLayout()
         self.layout.addWidget(wait_label)
 
     def bindEvents(self):
-        self.main.ws_worker.closeWaitDialogSignalForMain.connect(self.onCloseWaitDialogSlot)
+        self.main.ws_worker.closeWaitDialogSignalForMain.connect(self.on_close_wait_dialog_slot)
 
-    def onCloseWaitDialogSlot(self, result):
+    def on_close_wait_dialog_slot(self, result):
         self.parent.success = result
         try:
             self.main.update_contacts_list_signal.emit(sorted(result["contacts"]))
@@ -867,27 +867,27 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
         self.copy_action = self.accept_invite_action = self.delete_action = self.share_action = self.star_action = None
 
-        self.setHeaderFromClip()
+        self.set_header_from_clip()
 
         self.item_icon = AppIcon("action")
-        self.setContentFromClip()
+        self.set_content_from_clip()
         
-        self.doLayout()
+        self.do_layout()
 
         self.item_menu = QMenu()
         self.setContextMenuPolicy(
             QtCore.Qt.CustomContextMenu)  # need to access menu explicitly ActionContextMenu doesn't allow this
         self.customContextMenuRequested.connect(
-            self.showContextMenu)  # http://www.setnode.com/blog/right-click-context-menus-with-qt/
+            self.show_context_menu)  # http://www.setnode.com/blog/right-click-context-menus-with-qt/
 
-    def showContextMenu(self, point_where_clicked):
-        self.resetActions()
+    def show_context_menu(self, point_where_clicked):
+        self.reset_actions()
         point_where_clicked = self.mapToGlobal(point_where_clicked)
         self.item_menu.exec_(point_where_clicked)
 
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.RightButton:
-            self.resetActions()
+            self.reset_actions()
         # self.list_widget.setCurrentItem(self.item)
         super(self.__class__, self).mousePressEvent(event)
 
@@ -896,36 +896,36 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             self.list_widget.on_item_double_click_slot(self.item)
             # super(self.__class__, self).mouseDoubleClickEvent(event)
 
-    def resetActions(self):
-        self.clearActions()
-        self.setActions()
+    def reset_actions(self):
+        self.clear_actions()
+        self.set_actions()
 
-    def clearActions(self):
+    def clear_actions(self):
         self.item_menu.clear()
 
-    def setActions(self):
+    def set_actions(self):
 
         if not self.clip["system"] == "notification":
-            self.setCopyAction()
-            self.setStarAction()
-            self.setShareAction()
+            self.set_copy_action()
+            self.set_star_action()
+            self.set_share_action()
 
         elif self.clip["clip_type"] == "invite":
-            self.setAcceptInviteAction()
+            self.set_accept_invite_action()
 
-        self.setDeleteAction()  # Put delete last
+        self.set_delete_action()  # Put delete last
 
-    def setStarAction(self):
+    def set_star_action(self):
         # star action
         self.star_action = star_action = QAction(QIcon("images/star.png"), '&Star', self)
-        # self.star_action.triggered.connect(self.onAddStarAction)
-        sub_menu = self.getNoteSubMenu(history_list_widget =self.main.panel_tab_widget.star_list_widget,
-                                       trigger = self.onAddStarAction,
+        # self.star_action.triggered.connect(self.on_add_star_action)
+        sub_menu = self.get_note_sub_menu(history_list_widget =self.main.panel_tab_widget.star_list_widget,
+                                       trigger = self.on_add_star_action,
                                        parent_action = None)
         star_action.setMenu(sub_menu)
         self.item_menu.addAction(star_action)
 
-    def getNoteSubMenu(self, history_list_widget, trigger, parent_action,
+    def get_note_sub_menu(self, history_list_widget, trigger, parent_action,
                                  placeholder="Enter a note...", max_length = 40):
         def always_close_menu_decorator(func):
             def closure():
@@ -934,17 +934,17 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             return closure
 
         sub_menu = QMenu()
-        # share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
+        # share_sub_menu.triggered.connect(self.on_share_sub_menu_triggered_slot)
         message_subaction = QWidgetAction(self)
         message_widget = QLineEdit()
         message_widget.setMaxLength(max_length)
 
         @always_close_menu_decorator
-        def onReturnPressed():
+        def on_return_pressed():
             # star_action.trigger()
             trigger(message_widget.text()[:max_length].strip(), parent_action)
 
-        message_widget.returnPressed.connect(onReturnPressed)
+        message_widget.returnPressed.connect(on_return_pressed)
         message_widget.setPlaceholderText(placeholder)
         message_subaction.setDefaultWidget(message_widget)
         sub_menu.addAction(message_subaction)
@@ -968,7 +968,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
         return sub_menu
 
-    def onAddStarAction(self, note, *args):
+    def on_add_star_action(self, note, *args):
         current_item_data = self.item.get_data()
         current_item_data["note"] = note
         async_process = dict(
@@ -977,15 +977,15 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         )
         self.main.outgoingSignalForWorker.emit(async_process)
 
-    def setAcceptInviteAction(self):
+    def set_accept_invite_action(self):
         self.accept_invite_action = QAction(QIcon("images/ok.png"), "&Accept invite", self)
-        self.accept_invite_action.triggered.connect(self.onAcceptInviteAction)
+        self.accept_invite_action.triggered.connect(self.on_accept_invite_action)
         self.item_menu.addAction(self.accept_invite_action)
 
-    def disableAcceptInviteAction(self):
+    def disable_accept_invite_action(self):
         self.accept_invite_action.setDisabled(True)
 
-    def onAcceptInviteAction(self):
+    def on_accept_invite_action(self):
         current_item_data = self.item.get_data()
         if not current_item_data["clip_type"] == "invite":
             return
@@ -993,12 +993,12 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
         self.show_wait_for_signal_dialog("Accept?", {"email": email}, "could not accept invitation", success_msg=False)
 
-    def setShareAction(self):
+    def set_share_action(self):
         self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
-        self.enableShareAction()
+        self.enable_share_action()
         self.item_menu.addAction(self.share_action)
 
-    def onShareSubMenuTriggeredSlot(self, note, action):
+    def on_share_sub_menu_triggered_slot(self, note, action):
         email = action.text()
         share_item_data = self.item.get_data()
         share_item_data["note"] = note
@@ -1008,12 +1008,13 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         if clip_system in ["main", "starred"]:
             decryption_key = settings.account.get("password")
         elif clip_system == "share":
-            return  # DONE decrypt public key encrypted random AES key
+            ciphertext = share_item_data["decryption_key"]
+            decryption_key = self.main.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
         elif clip_system == "notification":  # cant share notifications yet
             return
 
         share_item_data["recipient"] = email
-        share_item_data["decryption_key"] = decryption_key  # RAW
+        share_item_data["decryption_key"] = decryption_key  # raw, will be replaced by new decryption key before actual share
         self.main.outgoingSignalForWorker.emit(
             {
                 "question": "Share?",
@@ -1021,44 +1022,44 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             }
         )
 
-    def enableShareAction(self):
+    def enable_share_action(self):
         if not self.main.contacts_list:
             self.share_action.setDisabled(True)
-            # ADD bubble explaining why
+            # todo add bubble explaining why
         else:
             self.share_action.setDisabled(False)
             share_sub_menu = QMenu()
-            #share_sub_menu.triggered.connect(self.onShareSubMenuTriggeredSlot)
+            #share_sub_menu.triggered.connect(self.on_share_sub_menu_triggered_slot)
             for email_addr in sorted(self.main.contacts_list):
                 email_addr_action = QAction(email_addr, self)
-                sub_menu = self.getNoteSubMenu(history_list_widget=None,
-                                               trigger=self.onShareSubMenuTriggeredSlot,
+                sub_menu = self.get_note_sub_menu(history_list_widget=None,
+                                               trigger=self.on_share_sub_menu_triggered_slot,
                                                parent_action=email_addr_action,
                                                placeholder="Enter a message...")
                 email_addr_action.setMenu(sub_menu)
                 share_sub_menu.addAction(email_addr_action)
             self.share_action.setMenu(share_sub_menu)
 
-    def setCopyAction(self):
+    def set_copy_action(self):
         self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy item", self)
-        copy_action.triggered.connect(self.onCopyActionSlot)
+        copy_action.triggered.connect(self.on_copy_action_slot)
         self.item_menu.addAction(copy_action)
         separator = QAction(self)
         separator.setSeparator(True)
         self.item_menu.addAction(separator)
 
-    def onCopyActionSlot(self):
+    def on_copy_action_slot(self):
         self.list_widget.on_item_double_click_slot(self.item)  # listwidgetitems don't have signals, so must use parent
 
-    def setDeleteAction(self):
+    def set_delete_action(self):
         separator = QAction(self)
         separator.setSeparator(True)  # http://www.qtcentre.org/threads/21838-Separator-in-context-menu
         self.delete_action = QAction(QIcon("images/trash.png"), '&Delete', self)  # delete.setText("Delete")
-        self.delete_action.triggered.connect(self.onDeleteAction)
+        self.delete_action.triggered.connect(self.on_delete_action)
         self.item_menu.addAction(separator)
         self.item_menu.addAction(self.delete_action)
 
-    def onDeleteAction(self):
+    def on_delete_action(self):
         current_row, current_item = self.list_widget.get_clip_data_by_current_row()
         remove_id = current_item["_id"]
         async_process = dict(
@@ -1067,7 +1068,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         )
         self.main.outgoingSignalForWorker.emit(async_process)
 
-    def setHeaderFromClip(self):
+    def set_header_from_clip(self):
         seed = hash32(self.clip["host_name"])
         reproducible_random_color = random.Random(seed).choice(self.host_colors)  # REPRODUCIBLE RANDOM COLOR FROM SEED
 
@@ -1076,7 +1077,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.datestamp = views.header_datestamp.format(dt=datetime_stamp)
         self.sender = views.header_sender.format(color=reproducible_random_color, host_name=self.clip["host_name"])
 
-    def setContentFromClip(self):
+    def set_content_from_clip(self):
         if self.clip["clip_type"] == "screenshot":
             # crop and reduce pmap size to fit square icon
             # image = QImage()
@@ -1123,16 +1124,16 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             self.item_icon = AppIcon("ok") #todo change to check mark
             self.content = self.clip["clip_display"]
 
-    def onDropDownClicked(self):
+    def on_dropdown_clicked(self):
         def getLatestConextActionsForItem():
-            self.resetActions()
+            self.reset_actions()
             self.dropdown_widget.setMenu(self.item_menu)
             self.dropdown_widget.showMenu()
             # dropdown_widget.addItem(QIcon("images/copy.png"), "Copy all")
 
         getLatestConextActionsForItem()
 
-    def doLayout(self):
+    def do_layout(self):
         def do_header():
             item_header_hbox = QHBoxLayout()
             item_header_hbox.addWidget(QLabel(self.sender))
@@ -1163,12 +1164,12 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             dropdown_hbox_layout = QHBoxLayout()
             self.dropdown_widget = QToolButton()
             self.dropdown_widget.setIcon(self.item_icon)
-            self.dropdown_widget.clicked.connect(self.onDropDownClicked)
+            self.dropdown_widget.clicked.connect(self.on_dropdown_clicked)
             self.dropdown_widget.setMenu(QMenu())  # needed to show arrow icon
             clip_type = self.clip["clip_type"]
             if clip_type == "invite":
                 note_widget = QPushButton("Accept invite")
-                note_widget.clicked.connect(self.onAcceptInviteAction)
+                note_widget.clicked.connect(self.on_accept_invite_action)
             else:
                 note = self.clip.get("note")
                 if note:
@@ -1207,9 +1208,9 @@ class PixmapThumbnail():
             self.Px = Px
         self.original_pmap = original_pmap
         self.original_w = self.original_h = self.thumbnail = self.is_landscape = None
-        self.pixmapThumbnail()
+        self.pixmap_thumbanail()
 
-    def pixmapThumbnail(self):
+    def pixmap_thumbanail(self):
         self.original_w = self.original_pmap.width()
         self.original_h = self.original_pmap.height()
         is_square = self.original_w == self.original_h
@@ -1237,9 +1238,9 @@ class PixmapPreview():
     def __init__(self, original_pmap):
         self.original_pmap = original_pmap
         self.original_w = self.original_h = self.thumbnail = self.is_landscape = self.thumbnail = None
-        self.pixmapPreview()
+        self.pixmap_preview()
 
-    def pixmapPreview(self):
+    def pixmap_preview(self):
         self.original_w = self.original_pmap.width()
         self.original_h = self.original_pmap.height()
         if self.original_w > self.original_h:
@@ -1253,10 +1254,10 @@ class TrayIcon(QSystemTrayIcon):
         self.main = main
         super(self.__class__, self).__init__(main)
         self.setIcon(AppIcon("text"))
-        self.activated.connect(self.onActivated)
+        self.activated.connect(self.on_activated)
         self.setContextMenu()
 
-    def onActivated(self, reason):
+    def on_activated(self, reason):
         if reason == self.__class__.DoubleClick:
             self.restore()
 

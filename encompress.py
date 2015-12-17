@@ -63,11 +63,11 @@ class Encompress():
 	BLOCK_SIZE = AES.block_size
 	READ_BYTES = BLOCK_SIZE*1024 #make sure it is divisible by self.BLOCK_SIZE
 	
-	def __init__(self,  password = "", directory = "", file_names_encrypt = [], container_name = None):
-		if container_name:
+	def __init__(self,  password = "", directory = "", file_names_encrypt = [], container_name_decrypt = None):
+		if container_name_decrypt:
 			self.mode = "decrypt"
-			self.container_name = container_name
-			self.archive_name = container_name.split(".pastebeam")[0]
+			self.container_name = container_name_decrypt
+			self.archive_name = container_name_decrypt.split(".pastebeam")[0]
 		else:
 			self.mode = "encrypt"
 			self.archive_id = str(uuid.uuid4())

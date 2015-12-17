@@ -54,11 +54,11 @@ class WebsocketWorker(QtCore.QThread):
     status_signal_for_main = QtCore.Signal(tuple)
     delete_clip_signal_for_main = QtCore.Signal(list)
     StarClipSignalForMain = QtCore.Signal(dict)
-    clearListSignalForMain = QtCore.Signal()
+    clear_list_signal_for_main = QtCore.Signal()
     closeWaitDialogSignalForMain = QtCore.Signal(dict)
     initialize_contacts_list_signal_for_main = QtCore.Signal(list)
-    SetRSAKeySignalForMain = QtCore.Signal(dict)
-    changeTabIconSignalForMain = QtCore.Signal(set)
+    set_rsa_key_signal_for_main = QtCore.Signal(dict)
+    change_tab_icon_signal_for_main = QtCore.Signal(set)
     
     session_id = uuid.uuid4()
 
@@ -96,18 +96,20 @@ class WebsocketWorker(QtCore.QThread):
                 with encompress.Encompress(password = account.get("password"), directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name:
                     
                     data["container_name"] = container_name
-                    PRINT("encompress", container_name)
+                    LOG.info("on_outgoing_slot: Update?: container_name: %s" % container_name)
 
         if question == "Share?":
 
             container_name_old = data["container_name"] #guaranteed to have a container name
             password_old = data["decryption_key"]
-            with encompress.Encompress(password = password_old, directory = CONTAINER_DIR, container_name=container_name_old):
+            with encompress.Encompress(password = password_old, directory = CONTAINER_DIR, container_name_decrypt=container_name_old):
                 password_new = Random.new().read(16)
                 file_names = data["file_names"]
                 with encompress.Encompress(password = password_new, directory = CONTAINER_DIR, file_names_encrypt = file_names) as container_name_new:
                     data['container_name'] = container_name_new
                     data["decryption_key"] = password_new #still raw need to encrypt with recipients public key in outgoing greenlet!
+                    LOG.info("on_outgoing_slot: Share?: container_name: %s" % container_name_new)
+                    LOG.info("on_outgoing_slot: Share?: decryption_key: %s" % data["decryption_key"])
 
         try:
             data['host_name'] = settings.device_name
@@ -146,14 +148,14 @@ class WebsocketWorker(QtCore.QThread):
         self.KEEP_RUNNING = 1
 
         self.greenlets = [
-            gevent.spawn(self.outgoingGreenlet),
-            gevent.spawn(self.incomingGreenlet),
+            gevent.spawn(self.outgoing_greenlet),
+            gevent.spawn(self.incoming_greenlet),
             # gevent.spawn(self.keepAliveGreenlet),
         ]
         
         self.green = gevent.joinall(self.greenlets)
         
-    def workerLoopDecorator(workerGreenlet):
+    def worker_loop_decorator(workerGreenlet):
         def closure(self):
             while 1:
                 gevent.sleep(1)
@@ -172,7 +174,7 @@ class WebsocketWorker(QtCore.QThread):
                         continue
                 try: #TODO INVOKE CLIP READING ON STARTUP! AFTER CONNECTION
                     self.WSOCK = self.reconnect()
-                    self.clearListSignalForMain.emit() #clear list on reconnect or else a new list will be sent on top of previous
+                    self.clear_list_signal_for_main.emit() #clear list on reconnect or else a new list will be sent on top of previous
                 except: #previous try will handle later
                     LOG.info("Couldn't connect!")
                     LOG.info("Closing modal dialogs")
@@ -183,8 +185,8 @@ class WebsocketWorker(QtCore.QThread):
                     pass #block thread until there is a connection
         return closure
 
-    @workerLoopDecorator
-    def incomingGreenlet(self):
+    @worker_loop_decorator
+    def incoming_greenlet(self):
 
         LOG.info("Begin incoming greenlet")
     
@@ -215,7 +217,7 @@ class WebsocketWorker(QtCore.QThread):
                 self.status_signal_for_main.emit(("Reconnected", "good"))
             rsa_private_key = data["rsa_private_key"]
             rsa_pbkdf2_salt = data["rsa_pbkdf2_salt"]
-            self.SetRSAKeySignalForMain.emit(dict(rsa_private_key = rsa_private_key, rsa_pbkdf2_salt = rsa_pbkdf2_salt))
+            self.set_rsa_key_signal_for_main.emit(dict(rsa_private_key = rsa_private_key, rsa_pbkdf2_salt = rsa_pbkdf2_salt))
             self.initialize_contacts_list_signal_for_main.emit(data["initial_contacts"])
 
         elif answer == "@newest_clips":
@@ -229,7 +231,7 @@ class WebsocketWorker(QtCore.QThread):
                 tabs_affected.add(each["system"])
 
             if not self.refilling_list: #THE FIRST ONE EVER WILL NOT SHOW
-                self.changeTabIconSignalForMain.emit(tabs_affected)
+                self.change_tab_icon_signal_for_main.emit(tabs_affected)
             else:
                 self.refilling_list = False
 
@@ -334,8 +336,8 @@ class WebsocketWorker(QtCore.QThread):
                 raise socket.error
 
 
-    @workerLoopDecorator
-    def outgoingGreenlet(self):
+    @worker_loop_decorator
+    def outgoing_greenlet(self):
                     
         try:
             send = self.OUTGOING_QUEUE.pop()
@@ -366,7 +368,7 @@ class WebsocketWorker(QtCore.QThread):
             self.ensure_container_upload(container_name)
 
             rsa_public_key = RSA.importKey(recipient_public_key)
-            data_out["decryption_key"] = Binary(rsa_public_key.encrypt(data_out["decryption_key"], K=None)[0]) #K is ignored, but needed for compatibility
+            data_out["decryption_key"] = Binary(rsa_public_key.encrypt(data_out["decryption_key"], K=None)[0]) #K is ignored, but needed for compatibility # You will see a "$type" in the json, explanation: Binary data in MongoDB stores a "type" field, which can be any integer between 0 and 255. Identical data will only match if the subtype is the same.
 
             data_in = self.request_response(dict(
                 question = "Share?",

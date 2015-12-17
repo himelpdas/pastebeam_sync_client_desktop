@@ -95,7 +95,7 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         show_text_action.setChecked(True)
         view_menu.addAction(show_text_action)
         view_action_group.addAction(show_text_action)
-        view_action_group.triggered.connect(self.panel_tab_widget.onChangeViewMenu)
+        view_action_group.triggered.connect(self.panel_tab_widget.on_change_view_menu)
 
         settingsAction = QtGui.QAction(QtGui.QIcon("images/settings.png"), "&Settings", self)
         settingsAction.setStatusTip('Edit settings')
@@ -196,10 +196,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.ws_worker.set_clip_signal_for_main.connect(self.on_set_new_clip_slot)
         self.ws_worker.status_signal_for_main.connect(self.on_set_status_slot)
         self.ws_worker.delete_clip_signal_for_main.connect(self.panel_tab_widget.on_incoming_delete)
-        self.ws_worker.clearListSignalForMain.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
+        self.ws_worker.clear_list_signal_for_main.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
         self.ws_worker.initialize_contacts_list_signal_for_main.connect(self.on_contacts_list_incoming)
-        self.ws_worker.changeTabIconSignalForMain.connect(self.panel_tab_widget.onChangeTabIconSlot)
-        self.ws_worker.SetRSAKeySignalForMain.connect(self.on_set_rsa_keys)
+        self.ws_worker.change_tab_icon_signal_for_main.connect(self.panel_tab_widget.onChangeTabIconSlot)
+        self.ws_worker.set_rsa_key_signal_for_main.connect(self.on_set_rsa_keys)
         self.ws_worker.start()
 
     def on_set_rsa_keys(self, private_key_and_salt):
@@ -509,7 +509,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         else:
             password = settings.account.get("password")
 
-        with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name=container_name) as file_paths_decrypt:
+        with encompress.Encompress(password = password, directory = CONTAINER_DIR, container_name_decrypt=container_name) as file_paths_decrypt:
 
             if clip_type == "html":
 
