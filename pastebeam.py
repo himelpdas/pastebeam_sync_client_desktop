@@ -221,7 +221,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def on_clip_change_slot(self):
         #test if identical
 
-        self.on_set_status_slot(("Scanning", "scan"))
+        self.on_set_status_slot(("Waiting for change", "scan"))
         
         mimeData = self.clipboard.mimeData()
 
@@ -285,7 +285,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             preview = cgi.escape(text) #crashes with big data
             #preview = self.truncateTextLines(preview)
-            preview = self.anchorUrls(preview)
+            preview = self.anchor_urls(preview)
                         
             html_file_name = "%s.json"%hash
             html_file_path = os.path.join(CONTAINER_DIR,html_file_name)
@@ -318,7 +318,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             
             preview = cgi.escape(original) #prevent html from styling in qlabel
             preview = self.truncateTextLines(preview)
-            preview = self.anchorUrls(preview)
+            preview = self.anchor_urls(preview)
                         
             text_file_name = "%s.txt"%hash
             text_file_path = os.path.join(CONTAINER_DIR,text_file_name)
@@ -579,10 +579,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         return txt
     
     @staticmethod
-    def anchorUrls(txt):
+    def anchor_urls(txt):
         found_urls = map(lambda each: each[0], GRUBER_URLINTEXT_PAT.findall(txt))
         for each_url in found_urls:
-            txt = txt.replace(each_url, "<a href='{url}'>{url}</a>".format(url=each_url))
+            txt = txt.replace(each_url, "<a href='{url}'>{url}</a>".format(url=each_url.replace("&amp;", "&") ) )  # unescape &
         return txt
         
     @staticmethod
