@@ -141,13 +141,19 @@ def get_file(url, container_path, progress_callback=None,
                 file_size_now -= chunk_size
                 if once_every_second.check(): # FIXED- THIS IS PRONE TO CRASH IF INTERNET IS FAST, AS TOO MANY EMITS WILL OVERLOAD APP. MAKING IT TIME BASED WILL NOT CRASH!
                     downloaded = file_size_original - file_size_now
+
+                    percent = float(downloaded) / file_size_original * 100.0
+                    if percent > 100.0:
+                        percent = 100.0
+                    percent = "%.2f%%" % percent
+
                     progress = {
                         "remaining": file_size_now,
                         "downloaded": downloaded,
-                        "percent_done": float(downloaded) / file_size_original * 100.0,
+                        "percent_done": percent,
                     }
-                    progress_callback(
-                        progress)
+
+                    progress_callback(progress)
 
 
 host_name = u"{system} {release}".format(system=platform.system(),

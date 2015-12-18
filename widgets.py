@@ -474,7 +474,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         self.itemPressed.connect(self.on_item_pressed_slot)  # ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 
-    def getItems(self):
+    def get_items(self):
         # http://stackoverflow.com/questions/12087715/pyqt4-get-list-of-all-labels-in-qlistwidget
         for index in xrange(self.count()):
             item = self.item(index) #RACE? COULD BE NONE!
@@ -482,13 +482,13 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
                  yield item
 
     def get_matching_item_for_data_id(self, find_data_id):
-        for each_item in self.getItems():
+        for each_item in self.get_items():
             each_item_data_id = each_item.get_data_id()
             if each_item_data_id == find_data_id:
                 return each_item
 
     def get_matching_items_for_hash(self, find_hash):
-        for each_item in self.getItems():  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
+        for each_item in self.get_items():  # http://www.qtcentre.org/threads/32716-How-to-iterate-through-QListWidget-items
             each_item_hash = each_item.get_data_hash()
             if find_hash == each_item_hash:
                 yield each_item
@@ -546,6 +546,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
         # _id is in data, but not on_clip_change since that's created from scratch
 
         self.main.on_set_new_clip_slot(dict(new_clip = double_clicked_data, block_clip_change_detection = False))
+        self.main.panel_tab_widget.toggle_is_in_clipboard_label("clear all labels")  # since the clipboard will change after a double-click, just remove all the "In your clipboard!" labels. Note, if decryption fails, then labels will stay erased.
 
         # self.previous_hash = hash #or else on_clip_change_slot will react and a duplicate new list item will occur.
 
@@ -659,7 +660,7 @@ class PanelTabWidget(QTabWidget):
                 action_label = each_action.text()
                 activate_clip_types.append(label_to_clip_type[action_label])
         for list_widget in self.panels[:-1]:
-            for item in list_widget.getItems():
+            for item in list_widget.get_items():
                 activate = False
                 for clip_type in activate_clip_types:
                     item_data = item.get_data()
@@ -678,7 +679,7 @@ class PanelTabWidget(QTabWidget):
 
             is_blank = not bool(written)  # unhide when written is blank
 
-            for item in list_widget.getItems():
+            for item in list_widget.get_items():
                 if is_blank:
                     item.setHidden(False)  # unhide all
                 else:
@@ -750,6 +751,12 @@ class PanelTabWidget(QTabWidget):
             if matched_item:
                 return matched_item
 
+
+    def toggle_is_in_clipboard_label(self, compare_hash):
+        for list_widget in self.panels[:-1]:
+            for each_item in list_widget.get_items():
+                each_widget = list_widget.itemWidget(each_item)
+                each_widget.toggle_is_in_clipboard_label(compare_hash)
 
 class LockoutStackedWidget(StackedWidgetFader):
     """lets you swap between 2 main widgets"""
@@ -926,7 +933,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.item_menu.addAction(star_action)
 
     def get_note_sub_menu(self, history_list_widget, trigger, parent_action,
-                                 placeholder="Enter a note...", max_length = 40):
+                                 placeholder="Enter a note...", max_length = 100):
         def always_close_menu_decorator(func):
             def closure():
                 func()
@@ -952,7 +959,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         if history_list_widget:
             sub_menu.addSeparator()
             action_names = []
-            for each_item in history_list_widget.getItems(): #self.main.panel_tab_widget.star_list_widget.getItems():
+            for each_item in history_list_widget.get_items(): #self.main.panel_tab_widget.star_list_widget.get_items():
                 each_item_data = each_item.get_data()
                 each_item_note = each_item_data.get("note")
                 if each_item_note and each_item_note not in action_names:
@@ -1049,7 +1056,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.item_menu.addAction(separator)
 
     def on_copy_action_slot(self):
-        self.list_widget.on_item_double_click_slot(self.item)  # listwidgetitems don't have signals, so must use parent
+        self.list_widget.on_item_double_click_slot(self.item)  # listwidget_items don't have signals, so must use parent
 
     def set_delete_action(self):
         separator = QAction(self)
@@ -1127,13 +1134,22 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             self.content = self.clip["clip_display"]
 
     def on_dropdown_clicked(self):
-        def getLatestConextActionsForItem():
-            self.reset_actions()
-            self.dropdown_widget.setMenu(self.item_menu)
-            self.dropdown_widget.showMenu()
-            # dropdown_widget.addItem(QIcon("images/copy.png"), "Copy all")
+        self.reset_actions()
+        self.dropdown_widget.setMenu(self.item_menu)
+        self.dropdown_widget.showMenu()
+        # dropdown_widget.addItem(QIcon("images/copy.png"), "Copy all")
 
-        getLatestConextActionsForItem()
+    def toggle_is_in_clipboard_label(self, compare_hash):
+        if self.item_is_in_clipboard(compare_hash):
+            text = views.is_in_clipboard_label
+        else:
+            text = ""
+        self.item_is_in_clipboard_label.setText(text)
+
+    def item_is_in_clipboard(self, compare_hash):
+        item_hash = self.item.get_data_hash()
+        if compare_hash == item_hash:
+            return True
 
     def do_layout(self):
         def do_header():
@@ -1183,8 +1199,12 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
                         clip_type = clip_type.capitalize()
                     note_label = views.corner_label_type % clip_type
                 note_widget = QLabel(note_label)
+
+            self.item_is_in_clipboard_label = QLabel("")
+
             dropdown_hbox_layout.addWidget(note_widget)
             dropdown_hbox_layout.addStretch(1)
+            dropdown_hbox_layout.addWidget(self.item_is_in_clipboard_label)
             dropdown_hbox_layout.addWidget(self.dropdown_widget)
             item_layout.addLayout(dropdown_hbox_layout)
 

@@ -26,7 +26,7 @@ class WebsocketWorkerMixinForMain(object):
 
     def on_incoming_slot(self, emitted):
 
-        new_clip = emitted
+        new_clip, is_latest = emitted
 
         list_widget = self.panel_tab_widget.get_list_widget_from_clip_data(new_clip)
 
@@ -44,12 +44,15 @@ class WebsocketWorkerMixinForMain(object):
 
         list_widget.scroll_to_top()
 
+        if is_latest:
+            self.panel_tab_widget.toggle_is_in_clipboard_label(new_clip["hash"])
+
 class WebsocketWorker(QtCore.QThread):
 
     #This is the signal that will be emitted during the processing.
     #By including int as an argument, it lets the signal know to expect
     #an integer argument when emitting.
-    incoming_clip_signal_for_main = QtCore.Signal(dict)
+    incoming_clip_signal_for_main = QtCore.Signal(tuple)
     set_clip_signal_for_main = QtCore.Signal(dict)
     status_signal_for_main = QtCore.Signal(tuple)
     delete_clip_signal_for_main = QtCore.Signal(list)
@@ -224,39 +227,41 @@ class WebsocketWorker(QtCore.QThread):
             self.initialize_contacts_list_signal_for_main.emit(data["initial_contacts"])
 
         elif answer == "@newest_clips":
-            data.reverse() #so the clips can be displayed top down since each clip added gets pushed down in listwidget
+            data.reverse()  # so the clips can be displayed top down since each clip data added gets pushed down in listwidget
 
             tabs_affected = set([])
-            for each in data:
-                #download_container_if_not_exist(each, self.streaming_download_callback) #TODO MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
-                self.incoming_clip_signal_for_main.emit(each) #TODO DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
+            for i, each_clip_data in enumerate(data):
+                #download_container_if_not_exist(each_clip_data, self.streaming_download_callback)  # DONE - MOVE THIS TO AFTER ONDOUBLE CLICK TO SAVE BANDWIDTH #MUST download container first, as it may not exist locally if new clip is from another device
+                is_latest = i == len(data)-1
+                self.incoming_clip_signal_for_main.emit((each_clip_data, is_latest))  # CANCELED - DO NOT STORE PREVIEW IN MOGNODB, INSTEAD DERIVE IT FROM THE CONTAINER HERE. THIS WAY WE DON'T HAVE TO ENCRYPT THE MONGODB DOCUMENT
 
-                tabs_affected.add(each["system"])
+                tabs_affected.add(each_clip_data["system"])
 
-            if not self.refilling_list: #THE FIRST ONE EVER WILL NOT SHOW
+            latest_clip_data = each_clip_data
+
+            if not self.refilling_list:  # THE FIRST ONE EVER WILL NOT SHOW
                 self.change_tab_icon_signal_for_main.emit(tabs_affected)
             else:
                 self.refilling_list = False
 
-            latest = each
-            
-            not_this_device = latest["session_id"] != self.session_id
-            is_clipboard = latest["system"] == "main"
-            is_star = latest["system"] == "starred"
-            is_notification = latest["system"] == "notification"
-            is_share = latest["system"] == "share"
+            not_this_device = latest_clip_data["session_id"] != self.session_id
+            is_clipboard = latest_clip_data["system"] == "main"
+            is_star = latest_clip_data["system"] == "starred"
+            is_notification = latest_clip_data["system"] == "notification"
+            is_share = latest_clip_data["system"] == "share"
 
             # Done: Add user setting to disable this if he doesn't want to sync with the cloud!
-            if is_clipboard and not_this_device: #do not allow setting from the same pc
+            if is_clipboard and not_this_device:  # do not allow setting from the same pc
                 try:
                     if not settings.universal_clipboard:
                         return
                 except AttributeError:
                     pass
                 else:
-                    self.set_clip_signal_for_main.emit(dict(new_clip = latest, block_clip_change_detection = True)) #this will set the newest clip only, thanks to self.main.new_clip!!!
+                    self.set_clip_signal_for_main.emit(dict(new_clip = latest_clip_data, block_clip_change_detection = True))  # block_clip_change_detection will prevent redundant update
+
             elif is_share:
-                self.status_signal_for_main.emit(("You got an item from %s"%latest["host_name"], "good"))
+                self.status_signal_for_main.emit(("You got an item from %s"%latest_clip_data["host_name"], "good"))
 
         elif answer == "@get_contacts":
             contacts_list = data
@@ -266,9 +271,9 @@ class WebsocketWorker(QtCore.QThread):
             LOG.info(data["location"])
             self.delete_clip_signal_for_main.emit(data["location"])
 
-        #REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
-        elif "!" in answer: #IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
-            self.RESPONDED_EVENT.set(received) #true or false    
+        # REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
+        elif "!" in answer:  # IMPORTANT --- ALWAYS CHECK HERE WHEN ADDING A NEW ANSWER
+            self.RESPONDED_EVENT.set(received)  # true or false
         
     def request_response(self, send): #todo change name
         #while 1: #mimic do while to prevent waiting before send #TODO PREVENT DUPLICATE SENDS USING UUID
@@ -298,9 +303,7 @@ class WebsocketWorker(QtCore.QThread):
 
     def streaming_download_callback(self, progress):
         percent = progress["percent_done"]
-        if percent > 100.0:
-            percent = 100.0
-        self.status_signal_for_main.emit(("Downloading %.2f%%" % percent, "download"))
+        self.status_signal_for_main.emit(("Downloading %s" % percent, "download"))
 
     def streaming_upload_callback(self, monitor, container_size): #FIXME App can CRASH if freq too high!
         bytes_read = float(monitor.bytes_read)

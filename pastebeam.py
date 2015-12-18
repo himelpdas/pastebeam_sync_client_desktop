@@ -458,7 +458,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 
     def streaming_download_callback(self, progress):
-        self.on_set_status_slot(("Downloading %s"%progress["percent_done"], "download"))
+        self.on_set_status_slot(("Downloading %s" % progress["percent_done"], "download"))
 
 
     def block_clip_change_detection(func):
@@ -477,13 +477,15 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 mimeData.setData("__pastebeam__", json.dumps(pastebeam_mime))
             try:
                 func(self, new_clip, mimeData)
-                #self.previous_hash = new_clip["hash"]  # so that we don't get a redundant on_clip_change_slot, and a hit to the server. needed since an incoming will not set self.previous_hash
-            except RuntimeError, e: #sometimes mimeData can be garbage collected despite passing it to the parent object to prevent GC
+                # self.previous_hash = new_clip["hash"]  # so that we don't get a redundant on_clip_change_slot, and a hit to the server. needed since an incoming will not set self.previous_hash
+            except RuntimeError, e:  # sometimes mimeData can be garbage collected despite passing it to the parent object to prevent GC
                 LOG.error(e)
             except tarfile.ReadError as e:
-                #when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
+                # when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
                 LOG.error("tarfile: "+e[0])
                 self.on_set_status_slot(("Decryption failed. Current password is not compatible with this item","bad"))
+            except IOError:
+                LOG.error("Possibly in the middle of downloading a container of a clip, while another client double-clicks the same clip, so extracted tarfile fails with (from tarfile.py): IOError: CRC check failed 0x9e952259 != 0x3b63bdc0L")
             except ValueError:
                 self.on_set_status_slot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
             else:
@@ -492,14 +494,14 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 
     @block_clip_change_detection
-    def on_set_new_clip_slot(self, new_clip, mimeData): #happens when new incoming clip or when user double clicks an item
+    def on_set_new_clip_slot(self, new_clip, mimeData):  # happens when new incoming clip or when user double clicks an item
 
         container_name = new_clip["container_name"]
         clip_type = new_clip["clip_type"]
         system = new_clip["system"]
         
         #downloading modal
-        download_container_if_not_exist(new_clip, self.streaming_download_callback) #TODO show error message if download not found on server
+        download_container_if_not_exist(new_clip, self.streaming_download_callback)  # TODO - show error message if download not found on server
 
         self.on_set_status_slot(("Decrypting", "unlock"))
         if system == "share":
@@ -517,12 +519,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                 with open(clip_file_path, 'r') as clip_file:
 
-                    clip_json = json.loads(clip_file.read()) #json handles encode and decode of UTF8
+                    clip_json = json.loads(clip_file.read())  # json handles encode and decode of UTF8
 
                     clip_text = clip_json["html_and_text"]["text"]
                     clip_html = clip_json["html_and_text"]["html"]
 
-                    mimeData.setText(clip_text) #set text cannot automatically truncate html (or rich text tags) like with mimeData.text(). This is probably due to the operating system providing both text and html, and it's not Qt's concern. So I decided to store getText on json file and setText here.
+                    mimeData.setText(clip_text)  # set text cannot automatically truncate html (or rich text tags) like with mimeData.text(). This is probably due to the operating system providing both text and html, and it's not Qt's concern. So I decided to store getText on json file and setText here.
                     mimeData.setHtml(clip_html)
 
 
@@ -532,7 +534,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                 with open(clip_file_path, 'r') as clip_file:
 
-                    clip_text = clip_file.read().decode("utf8") #http://stackoverflow.com/questions/6048085/python-write-unicode-text-to-a-text-file #needed to keep conistant hash, or else inifnite upload/update loop will occur
+                    clip_text = clip_file.read().decode("utf8")  # http://stackoverflow.com/questions/6048085/python-write-unicode-text-to-a-text-file #needed to keep conistant hash, or else inifnite upload/update loop will occur
 
                     mimeData.setText(clip_text)
 

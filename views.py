@@ -39,3 +39,5 @@ header_sender = u"<h3 style='color:{color}'>{host_name}</h3>"
 not_connected_msg = u"You are not connected! Check your account info."
 
 disconnected_msg = u"Got disconnected! Check your internet connection."
+
+is_in_clipboard_label = u"<h5 style='color:DarkOrchid'>In your clipboard!</h5>"
