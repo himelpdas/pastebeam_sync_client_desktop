@@ -64,6 +64,9 @@ class Encompress():
 	READ_BYTES = BLOCK_SIZE*1024 #make sure it is divisible by self.BLOCK_SIZE
 	
 	def __init__(self,  password = "", directory = "", file_names_encrypt = [], container_name_decrypt = None):
+
+		assert bool(container_name_decrypt) != bool(file_names_encrypt), "file_names_encrypt OR container_name_decrypt!" # xor http://stackoverflow.com/questions/432842/how-do-you-get-the-logical-xor-of-two-variables-in-python
+
 		if container_name_decrypt:
 			self.mode = "decrypt"
 			self.container_name = container_name_decrypt

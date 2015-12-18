@@ -100,8 +100,11 @@ class WebsocketWorker(QtCore.QThread):
 
         if question == "Share?":
 
+            download_container_if_not_exist(data, self.streaming_download_callback)  # no yielding (app.processEvents) needed since this is a separate thread
+
             container_name_old = data["container_name"] #guaranteed to have a container name
             password_old = data["decryption_key"]
+
             with encompress.Encompress(password = password_old, directory = CONTAINER_DIR, container_name_decrypt=container_name_old):
                 password_new = Random.new().read(16)
                 file_names = data["file_names"]
@@ -294,9 +297,12 @@ class WebsocketWorker(QtCore.QThread):
         return received["data"]
 
     def streaming_download_callback(self, progress):
-        self.status_signal_for_main.emit(("Downloading %s"%progress["percent_done"], "download"))
+        percent = progress["percent_done"]
+        if percent > 100.0:
+            percent = 100.0
+        self.status_signal_for_main.emit(("Downloading %.2f%%" % percent, "download"))
 
-    def streamingUploadCallback(self, monitor, container_size): #FIXME App can CRASH if freq too high!
+    def streaming_upload_callback(self, monitor, container_size): #FIXME App can CRASH if freq too high!
         bytes_read = float(monitor.bytes_read)
         done = (bytes_read/container_size*100.0)
         if done > 100.0:
@@ -328,7 +334,7 @@ class WebsocketWorker(QtCore.QThread):
                 m = MultipartEncoderMonitor.from_fields(
                     fields={'email': email, 'password': password,
                             'upload': (container_name, open(container_path, 'rb'), "application/pastebeam")},
-                    callback=lambda monitor : self.streamingUploadCallback(monitor, container_size)
+                    callback=lambda monitor : self.streaming_upload_callback(monitor, container_size)
                     )
                 r = requests.post(URL("http", DEFAULT_DOMAIN, DEFAULT_PORT, "upload"), data = m, headers={'Content-Type': m.content_type}) #files={"upload": open(container_path, 'rb')}) #old way of using requests file upload which does not allow customization of request
             except requests.exceptions.ConnectionError:

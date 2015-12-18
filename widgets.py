@@ -852,7 +852,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
     host_colors = sorted(
         ["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C",
          "#2966B8", "#3923D6", "#23819C", "#FF62B0", ])  # http://www.hitmill.com/html/pastels.html
-    file_icons = map(lambda file_icon: file_icon.split()[-1].upper(), os.listdir(os.path.normpath("images/files")))
+    file_icons = map(lambda file_icon: file_icon.split(".")[0].upper(), os.listdir(os.path.normpath("images/files")))
 
     def __init__(self, clip, item):
         super(self.__class__, self).__init__()
@@ -1105,7 +1105,9 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
                 ext = each_filename.split(".")[-1]
                 file_icon = "files/%s" % ext
                 if not ext.upper() in self.file_icons:
-                    pass  # file_icon = os.path.normpath("files/_blank")
+                    file_icon = "files/_blank"
+                if ext.upper() == "JPEG":
+                    file_icon = "files/jpg"
                 if ext == "_folder":  # get rid of the ._folder from folder._folder
                     each_filename = each_filename.split(".")[0]
                 files.append(u"{icon} {file_name}".format(

@@ -144,7 +144,7 @@ def get_file(url, container_path, progress_callback=None,
                     progress = {
                         "remaining": file_size_now,
                         "downloaded": downloaded,
-                        "percent_done": "%.2f%%" % (float(downloaded) / file_size_original * 100.0),
+                        "percent_done": float(downloaded) / file_size_original * 100.0,
                     }
                     progress_callback(
                         progress)
