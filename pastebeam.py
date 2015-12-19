@@ -13,7 +13,7 @@ import platform, distutils.dir_util, distutils.errors, distutils.file_util #dist
 class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
     #SLOT IS A QT TERM MEANING EVENT
     def init_ui(self):
-        
+        #self.setWindowOpacity(0.5) Todo - add "Window" menu and allow transparency and always on top
         self.stacked_widget = LockoutStackedWidget(self)
         
         self.init_panel()

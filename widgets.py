@@ -221,7 +221,7 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
         self.system_widget.setLayout(master_vbox)
 
     def set_device_name_to_keyring(self):
-        settings.device_name = self.device_name_line.text().strip() or host_name  # strip removes trailing spaces
+        settings.device_name = unicode(self.device_name_line.text()).strip() or host_name  # strip removes trailing spaces
 
     def do_tab_widget(self):
         self.tab_widget = QtGui.QTabWidget()
@@ -250,8 +250,8 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
 
     def set_account_to_keyring(self):
 
-        typed_email = self.email_line.text()
-        typed_password = self.password_line.text()
+        typed_email = unicode(self.email_line.text())
+        typed_password = unicode(self.password_line.text())
 
         if (typed_email and typed_password):  # TODO STRONGER VALIDATION HERE
 
@@ -975,7 +975,8 @@ class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
         @always_close_menu_decorator
         def on_return_pressed():
             # star_action.trigger()
-            trigger(message_widget.text()[:max_length].strip(), parent_action)
+            message = unicode(message_widget.text())
+            trigger(message[:max_length].strip(), parent_action)
 
         message_widget.returnPressed.connect(on_return_pressed)
         message_widget.setPlaceholderText(placeholder)
@@ -1032,7 +1033,8 @@ class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
         self.item_menu.addAction(self.share_action)
 
     def on_share_sub_menu_triggered_slot(self, note, action):
-        email = action.text()
+
+        email = unicode(action.text())
         share_item_data = self.item.get_data()
         share_item_data["note"] = note
 
