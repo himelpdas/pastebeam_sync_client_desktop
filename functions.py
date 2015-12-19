@@ -1,5 +1,18 @@
 # --coding: utf-8 --
 
+"""
+# uncomment to use PyQt4
+
+import PyQt4.QtGui as QtGui
+import PyQt4.QtCore as QtCore
+QtCore.Signal = QtCore.pyqtSignal
+QtCore.Slot = QtCore.pyqtSlot
+"""
+import PySide.QtGui as QtGui
+import PySide.QtCore as QtCore
+
+
+
 import urlparse
 import os, platform, tarfile, random, requests
 

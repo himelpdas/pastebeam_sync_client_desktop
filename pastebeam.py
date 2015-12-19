@@ -3,18 +3,14 @@
 from gevent import monkey; monkey.patch_all()
 
 #from PySide import QtGui, QtCore
-from PySide.QtGui import *
-from PySide import QtCore, QtGui
 
 from parallel import *
-
-from functions import *
 
 from widgets import *
 
 import platform, distutils.dir_util, distutils.errors, distutils.file_util #distutil over shututil http://stackoverflow.com/questions/15034151/copy-directory-contents-into-a-directory-with-python #import error on linux http://stackoverflow.com/questions/19097235/backing-up-copying-an-entire-folder-tree-in-batch-or-python
 
-class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
+class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
     #SLOT IS A QT TERM MEANING EVENT
     def init_ui(self):
         
@@ -47,7 +43,7 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         self.panel_tab_widget = PanelTabWidget(QtCore.QSize(self.px_to_dp(24) , self.px_to_dp(24) ), self)
         self.lockout_widget = LockoutWidget(self)
         #for each in self.panel_tab_widget.panels:
-        #    each.itemDoubleClicked.connect(each.on_item_double_click_slot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
+        #    each.itemDoubleClicked.connect(each.on_item_double_click_slot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QtGui.QLineEdit::setText()).
         self.stacked_widget.addWidget(self.panel_tab_widget)
         self.stacked_widget.addWidget(self.lockout_widget)
 
@@ -63,7 +59,7 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         fileMenu.addAction(lockoutAction)
         fileMenu.addSeparator()
 
-        exitAction = QtGui.QAction(QtGui.QIcon("images/exit.png"), '&Exit', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls    
+        exitAction = QtGui.QAction(QtGui.QIcon("images/exit.png"), '&Exit', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
         exitAction.triggered.connect(self.closeReal) #exitAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
@@ -71,26 +67,26 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         fileMenu.addAction(exitAction)
         
         """
-        accountAction = QtGui.QAction(QtGui.QIcon("images/account.png"), '&Account', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls    
+        accountAction = QtGui.QAction(QtGui.QIcon("images/account.png"), '&Account', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls
         #accountAction.setShortcut('Ctrl+Q')
         accountAction.setStatusTip('Edit login info')
         accountAction.triggered.connect(self.showAccountDialogs) #accountAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
         """
 
         self.view_menu = view_menu = menubar.addMenu('&View')
-        view_action_group = QActionGroup(self)
+        view_action_group = QtGui.QActionGroup(self)
         view_action_group.setExclusive(False)
-        show_files_action = QAction(AppIcon("files"),"Files", self)
+        show_files_action = QtGui.QAction(AppIcon("files"),"Files", self)
         show_files_action.setCheckable(True)
         show_files_action.setChecked(True)
         view_menu.addAction(show_files_action)
         view_action_group.addAction(show_files_action)
-        show_screenshots_action = QAction(AppIcon("image"),"Screenshots", self)
+        show_screenshots_action = QtGui.QAction(AppIcon("image"),"Screenshots", self)
         show_screenshots_action.setCheckable(True)
         show_screenshots_action.setChecked(True)
         view_menu.addAction(show_screenshots_action)
         view_action_group.addAction(show_screenshots_action)
-        show_text_action = QAction(AppIcon("text"),"Text/Html", self)
+        show_text_action = QtGui.QAction(AppIcon("text"),"Text/Html", self)
         show_text_action.setCheckable(True)
         show_text_action.setChecked(True)
         view_menu.addAction(show_text_action)
@@ -101,7 +97,7 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         settingsAction.setStatusTip('Edit settings')
         settingsAction.triggered.connect(lambda:SettingsDialog.show(self))
         
-        contactsAction = QAction(QIcon("images/contacts.png"), "&Contacts", self)
+        contactsAction = QtGui.QAction(QtGui.QIcon("images/contacts.png"), "&Contacts", self)
         contactsAction.triggered.connect(lambda:ContactsDialog.show(self))
         contactsAction.setStatusTip("Edit your contacts")
         #contactsAction.triggered.connect(AddressBook.show)
@@ -122,11 +118,11 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         
         self.sbar = sb = self.statusBar()
         
-        self.status_lbl = lbl = QLabel("")
+        self.status_lbl = lbl = QtGui.QLabel("")
         
         sb.addPermanentWidget(lbl)
         
-        self.status_icn = icn = QLabel("")
+        self.status_icn = icn = QtGui.QLabel("")
         
         sb.addPermanentWidget(icn)
         
@@ -136,12 +132,12 @@ class UIMixin(QtGui.QMainWindow,): #AccountMixin): #handles menubar and statusba
         msg,icn = msg_icn
         self.status_lbl.setText("<h3>%s...</h3>"%msg)
         
-        pmap = QPixmap("images/{icn}".format(icn=icn))
+        pmap = QtGui.QPixmap("images/{icn}".format(icn=icn))
         pmap = pmap.scaledToWidth(self.px_to_dp(16), QtCore.Qt.SmoothTransformation) #antialiasing http://stackoverflow.com/questions/7623631/qt-antialiasing-png-resize
         self.status_icn.setPixmap(pmap)
         
         #events process once every x milliseconds, this forces them to process... or we can use repaint isntead
-        qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
+        QtGui.qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
 
     def init_tray_icon(self):
         tray_icon = TrayIcon(self)
@@ -154,7 +150,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     max_file_size = 1024*1024*50
 
     update_contacts_list_signal = QtCore.Signal(list)
+
     show_settings_dialog_signal = QtCore.Signal()
+
+    outgoing_signal_for_worker = QtCore.Signal(dict)
     
     def __init__(self, app):
         super(Main, self).__init__()
@@ -214,7 +213,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def init_clipboard(self):
         self.previous_hash = {}
 
-        self.clipboard = self.app.clipboard() #clipboard is in the QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
+        self.clipboard = self.app.clipboard() #clipboard is in the QtGui.QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
         self.clipboard.dataChanged.connect(self.on_clip_change_slot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
 
 
@@ -251,10 +250,10 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             img_file_path = os.path.join(CONTAINER_DIR, img_file_name)
             image.save(img_file_path) #change to or compliment upload
                 
-            pmap = QPixmap(image) #change to pixmap for easier image editing than Qimage
+            pmap = QtGui.QPixmap(image) #change to pixmap for easier image editing than Qimage
             pmap = PixmapThumbnail(pmap, 240)
             
-            device= QtCore.QBuffer() #is an instance of QIODevice, which is accepted by image.save()
+            device= QtCore.QBuffer() #is an instance of QtGui.QIODevice, which is accepted by image.save()
             pmap.thumbnail.save(device, "PNG") # writes image into the in-memory container, rather than a file name
             _bytearray = device.data() #get the buffer itself
             bytestring = _bytearray.data() #copy the full string
@@ -451,7 +450,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
         async_process = dict(question="Update?", data=prepare)
 
-        self.outgoingSignalForWorker.emit(async_process)
+        self.outgoing_signal_for_worker.emit(async_process)
 
         self.previous_hash = hash
         #image.destroy()
@@ -543,7 +542,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                 clip_file_path = file_paths_decrypt[0]
 
-                image = QImage(clip_file_path)
+                image = QtGui.QImage(clip_file_path)
 
                 mimeData.setImageData(image)
 
@@ -607,6 +606,6 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 if __name__ == '__main__':
     
-    app = QApplication(sys.argv) #create mainloop
+    app = QtGui.QApplication(sys.argv) #create mainloop
     ex = Main(app) #run widgets
     sys.exit(app.exec_())

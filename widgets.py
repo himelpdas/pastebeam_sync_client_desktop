@@ -1,10 +1,8 @@
 from functions import *
-from PySide.QtGui import *
-from PySide import QtCore
 import views
 
 
-class LockoutWidget(QWidget):
+class LockoutWidget(QtGui.QWidget):
 
     def __init__(self, main, *args, **kwargs):
         self.main = main
@@ -12,35 +10,35 @@ class LockoutWidget(QWidget):
 
         super(self.__class__, self).__init__(*args, **kwargs)
 
-        self.lockout_pin = QLineEdit()
+        self.lockout_pin = QtGui.QLineEdit()
         self.do_layout()
 
     def do_layout(self):
 
         self.lockout_pin.setAlignment(
             QtCore.Qt.AlignHCenter)  # http://www.codeprogress.com/cpp/libraries/qt/QLineEditCenterText.php#.VcnX9M7RtyN
-        # self.lockout_pin.setValidator(QIntValidator(0, 9999)) #OLD# http://doc.qt.io/qt-4.8/qlineedit.html#inputMask-prop
+        # self.lockout_pin.setValidator(QtGui.QIntValidator(0, 9999)) #OLD# http://doc.qt.io/qt-4.8/qlineedit.html#inputMask-prop
         # self.lockout_pin.setMaxLength(4) #still need it despite setValidator or else you can keep typing
         self.lockout_pin.setEchoMode(
-            QLineEdit.Password)  # hide with bullets #http://stackoverflow.com/questions/4663207/masking-qlineedit-text
+            QtGui.QLineEdit.Password)  # hide with bullets #http://stackoverflow.com/questions/4663207/masking-qlineedit-text
         self.lockout_pin.setStatusTip("Type your account password to unlock.")
         self.lockout_pin.textEdited.connect(self.on_lockout_pin_typed_slot)
 
-        get_in_label = QLabel("<a href='#'>Can't get in?</a>")
+        get_in_label = QtGui.QLabel("<a href='#'>Can't get in?</a>")
         get_in_label.setAlignment(QtCore.Qt.AlignCenter)
 
-        lines_vbox = QVBoxLayout()
+        lines_vbox = QtGui.QVBoxLayout()
         lines_vbox.addStretch(1)
         lines_vbox.addWidget(self.lockout_pin)
         lines_vbox.addWidget(get_in_label)
         lines_vbox.addStretch(1)
 
-        lockout_hbox = QHBoxLayout()
+        lockout_hbox = QtGui.QHBoxLayout()
         lockout_hbox.addStretch(1)
         lockout_hbox.addLayout(lines_vbox)
         lockout_hbox.addStretch(1)
 
-        lockout_vbox = QVBoxLayout()
+        lockout_vbox = QtGui.QVBoxLayout()
         lockout_vbox.addLayout(lockout_hbox)
 
         self.setLayout(lockout_vbox)
@@ -75,15 +73,15 @@ class LockoutWidget(QWidget):
 
 class OkCancelWidgetMixin(object):
     def do_ok_cancel_widget(self):
-        ok_button = QPushButton("Ok")
+        ok_button = QtGui.QPushButton("Ok")
         ok_button.clicked.connect(self.on_ok_button_clicked_slot)
-        cancel_button = QPushButton("Cancel")
+        cancel_button = QtGui.QPushButton("Cancel")
         cancel_button.clicked.connect(self.on_cancel_button_clicked_slot)
-        ok_cancel_hbox = QHBoxLayout()
+        ok_cancel_hbox = QtGui.QHBoxLayout()
         ok_cancel_hbox.addStretch(1)
         ok_cancel_hbox.addWidget(ok_button)
         ok_cancel_hbox.addWidget(cancel_button)
-        self.ok_cancel_widget = QWidget()
+        self.ok_cancel_widget = QtGui.QWidget()
         self.ok_cancel_widget.setLayout(ok_cancel_hbox)
 
     def center_to_parent(self):
@@ -98,7 +96,7 @@ class OkCancelWidgetMixin(object):
         self.done(0)
 
 
-class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/threads/37058-modal-QWidget
+class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/threads/37058-modal-QWidget
 
     @classmethod
     def show(cls, parent):  # THE CLASS ITSELF IS AN OBJECT WITH ITS OWN NAMESPACE, AND CALLING THE CLASS RETURNS (INSTANTIATES) A NEW INSTANCE OBJECT HELD IN THE CLASSES NAMESPACE
@@ -127,54 +125,54 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
             email = ""
             password = ""
 
-        email_hbox = QHBoxLayout()
-        email_label = QLabel("Email:")
-        self.email_line = QLineEdit(email)
+        email_hbox = QtGui.QHBoxLayout()
+        email_label = QtGui.QLabel("Email:")
+        self.email_line = QtGui.QLineEdit(email)
         email_hbox.addWidget(email_label)
         email_hbox.addWidget(self.email_line)
-        email_widget = QWidget()
+        email_widget = QtGui.QWidget()
         email_widget.setLayout(email_hbox)
 
-        password_hbox = QHBoxLayout()
-        password_label = QLabel("Password:")
-        self.password_line = QLineEdit(password)
-        self.password_line.setEchoMode(QLineEdit.Password)
+        password_hbox = QtGui.QHBoxLayout()
+        password_label = QtGui.QLabel("Password:")
+        self.password_line = QtGui.QLineEdit(password)
+        self.password_line.setEchoMode(QtGui.QLineEdit.Password)
         password_hbox.addWidget(password_label)
         password_hbox.addWidget(self.password_line)
-        password_widget = QWidget()
+        password_widget = QtGui.QWidget()
         password_widget.setLayout(password_hbox)
 
-        register_link = QLabel("<a href='#'>Register</a>")
-        seperator = QLabel("|")
-        forgot_link = QLabel("<a href='#'>Reset or change password</a>")
-        links_hbox = QHBoxLayout()
+        register_link = QtGui.QLabel("<a href='#'>Register</a>")
+        seperator = QtGui.QLabel("|")
+        forgot_link = QtGui.QLabel("<a href='#'>Reset or change password</a>")
+        links_hbox = QtGui.QHBoxLayout()
         links_hbox.addWidget(register_link)
         links_hbox.addWidget(seperator)
         links_hbox.addWidget(forgot_link)
         links_hbox.setAlignment(QtCore.Qt.AlignRight)
-        links_widget = QWidget()
+        links_widget = QtGui.QWidget()
         links_widget.setLayout(links_hbox)
 
-        account_vbox = QVBoxLayout()
+        account_vbox = QtGui.QVBoxLayout()
         account_vbox.addWidget(email_widget)
         account_vbox.addWidget(password_widget)
         account_vbox.addWidget(links_widget)
 
-        self.account_widget = QWidget()
+        self.account_widget = QtGui.QWidget()
         self.account_widget.setLayout(account_vbox)
 
     def do_preferences_widget(self):
-        device_name_label = QLabel("Device Name:")
-        self.device_name_line = QLineEdit()
+        device_name_label = QtGui.QLabel("Device Name:")
+        self.device_name_line = QtGui.QLineEdit()
         try:
             device_name = settings.device_name
         except AttributeError:
             device_name = host_name
         self.device_name_line.setText(device_name)
-        device_name_hbox = QHBoxLayout()
+        device_name_hbox = QtGui.QHBoxLayout()
         device_name_hbox.addWidget(device_name_label)
         device_name_hbox.addWidget(self.device_name_line)
-        device_name_widget = QWidget()
+        device_name_widget = QtGui.QWidget()
         device_name_widget.setLayout(device_name_hbox)
 
         try:
@@ -182,50 +180,50 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
         except AttributeError:
             universal_clipboard = True
 
-        sync_label = QLabel("Enable universal copy and paste")
-        self.sync_check = sync_check = QCheckBox()
+        sync_label = QtGui.QLabel("Enable universal copy and paste")
+        self.sync_check = sync_check = QtGui.QCheckBox()
         sync_check.setChecked(universal_clipboard)
-        sync_hbox = QHBoxLayout()
+        sync_hbox = QtGui.QHBoxLayout()
         sync_hbox.addWidget(sync_label)
         sync_hbox.addWidget(sync_check)
-        sync_widget = QWidget()
+        sync_widget = QtGui.QWidget()
         sync_widget.setLayout(sync_hbox)
 
-        run_label = QLabel("Run PasteBeam on system startup")
-        run_check = QCheckBox()
-        run_hbox = QHBoxLayout()
+        run_label = QtGui.QLabel("Run PasteBeam on system startup")
+        run_check = QtGui.QCheckBox()
+        run_hbox = QtGui.QHBoxLayout()
         run_hbox.addWidget(run_label)
         run_hbox.addWidget(run_check)
-        run_widget = QWidget()
+        run_widget = QtGui.QWidget()
         run_widget.setLayout(run_hbox)
         
-        dclick_label = QLabel("Double-click an item to copy")
-        dclick_check = QCheckBox()
-        dclick_hbox = QHBoxLayout()
+        dclick_label = QtGui.QLabel("Double-click an item to copy")
+        dclick_check = QtGui.QCheckBox()
+        dclick_hbox = QtGui.QHBoxLayout()
         dclick_hbox.addWidget(dclick_label)
         dclick_hbox.addWidget(dclick_check)
-        dclick_widget = QWidget()
+        dclick_widget = QtGui.QWidget()
         dclick_widget.setLayout(dclick_hbox)
 
-        master_vbox = QVBoxLayout()
+        master_vbox = QtGui.QVBoxLayout()
         master_vbox.addWidget(device_name_widget)
         master_vbox.addWidget(sync_widget)
         master_vbox.addWidget(run_widget)
         master_vbox.addWidget(dclick_widget)
 
-        self.system_widget = QWidget()
+        self.system_widget = QtGui.QWidget()
         self.system_widget.setLayout(master_vbox)
 
     def set_device_name_to_keyring(self):
         settings.device_name = self.device_name_line.text().strip() or host_name  # strip removes trailing spaces
 
     def do_tab_widget(self):
-        self.tab_widget = QTabWidget()
+        self.tab_widget = QtGui.QTabWidget()
         self.tab_widget.addTab(self.account_widget, AppIcon("account"), "Account")
         self.tab_widget.addTab(self.system_widget, AppIcon("controls"), "Preferences")
 
     def do_settings_layout(self):
-        self.settings_layout = QVBoxLayout()
+        self.settings_layout = QtGui.QVBoxLayout()
         self.settings_layout.addWidget(self.tab_widget)
         self.settings_layout.addWidget(self.ok_cancel_widget)
 
@@ -264,7 +262,7 @@ class SettingsDialog(QDialog, OkCancelWidgetMixin):  # http://www.qtcentre.org/t
 class WaitForSignalDialogMixin(object):
     def show_wait_for_signal_dialog(self, question, data_dict, error_msg, success_msg=False):
         "shows an unclosable dialog until closeWaitDialogSignalForMain"
-        self.main.outgoingSignalForWorker.emit(
+        self.main.outgoing_signal_for_worker.emit(
             dict(
                 question=question,
                 data=data_dict
@@ -273,27 +271,27 @@ class WaitForSignalDialogMixin(object):
         WaitForSignalDialog(self,
                             "please wait")  # EXECUTION FREEZfES HERE so WaitForSignalDialog().done(1) will not work, use signals instead
         if not self.success["success"]:
-            QMessageBox.warning(
-                # QMessageBox.critical #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+            QtGui.QMessageBox.warning(
+                # QtGui.QMessageBox.critical #http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
                 self,
                 "Error",
                 "%s!<br><b>Reason:</b> <i>%s</i>" % (error_msg.capitalize(), self.success["reason"])
             )
         elif success_msg:
-            QMessageBox.information(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+            QtGui.QMessageBox.information(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
                 self,
                 "Success",
                 "%s!" % success_msg.capitalize()
             )
 
 
-class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
+class ContactsDialog(QtGui.QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
     @classmethod
     def show(cls, parent):
         if parent.ws_worker.KEEP_RUNNING:
             cls(parent)
         else:
-            QMessageBox.warning(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+            QtGui.QMessageBox.warning(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
                 parent, # so it doesn't get garbage collected
                 "Warning",
                 views.not_connected_msg
@@ -337,7 +335,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
     def on_friend_request_button_clicked_slot(self):
         email = self.email_line.text()
         if not validators.email(email):
-            QMessageBox.warning(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
+            QtGui.QMessageBox.warning(  # http://stackoverflow.com/questions/20841081/how-to-pop-up-a-message-window-in-qt
                 self,
                 "Warning",
                 "Invalid email address!"
@@ -349,7 +347,7 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
 
     def on_friend_request_received_slot(self):
         self.friend_request_wait_dialog.done(1)
-        QMessageBox.information(self, "Success", "Friend request sent!")
+        QtGui.QMessageBox.information(self, "Success", "Friend request sent!")
 
     def currentItems(self):
         """http://stackoverflow.com/questions/4629584/pyqt4-how-do-you-iterate-all-items-in-a-qlistwidget"""
@@ -378,39 +376,39 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.setMinimumHeight(new_height)
 
     def do_add_contact_widget(self):
-        email_label = QLabel("Friend's Email:")
-        self.email_line = email_line = QLineEdit()
+        email_label = QtGui.QLabel("Friend's Email:")
+        self.email_line = email_line = QtGui.QLineEdit()
 
-        friend_request_button = QPushButton("Send friend invite")
+        friend_request_button = QtGui.QPushButton("Send friend invite")
         friend_request_button.clicked.connect(self.on_friend_request_button_clicked_slot)
 
-        lines_vbox = QVBoxLayout()
+        lines_vbox = QtGui.QVBoxLayout()
         lines_vbox.addWidget(email_label)
         lines_vbox.addWidget(email_line)
         lines_vbox.addWidget(friend_request_button)
 
-        self.add_user_widget = QWidget()
+        self.add_user_widget = QtGui.QWidget()
         self.add_user_widget.setLayout(lines_vbox)
 
     def do_list_widget(self):
-        contacts_list_label = QLabel("Friends list:")
-        self.list_widget = QListWidget()
+        contacts_list_label = QtGui.QLabel("Friends list:")
+        self.list_widget = QtGui.QListWidget()
         # for letter in range(65,91):
         #    self.contacts_list.addItem("%s@yahoo.com"%chr(letter))
-        contacts_list_delete = QPushButton("Delete friend")
+        contacts_list_delete = QtGui.QPushButton("Delete friend")
         contacts_list_delete.clicked.connect(self.onDeleteClickedSlot)
-        contacts_list_layout = QVBoxLayout()
+        contacts_list_layout = QtGui.QVBoxLayout()
         contacts_list_layout.addWidget(contacts_list_label)
         contacts_list_layout.addWidget(self.list_widget)
         contacts_list_layout.addWidget(contacts_list_delete)
-        self.contacts_list_widget = QListWidget()
+        self.contacts_list_widget = QtGui.QListWidget()
         self.contacts_list_widget.setLayout(contacts_list_layout)
 
     def do_contacts_widget(self):
-        # how_label = QLabel("For your security, clips from other PasteBeam users are automatically blocked without notice. To unblock a friend, add his email to your contacts list here. Likewise, for him to receive your clips, he must add your login email to his own contacts list.")
+        # how_label = QtGui.QLabel("For your security, clips from other PasteBeam users are automatically blocked without notice. To unblock a friend, add his email to your contacts list here. Likewise, for him to receive your clips, he must add your login email to his own contacts list.")
         # how_label.setWordWrap(True)
 
-        self.contacts_layout = QVBoxLayout()
+        self.contacts_layout = QtGui.QVBoxLayout()
         # self.contacts_layout.addWidget(how_label)
         self.contacts_layout.addWidget(self.add_user_widget)
         self.contacts_layout.addWidget(self.contacts_list_widget)
@@ -421,11 +419,11 @@ class ContactsDialog(QDialog, OkCancelWidgetMixin, WaitForSignalDialogMixin):
         self.list_widget.takeItem(current_row)
 
 
-class FaderWidget(QWidget):
+class FaderWidget(QtGui.QWidget):
     def __init__(self, old_widget, new_widget, duration=333):
-        QWidget.__init__(self, new_widget)
+        QtGui.QWidget.__init__(self, new_widget)
 
-        self.old_pixmap = QPixmap(new_widget.size())
+        self.old_pixmap = QtGui.QPixmap(new_widget.size())
         old_widget.render(self.old_pixmap)
         self.pixmap_opacity = 1.0
 
@@ -439,7 +437,7 @@ class FaderWidget(QWidget):
         self.show()
 
     def paintEvent(self, event):
-        painter = QPainter()
+        painter = QtGui.QPainter()
         painter.begin(self)
         painter.setOpacity(self.pixmap_opacity)
         painter.drawPixmap(0, 0, self.old_pixmap)
@@ -450,27 +448,27 @@ class FaderWidget(QWidget):
         self.repaint()
 
 
-class StackedWidgetFader(QStackedWidget):
+class StackedWidgetFader(QtGui.QStackedWidget):
     def __init__(self, parent):
         super(StackedWidgetFader, self).__init__(parent)
         self.duration = 444
 
     def setCurrentIndex(self, index):
         self.fader_widget = FaderWidget(self.currentWidget(), self.widget(index),
-                                        self.duration)  # does not work as a mixin, as self.currentWidget needs to be a subclass of QStackedWidget
-        QStackedWidget.setCurrentIndex(self, index)
+                                        self.duration)  # does not work as a mixin, as self.currentWidget needs to be a subclass of QtGui.QStackedWidget
+        QtGui.QStackedWidget.setCurrentIndex(self, index)
 
     def setFadeDuration(self, duration):
         self.duration = duration
 
 
-class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
+class CommonListWidget(QtGui.QListWidget, WaitForSignalDialogMixin):
     def __init__(self, parent=None):
         super(CommonListWidget, self).__init__(parent)
         self.parent = parent
         self.main = parent.main
         self.setVerticalScrollMode(
-            QAbstractItemView.ScrollPerPixel)  # http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
+            QtGui.QAbstractItemView.ScrollPerPixel)  # http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
 
         self.itemPressed.connect(self.on_item_pressed_slot)  # ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 
@@ -512,7 +510,7 @@ class CommonListWidget(QListWidget, WaitForSignalDialogMixin):
 
         self.do_uncommon()  # do uncommon here
 
-        self.itemDoubleClicked.connect(self.on_item_double_click_slot)  # textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QLineEdit::setText()).
+        self.itemDoubleClicked.connect(self.on_item_double_click_slot)  # textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QtGui.QLineEdit::setText()).
 
     def do_styling(self):
         self.setIconSize(
@@ -591,7 +589,7 @@ class FriendListWidget(CommonListWidget):
         pass
 
 
-class PanelTabWidget(QTabWidget):
+class PanelTabWidget(QtGui.QTabWidget):
     def __init__(self, icon_size, parent):
         super(self.__class__, self).__init__(parent)
         self.main = parent
@@ -620,13 +618,13 @@ class PanelTabWidget(QTabWidget):
 
     def on_tab_changed_slot(self, index):
         if index == 0:
-            self.setTabIcon(0, QIcon("images/devices.png"))
+            self.setTabIcon(0, QtGui.QIcon("images/devices.png"))
         if index == 1:
-            self.setTabIcon(1, QIcon("images/star.png"))
+            self.setTabIcon(1, QtGui.QIcon("images/star.png"))
         if index == 2:
-            self.setTabIcon(2, QIcon("images/friends.png"))
+            self.setTabIcon(2, QtGui.QIcon("images/friends.png"))
         if index == 3:
-            self.setTabIcon(3, QIcon("images/bulb.png"))
+            self.setTabIcon(3, QtGui.QIcon("images/bulb.png"))
 
     def onChangeTabIconSlot(self, tabs_affected):
         if "starred" in tabs_affected:
@@ -638,10 +636,10 @@ class PanelTabWidget(QTabWidget):
         elif "share" in tabs_affected:
             new_icon_tab = 2
 
-        self.setTabIcon(new_icon_tab, QIcon("images/new.png"))
+        self.setTabIcon(new_icon_tab, QtGui.QIcon("images/new.png"))
 
     def do_search_widget(self):
-        self.search = QLineEdit()
+        self.search = QtGui.QLineEdit()
         self.search.textEdited.connect(self.on_search_edited_slot)
         search_tip = "Search through your items (preview text only)."
         self.search.setStatusTip(search_tip)
@@ -717,10 +715,10 @@ class PanelTabWidget(QTabWidget):
         # devices star friends
 
     def add_panels(self):
-        self.addTab(self.main_list_widget, QIcon("images/devices"), "Devices")
-        self.addTab(self.star_list_widget, QIcon("images/star"), "Bookmarks")
-        self.addTab(self.friend_list_widget, QIcon("images/friends"), "Friends")
-        # self.addTab(QWidget(), QIcon("images/bulb"), "Notifications")
+        self.addTab(self.main_list_widget, QtGui.QIcon("images/devices"), "Devices")
+        self.addTab(self.star_list_widget, QtGui.QIcon("images/star"), "Bookmarks")
+        self.addTab(self.friend_list_widget, QtGui.QIcon("images/friends"), "Friends")
+        # self.addTab(QtGui.QWidget(), QtGui.QIcon("images/bulb"), "Notifications")
         self.addTab(self.notification_list_widget, AppIcon("bulb"), "Notifications")
         self.setCornerWidget(self.search)
 
@@ -772,7 +770,7 @@ class LockoutStackedWidget(StackedWidgetFader):
         self.setCurrentIndex(1)
 
 
-class WaitForSignalDialog(QDialog):
+class WaitForSignalDialog(QtGui.QDialog):
     @classmethod
     def show(cls, parent, label):
         cls(parent, label)
@@ -790,8 +788,8 @@ class WaitForSignalDialog(QDialog):
         self.exec_()
 
     def do_layout(self):
-        wait_label = QLabel("<h1>%s...</h1>" % self.label.capitalize())
-        self.layout = QVBoxLayout()
+        wait_label = QtGui.QLabel("<h1>%s...</h1>" % self.label.capitalize())
+        self.layout = QtGui.QVBoxLayout()
         self.layout.addWidget(wait_label)
 
     def bindEvents(self):
@@ -806,7 +804,7 @@ class WaitForSignalDialog(QDialog):
         self.done(1)
 
 
-class QTextBrowserForFancyListItemWidget(QTextBrowser):
+class QTextBrowserForFancyListItemWidget(QtGui.QTextBrowser):
     def __init__(self, list_widget, item, content, *args, **kwargs):
         super(self.__class__, self).__init__(*args, **kwargs)
         self.list_widget = list_widget
@@ -826,7 +824,7 @@ class QTextBrowserForFancyListItemWidget(QTextBrowser):
         """ignore mouse scrolling here, and leave it to the parent listwidget"""
         event.ignore()
 
-class FancyListItem(QListWidgetItem):
+class FancyListItem(QtGui.QListWidgetItem):
     """cannot override data and setData directly, due to unknown behavior. Using horizontal methods instead."""
     def __init__(self):
         super(self.__class__, self).__init__()
@@ -837,25 +835,31 @@ class FancyListItem(QListWidgetItem):
         # json.dumps or else clip data (especially BSON's Binary)will be truncated by setData
         self.setData(QtCore.Qt.UserRole, id_and_clip_data)
 
-    def get_data(self, *args, **kwargs):
-        id_and_clip_data = self.data(QtCore.Qt.UserRole)
-        raw_data = id_and_clip_data.split('|', 2)[-1]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
+    def get_item_data(func):
+        def closure(self):
+            self.id_and_clip_data = self.data(QtCore.Qt.UserRole)
+            return func(self)
+        return closure
+
+    @get_item_data
+    def get_data(self):
+        raw_data = self.id_and_clip_data.split('|', 2)[-1]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
         data = json.loads(raw_data)
         return data
 
+    @get_item_data
     def get_data_id(self):
-        id_and_clip_data = self.data(QtCore.Qt.UserRole)
-        _id = id_and_clip_data.split('|', 2)[0]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
+        _id = self.id_and_clip_data.split('|', 2)[0]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
         return _id
 
+    @get_item_data
     def get_data_hash(self):
-        id_and_clip_data = self.data(QtCore.Qt.UserRole)
-        _id = id_and_clip_data.split('|', 2)[1]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
+        _id = self.id_and_clip_data.split('|', 2)[1]  # http://stackoverflow.com/questions/6903557/splitting-on-first-occurrence
         return _id
 
 
 
-class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
+class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
     host_colors = sorted(
         ["#FF4848", "#800080", "#5757FF", "#1FCB4A", "#59955C", "#9D9D00", "#62A9FF", "#06DCFB", "#9669FE", "#23819C",
          "#2966B8", "#3923D6", "#23819C", "#FF62B0", ])  # http://www.hitmill.com/html/pastels.html
@@ -881,7 +885,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         
         self.do_layout()
 
-        self.item_menu = QMenu()
+        self.item_menu = QtGui.QMenu()
         self.setContextMenuPolicy(
             QtCore.Qt.CustomContextMenu)  # need to access menu explicitly ActionContextMenu doesn't allow this
         self.customContextMenuRequested.connect(
@@ -924,7 +928,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
     def set_star_action(self):
         # star action
-        self.star_action = star_action = QAction(QIcon("images/star.png"), '&Star', self)
+        self.star_action = star_action = QtGui.QAction(QtGui.QIcon("images/star.png"), '&Star', self)
         # self.star_action.triggered.connect(self.on_add_star_action)
         sub_menu = self.get_note_sub_menu(history_list_widget =self.main.panel_tab_widget.star_list_widget,
                                        trigger = self.on_add_star_action,
@@ -940,10 +944,10 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
                 self.item_menu.close()
             return closure
 
-        sub_menu = QMenu()
+        sub_menu = QtGui.QMenu()
         # share_sub_menu.triggered.connect(self.on_share_sub_menu_triggered_slot)
-        message_subaction = QWidgetAction(self)
-        message_widget = QLineEdit()
+        message_subaction = QtGui.QWidgetAction(self)
+        message_widget = QtGui.QLineEdit()
         message_widget.setMaxLength(max_length)
 
         @always_close_menu_decorator
@@ -968,7 +972,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
                     def on_note_history_action():
                         trigger(each_item_note, parent_action)
 
-                    note_history_action = QAction(each_item_note, self)
+                    note_history_action = QtGui.QAction(each_item_note, self)
                     note_history_action.triggered.connect(on_note_history_action)
                     sub_menu.addAction(note_history_action)
                     action_names.append(each_item_note)
@@ -982,10 +986,10 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             question="Star?",
             data=current_item_data
         )
-        self.main.outgoingSignalForWorker.emit(async_process)
+        self.main.outgoing_signal_for_worker.emit(async_process)
 
     def set_accept_invite_action(self):
-        self.accept_invite_action = QAction(QIcon("images/ok.png"), "&Accept invite", self)
+        self.accept_invite_action = QtGui.QAction(QtGui.QIcon("images/ok.png"), "&Accept invite", self)
         self.accept_invite_action.triggered.connect(self.on_accept_invite_action)
         self.item_menu.addAction(self.accept_invite_action)
 
@@ -1001,7 +1005,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.show_wait_for_signal_dialog("Accept?", {"email": email}, "could not accept invitation", success_msg=False)
 
     def set_share_action(self):
-        self.share_action = QAction(QIcon("images/share.png"), "S&hare", self)
+        self.share_action = QtGui.QAction(QtGui.QIcon("images/share.png"), "S&hare", self)
         self.enable_share_action()
         self.item_menu.addAction(self.share_action)
 
@@ -1022,7 +1026,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
         share_item_data["recipient"] = email
         share_item_data["decryption_key"] = decryption_key  # raw, will be replaced by new decryption key before actual share
-        self.main.outgoingSignalForWorker.emit(
+        self.main.outgoing_signal_for_worker.emit(
             {
                 "question": "Share?",
                 "data": share_item_data
@@ -1035,10 +1039,10 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             # todo add bubble explaining why
         else:
             self.share_action.setDisabled(False)
-            share_sub_menu = QMenu()
+            share_sub_menu = QtGui.QMenu()
             #share_sub_menu.triggered.connect(self.on_share_sub_menu_triggered_slot)
             for email_addr in sorted(self.main.contacts_list):
-                email_addr_action = QAction(email_addr, self)
+                email_addr_action = QtGui.QAction(email_addr, self)
                 sub_menu = self.get_note_sub_menu(history_list_widget=None,
                                                trigger=self.on_share_sub_menu_triggered_slot,
                                                parent_action=email_addr_action,
@@ -1048,10 +1052,10 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             self.share_action.setMenu(share_sub_menu)
 
     def set_copy_action(self):
-        self.copy_action = copy_action = QAction(QIcon("images/copy.png"), "&Copy item", self)
+        self.copy_action = copy_action = QtGui.QAction(QtGui.QIcon("images/copy.png"), "&Copy item", self)
         copy_action.triggered.connect(self.on_copy_action_slot)
         self.item_menu.addAction(copy_action)
-        separator = QAction(self)
+        separator = QtGui.QAction(self)
         separator.setSeparator(True)
         self.item_menu.addAction(separator)
 
@@ -1059,9 +1063,9 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.list_widget.on_item_double_click_slot(self.item)  # listwidget_items don't have signals, so must use parent
 
     def set_delete_action(self):
-        separator = QAction(self)
+        separator = QtGui.QAction(self)
         separator.setSeparator(True)  # http://www.qtcentre.org/threads/21838-Separator-in-context-menu
-        self.delete_action = QAction(QIcon("images/trash.png"), '&Delete', self)  # delete.setText("Delete")
+        self.delete_action = QtGui.QAction(QtGui.QIcon("images/trash.png"), '&Delete', self)  # delete.setText("Delete")
         self.delete_action.triggered.connect(self.on_delete_action)
         self.item_menu.addAction(separator)
         self.item_menu.addAction(self.delete_action)
@@ -1073,7 +1077,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             question="Delete?",
             data={"remove_id": remove_id}  # user wanted to explicitly delete clip so delete associated files
         )
-        self.main.outgoingSignalForWorker.emit(async_process)
+        self.main.outgoing_signal_for_worker.emit(async_process)
 
     def set_header_from_clip(self):
         seed = hash32(self.clip["host_name"])
@@ -1087,9 +1091,9 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
     def set_content_from_clip(self):
         if self.clip["clip_type"] == "screenshot":
             # crop and reduce pmap size to fit square icon
-            # image = QImage()
+            # image = QtGui.QImage()
             # LOG.info(image.loadFromData(self.clip["clip_display"]["thumb"]) )
-            # self.item.setIcon(QIcon(QPixmap(image)))
+            # self.item.setIcon(QtGui.QIcon(QtGui.QPixmap(image)))
             self.item_icon = AppIcon("image")
             self.content = views.image_preview.format(
                 b64 = self.clip["clip_display"]["thumb"].encode('base64'),
@@ -1098,15 +1102,15 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             # print self.content
 
         elif self.clip["clip_type"] == "html":
-            self.item_icon = QIcon("images/text.png")
+            self.item_icon = QtGui.QIcon("images/text.png")
             self.content = self.clip["clip_display"]
 
         elif self.clip["clip_type"] == "text":
-            self.item_icon = QIcon("images/text.png")
+            self.item_icon = QtGui.QIcon("images/text.png")
             self.content = self.clip["clip_display"]
 
         elif self.clip["clip_type"] == "files":
-            self.item_icon = QIcon("images/files.png")
+            self.item_icon = QtGui.QIcon("images/files.png")
             files = []
             for each_filename in self.clip["clip_display"]:
                 ext = each_filename.split(".")[-1]
@@ -1137,7 +1141,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
         self.reset_actions()
         self.dropdown_widget.setMenu(self.item_menu)
         self.dropdown_widget.showMenu()
-        # dropdown_widget.addItem(QIcon("images/copy.png"), "Copy all")
+        # dropdown_widget.addItem(QtGui.QIcon("images/copy.png"), "Copy all")
 
     def toggle_is_in_clipboard_label(self, compare_hash):
         if self.item_is_in_clipboard(compare_hash):
@@ -1153,23 +1157,23 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
 
     def do_layout(self):
         def do_header():
-            item_header_hbox = QHBoxLayout()
-            item_header_hbox.addWidget(QLabel(self.sender))
+            item_header_hbox = QtGui.QHBoxLayout()
+            item_header_hbox.addWidget(QtGui.QLabel(self.sender))
             item_header_hbox.addStretch()
             item_header_hbox.addStretch()
             item_header_hbox.addStretch()
             item_header_hbox.addStretch()
             item_header_hbox.addStretch()
-            item_header_hbox.addWidget(QLabel(self.timestamp))
+            item_header_hbox.addWidget(QtGui.QLabel(self.timestamp))
             item_header_hbox.addStretch()
-            item_header_hbox.addWidget(QLabel(self.datestamp))
+            item_header_hbox.addWidget(QtGui.QLabel(self.datestamp))
             item_layout.addLayout(item_header_hbox)
 
         def do_content():
-            item_content_hbox = QHBoxLayout()
+            item_content_hbox = QtGui.QHBoxLayout()
 
             if self.clip["system"] == "notification":
-                content_widget = QLabel(self.content)
+                content_widget = QtGui.QLabel(self.content)
             else:
                 content_widget = QTextBrowserForFancyListItemWidget(self.list_widget, self.item,
                                                                     self.content)  # http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
@@ -1179,14 +1183,14 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             item_layout.addLayout(item_content_hbox)
 
         def do_dropdown():
-            dropdown_hbox_layout = QHBoxLayout()
-            self.dropdown_widget = QToolButton()
+            dropdown_hbox_layout = QtGui.QHBoxLayout()
+            self.dropdown_widget = QtGui.QToolButton()
             self.dropdown_widget.setIcon(self.item_icon)
             self.dropdown_widget.clicked.connect(self.on_dropdown_clicked)
-            self.dropdown_widget.setMenu(QMenu())  # needed to show arrow icon
+            self.dropdown_widget.setMenu(QtGui.QMenu())  # needed to show arrow icon
             clip_type = self.clip["clip_type"]
             if clip_type == "invite":
-                note_widget = QPushButton("Accept invite")
+                note_widget = QtGui.QPushButton("Accept invite")
                 note_widget.clicked.connect(self.on_accept_invite_action)
             else:
                 note = self.clip.get("note")
@@ -1198,9 +1202,9 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
                     else:
                         clip_type = clip_type.capitalize()
                     note_label = views.corner_label_type % clip_type
-                note_widget = QLabel(note_label)
+                note_widget = QtGui.QLabel(note_label)
 
-            self.item_is_in_clipboard_label = QLabel("")
+            self.item_is_in_clipboard_label = QtGui.QLabel("")
 
             dropdown_hbox_layout.addWidget(note_widget)
             dropdown_hbox_layout.addStretch(1)
@@ -1208,7 +1212,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             dropdown_hbox_layout.addWidget(self.dropdown_widget)
             item_layout.addLayout(dropdown_hbox_layout)
 
-        item_layout = QVBoxLayout()
+        item_layout = QtGui.QVBoxLayout()
         do_header()
         do_content()
         do_dropdown()
@@ -1217,7 +1221,7 @@ class FancyListItemWidget(QWidget, WaitForSignalDialogMixin):
             self.sizeHint())  # resize the listwidget item to fit the custom widget, using Qlabel's sizehint
 
 
-class AppIcon(QIcon):
+class AppIcon(QtGui.QIcon):
     def __init__(self, name):
         super(self.__class__, self).__init__("images/{name}.png".format(name=name))
 
@@ -1270,7 +1274,7 @@ class PixmapPreview():
         else:
             self.thumbnail = self.original_pmap.scaledToHeight(self.Px, TransformationMode=QtCore.Qt.SmoothTransformation)
 
-class TrayIcon(QSystemTrayIcon):
+class TrayIcon(QtGui.QSystemTrayIcon):
 
     def __init__(self, main):
         self.main = main
@@ -1289,10 +1293,10 @@ class TrayIcon(QSystemTrayIcon):
             self.main.activateWindow()  # needed to bring to top
 
     def setContextMenu(self, *args, **kwargs):
-        context_menu = QMenu()
-        exit_action = QAction(AppIcon("exit"), "Exit", self)
+        context_menu = QtGui.QMenu()
+        exit_action = QtGui.QAction(AppIcon("exit"), "Exit", self)
         exit_action.triggered.connect(self.main.closeReal)
-        lock_action = QAction(AppIcon("safe"), "Lock", self)
+        lock_action = QtGui.QAction(AppIcon("safe"), "Lock", self)
         lock_action.triggered.connect(self.show_lockout)
         context_menu.addAction(lock_action)
         context_menu.addSeparator()

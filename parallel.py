@@ -7,6 +7,7 @@ from gevent.event import AsyncResult
 
 from functions import *
 import views
+
 from widgets import FancyListItemWidget, FancyListItem
 
 import requests, datetime, socket
@@ -15,14 +16,11 @@ from requests_toolbelt import MultipartEncoderMonitor
 #from ws4py.client.geventclient import WebSocketClient
 from websocket import create_connection
 from websocket import _exceptions
-from PySide.QtGui import *
-from PySide import QtCore
+
 
 import encompress
 
 class WebsocketWorkerMixinForMain(object):
-
-    outgoingSignalForWorker = QtCore.Signal(dict)
 
     def on_incoming_slot(self, emitted):
 
@@ -30,7 +28,7 @@ class WebsocketWorkerMixinForMain(object):
 
         list_widget = self.panel_tab_widget.get_list_widget_from_clip_data(new_clip)
 
-        #self.panel_tab_widget.setTabIcon(new_icon_tab,QIcon("images/new.png"))
+        #self.panel_tab_widget.setTabIcon(new_icon_tab,QtGui.QIcon("images/new.png"))
 
         new_list_widget_item =  FancyListItem()
         new_list_widget_item.set_data(new_clip)
@@ -44,7 +42,7 @@ class WebsocketWorkerMixinForMain(object):
 
         list_widget.scroll_to_top()
 
-        if is_latest:
+        if is_latest and new_clip["system"] == "main":  # don't want this to run if new_clip is bookmark
             self.panel_tab_widget.toggle_is_in_clipboard_label(new_clip["hash"])
 
 class WebsocketWorker(QtCore.QThread):
@@ -75,8 +73,8 @@ class WebsocketWorker(QtCore.QThread):
         self.refilling_list = True
         self.OUTGOING_QUEUE = deque() # must use alternative Queue for non standard library thread and greenlets
 
-        self.main.outgoingSignalForWorker.connect(self.on_outgoing_slot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
-        
+        self.main.outgoing_signal_for_worker.connect(self.on_outgoing_slot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
+
     #A QThread is run by calling it's start() function, which calls this run()
     #function in it's own "thread".
     
