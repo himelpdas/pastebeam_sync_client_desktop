@@ -53,7 +53,7 @@ class WebsocketWorker(QtCore.QThread):
     incoming_clip_signal_for_main = QtCore.Signal(tuple)
     set_clip_signal_for_main = QtCore.Signal(dict)
     status_signal_for_main = QtCore.Signal(tuple)
-    delete_clip_signal_for_main = QtCore.Signal(list)
+    delete_clip_signal_for_main = QtCore.Signal(unicode)
     StarClipSignalForMain = QtCore.Signal(dict)
     clear_list_signal_for_main = QtCore.Signal()
     closeWaitDialogSignalForMain = QtCore.Signal(dict)

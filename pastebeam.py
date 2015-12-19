@@ -223,20 +223,36 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.on_set_status_slot(("Waiting for change", "scan"))
         
         mimeData = self.clipboard.mimeData()
-
-        pastebeam_mime = json.loads(str(mimeData.retrieveData("__pastebeam__", unicode) or {}))  #unicode is preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
+        if "PyQt4" in QtGui.__name__:
+            variant = QtCore.QVariant.ByteArray
+            retrieved = str(mimeData.retrieveData("__pastebeam__", variant).toByteArray())
+            pastebeam_mime = json.loads(retrieved or "{}")  #unicode is preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
+        else:
+            pastebeam_mime = json.loads(str(mimeData.retrieveData("__pastebeam__", unicode) or "{}"))  #unicode is preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
         block_detection = pastebeam_mime.get("block_detection")
         if block_detection:
             # prevents redundant updating when clip is incomming from another device, no need to update to server what was just received
             return
 
+        prev = self.previous_hash #image.bits() crashes with OneNote large image copy
+
         if mimeData.hasImage():
             #image = pmap.toImage() #just like wxpython do not allow this to del, or else .bits() will crash
-            image = mimeData.imageData()
+            if "PyQt4" in QtGui.__name__:
+                variant = mimeData.imageData()
+                image   = variant.toPyObject()
+                size = image.size()
+                width = size.width()
+                height = size.height()
+                length = width * height * 3
+                sip = image.bits()  # delete bits?  # returns a sip.voidptr object which is meant to reduce copying and directly access memory http://pyqt.sourceforge.net/Docs/sip4/python_api.html#sip.voidptr
+                bits = sip.asarray(length)  # define the array's length, which we know is 3 * length * width of a bitmap
+            else:
+                image = mimeData.imageData()
+                bits = image.bits()
 
-            prev = self.previous_hash #image.bits() crashes with OneNote large image copy
             try: #None.bits attribute error here can cause a freeze
-                hash = format(hash128(image.bits()), "x") ##http://stackoverflow.com/questions/16414559/trying-to-use-hex-without-0x #we want the large image out of memory asap, so just take a hash and gc collect the image
+                hash = format(hash128(bits), "x") ##http://stackoverflow.com/questions/16414559/trying-to-use-hex-without-0x #we want the large image out of memory asap, so just take a hash and gc collect the image
             except AttributeError:
                 return
 
@@ -270,12 +286,16 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 clip_type = "screenshot",
             )
         elif mimeData.hasHtml():
-            html = mimeData.html().encode("utf8")
-            text = (mimeData.text() or "<Rich Text Data>").encode("utf8")
-            
-            prev = self.previous_hash
-            
-            hash = format(hash128(html), "x")
+            if "PyQt4" in QtGui.__name__:
+                qstring = mimeData.html()  # QString
+                html = unicode(qstring)  # convert to Unicode
+                qstring = mimeData.text()
+                text = unicode(qstring or "<Rich Text Data>")
+            else:
+                html = mimeData.html()  # already Unicode (Python representation, different on each OS)
+                text = (mimeData.text() or "<Rich Text Data>")
+
+            hash = format(hash128(html.encode("utf8")), "x")  # UTF-8 is standardized and OS independant. Must encode before storing to disk # http://stackoverflow.com/questions/22149/unicode-vs-utf-8-confusion-in-python-django
             
             LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
@@ -294,7 +314,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                     "html":html,
                     "text":text
                 }})
-                html_file.write(html_and_text)
+                html_file.write(html_and_text.encode("utf8"))
             
             prepare = dict(
                 file_names = [html_file_name],
@@ -303,12 +323,13 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             )
             
         elif mimeData.hasText() and not mimeData.hasUrls(): #linux appears to provide text for files, so make sure it is not a file or else this will overrie it
-        
-            original = mimeData.text().encode("utf8")
+            if "PyQt4" in QtGui.__name__:
+                qstring = mimeData.text()
+                original = unicode(qstring)
+            else:
+                original = mimeData.text()
 
-            prev = self.previous_hash
-            
-            hash = format(hash128(original), "x")
+            hash = format(hash128(original.encode("utf8")), "x")
             
             LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
@@ -323,7 +344,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             text_file_path = os.path.join(CONTAINER_DIR,text_file_name)
             
             with open(text_file_path, 'w') as text_file:
-                text_file.write(original)
+                text_file.write(original.encode("utf8"))
             
             prepare = dict(
                 file_names = [text_file_name],
@@ -343,7 +364,9 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             os_file_paths_new = []
             
             for each in self.clipboard.mimeData().urls():
-                each_path = each.path()[(1 if SYSTEM == "Windows" else 0):] #urls() returns /c://...// in windows, [1:] removes the starting /, not sure how this will affect *NIXs
+                if "PyQt4" in QtGui.__name__:
+                    each_path = unicode(each.path())
+                each_path = each_path[(1 if SYSTEM == "Windows" else 0):] #urls() returns /c://...// in windows, [1:] removes the starting /, not sure how this will affect *NIXs
                 #if os.name=="nt":
                 #    each_path = each_path.encode(sys.getfilesystemencoding()) #windows uses mbcs encoding, not utf8 like *nix, so something like a chinese character will result in file operations raising WindowsErrors #http://stackoverflow.com/questions/10180765/open-file-with-a-unicode-filename
                 standardized_path = os.path.abspath(each_path) #abspath is needed to bypass symlinks in *NIX systems, also guarantees slashes are correct (C:\\...) for windows
@@ -411,7 +434,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 os_file_hashes_new.add(hash128(each_file_name.encode("utf8")) + hash128(each_data) ) #http://stackoverflow.com/questions/497233/pythons-os-path-choking-on-hebrew-filenames #append the hash for this file #use filename and hash so that set does not ignore copies of two idenitcal files (but different names) in different directories #also hash filename as this can be a security issue when stored serverside
 
             checksum = format(sum(os_file_hashes_new), "x")
-            if self.previous_hash == checksum:  #checks to make sure if name and file are the same
+            if prev == checksum:  #checks to make sure if name and file are the same
                 PRINT("failure",262)
                 #self.on_set_status_slot(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
                 return

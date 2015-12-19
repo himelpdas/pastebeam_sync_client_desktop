@@ -682,6 +682,9 @@ class PanelTabWidget(QtGui.QTabWidget):
             # for index in xrange(list_widget.count()):
             #    items.append(list_widget.item(index))
 
+            if "PyQt4" in QtGui.__name__:
+                written = unicode(written)
+
             is_blank = not bool(written)  # unhide when written is blank
 
             for item in list_widget.get_items():
@@ -844,7 +847,11 @@ class FancyListItem(QtGui.QListWidgetItem):
 
     def get_item_data(func):
         def closure(self):
-            self.id_and_clip_data = self.data(QtCore.Qt.UserRole)
+            if "PyQt4" in QtGui.__name__:
+                variant = self.data(QtCore.Qt.UserRole)
+                self.id_and_clip_data = unicode(variant.toPyObject())
+            else:
+                self.id_and_clip_data = self.data(QtCore.Qt.UserRole)
             return func(self)
         return closure
 
@@ -1270,7 +1277,7 @@ class PixmapThumbnail():
                                            smallest_side)  # PySide.QtGui.QPixmap.copy(x, y, width, height) #https://srinikom.github.io/pyside-docs/PySide/QtGui/QPixmap.html#PySide.QtGui.PySide.QtGui.QPixmap.copy
         else:
             crop = self.original_pmap
-        self.thumbnail = crop.scaled(self.Px, self.Px, TransformationMode=QtCore.Qt.SmoothTransformation)
+        self.thumbnail = crop.scaled(self.Px, self.Px, transformMode=QtCore.Qt.SmoothTransformation)
 
 
 class PixmapPreview():
