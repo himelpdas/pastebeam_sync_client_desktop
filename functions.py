@@ -176,11 +176,12 @@ device_uuid = uuid.getnode()  # MAC address #http://stackoverflow.com/questions/
 print device_uuid
 
 class Settings(object): #http://stackoverflow.com/questions/9698614/super-raises-typeerror-must-be-type-not-classobj-for-new-style-class
-    attrs = ["_app_name"]
-    error = 'Could not find field "%s" in the keyring "%s"'
+    attrs = ["_app_name", "_settings", "_settings_name"]
 
-    def __init__(self, app_name):
+    def __init__(self, app_name, settings_name="settings"):
         self._app_name = app_name
+        self._settings_name = settings_name
+        self._settings = None
 
     def __getattr__(self, field):
         # __getattr__ is last resort if _app_name was not found! Also there is no super __getattr__ # http://stackoverflow.com/questions/12047847/super-object-not-calling-getattr
@@ -195,21 +196,33 @@ class Settings(object): #http://stackoverflow.com/questions/9698614/super-raises
         self._set_field(field, value)
 
     def __delattr__(self, field):
-        try:
-            self._del_field(field)
-        except keyring.errors.PasswordDeleteError:
-            raise AttributeError, self.__class__.error % (field, self._app_name)
+        self._del_field(field)
 
     def _del_field(self, field):
-        keyring.delete_password(self._app_name, field)
+        self._get_settings()
+        del self._settings[field]  # raises key_error
+        self._set_settings()
+
+    def _get_settings(self):
+        zlib = keyring.get_password(self._app_name, self._settings_name)
+        if zlib:
+            dump = zlib.decode("base64").decode("zlib")
+        else:
+            dump = "{}"
+        self._settings = json.loads(dump)  # json.loads(dump or "null") # not used anymore since dump is True, but useful trick
+
+    def _set_settings(self):
+        dump = json.dumps(self._settings).encode("zlib").encode('base64')
+        keyring.set_password(self._app_name, self._settings_name, dump)
 
     def _get_field(self, field):
-        dump = keyring.get_password(self._app_name, field)
-        if not dump:  # the json can be 'null', but if keyring.get_password is None, then raise
-            raise AttributeError, self.__class__.error % (field, self._app_name)
-        return json.loads(dump)  # json.loads(dump or "null") # not used anymore since dump is True, but useful trick
+        self._get_settings()
+        value = self._settings[field]
+        return value
 
     def _set_field(self, field, value):
-        keyring.set_password(self._app_name,field,json.dumps(value))
+        self._get_settings()
+        self._settings.update({field:value})
+        self._set_settings()
 
 settings = Settings(app_name = "pastebeam")

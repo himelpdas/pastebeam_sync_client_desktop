@@ -36,7 +36,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         try:
             if settings.is_locked:
                 self.lockout_widget.on_show_lockout_slot()
-        except AttributeError:
+        except KeyError:
             pass
 
     def init_panel(self):

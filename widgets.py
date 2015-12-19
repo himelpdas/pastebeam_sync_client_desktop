@@ -47,7 +47,7 @@ class LockoutWidget(QtGui.QWidget):
     def on_lockout_pin_typed_slot(self, written):
         try:
             login = settings.account.get("password")
-        except AttributeError:
+        except KeyError:
             pass  # no password was set yet
         else:
             if login != written:
@@ -121,7 +121,7 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
             account = settings.account
             email = account.get("email")
             password = account.get("password")
-        except AttributeError:
+        except KeyError:
             email = ""
             password = ""
 
@@ -166,7 +166,7 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
         self.device_name_line = QtGui.QLineEdit()
         try:
             device_name = settings.device_name
-        except AttributeError:
+        except KeyError:
             device_name = host_name
         self.device_name_line.setText(device_name)
         device_name_hbox = QtGui.QHBoxLayout()
@@ -176,13 +176,13 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
         device_name_widget.setLayout(device_name_hbox)
 
         try:
-            universal_clipboard = settings.universal_clipboard
-        except AttributeError:
-            universal_clipboard = True
+            enable_universal_clipboard = settings.enable_universal_clipboard
+        except KeyError:
+            enable_universal_clipboard = True
 
         sync_label = QtGui.QLabel("Enable universal copy and paste")
         self.sync_check = sync_check = QtGui.QCheckBox()
-        sync_check.setChecked(universal_clipboard)
+        sync_check.setChecked(enable_universal_clipboard)
         sync_hbox = QtGui.QHBoxLayout()
         sync_hbox.addWidget(sync_label)
         sync_hbox.addWidget(sync_check)
@@ -196,12 +196,18 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
         run_hbox.addWidget(run_check)
         run_widget = QtGui.QWidget()
         run_widget.setLayout(run_hbox)
+
+        try:
+            enable_item_double_click = settings.enable_item_double_click
+        except KeyError:
+            enable_item_double_click = True
         
         dclick_label = QtGui.QLabel("Double-click an item to copy")
-        dclick_check = QtGui.QCheckBox()
+        self.dclick_check = QtGui.QCheckBox()
+        self.dclick_check.setChecked(enable_item_double_click)
         dclick_hbox = QtGui.QHBoxLayout()
         dclick_hbox.addWidget(dclick_label)
-        dclick_hbox.addWidget(dclick_check)
+        dclick_hbox.addWidget(self.dclick_check)
         dclick_widget = QtGui.QWidget()
         dclick_widget.setLayout(dclick_hbox)
 
@@ -239,7 +245,8 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
         super(self.__class__, self).on_cancel_button_clicked_slot()
 
     def set_checkables_to_keyring(self):
-        settings.universal_clipboard = self.sync_check.isChecked()
+        settings.enable_universal_clipboard = self.sync_check.isChecked()
+        settings.enable_item_double_click = self.dclick_check.isChecked()
 
     def set_account_to_keyring(self):
 
@@ -903,6 +910,14 @@ class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
         super(self.__class__, self).mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):
+        try:
+           enable_item_double_click = settings.enable_item_double_click
+           if not enable_item_double_click:
+               self.main.on_set_status_slot(("Item double-click is disabled in settings", "warn"))
+               return
+        except KeyError:
+            pass
+
         if not self.clip["system"] == "notification":
             self.list_widget.on_item_double_click_slot(self.item)
             # super(self.__class__, self).mouseDoubleClickEvent(event)

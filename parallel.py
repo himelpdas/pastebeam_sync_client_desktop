@@ -83,7 +83,7 @@ class WebsocketWorker(QtCore.QThread):
 
         try:
             account = settings.account
-        except AttributeError:
+        except KeyError:
             self.status_signal_for_main.emit((views.not_connected_msg,"bad"))
             return
         
@@ -117,7 +117,7 @@ class WebsocketWorker(QtCore.QThread):
 
         try:
             data['host_name'] = settings.device_name
-        except AttributeError:
+        except KeyError:
             data["host_name"] = host_name
 
         data["timestamp_client"] = time.time()    
@@ -134,7 +134,7 @@ class WebsocketWorker(QtCore.QThread):
     def reconnect(self):
         try:
             account = settings.account
-        except AttributeError:
+        except KeyError:
             self.KEEP_RUNNING = 0
             self.main.show_settings_dialog_signal.emit()
         else:
@@ -251,9 +251,9 @@ class WebsocketWorker(QtCore.QThread):
             # Done: Add user setting to disable this if he doesn't want to sync with the cloud!
             if is_clipboard and not_this_device:  # do not allow setting from the same pc
                 try:
-                    if not settings.universal_clipboard:
+                    if not settings.enable_universal_clipboard:
                         return
-                except AttributeError:
+                except KeyError:
                     pass
                 else:
                     self.set_clip_signal_for_main.emit(dict(new_clip = latest_clip_data, block_clip_change_detection = True))  # block_clip_change_detection will prevent redundant update
