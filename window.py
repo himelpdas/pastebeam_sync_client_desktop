@@ -59,6 +59,20 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
 
         file_menu.addAction(exit_action)
 
+        ### edit ###
+        settings_action = QtGui.QAction(QtGui.QIcon("images/settings.png"), "&Settings", self)
+        settings_action.setStatusTip('Edit settings')
+        settings_action.triggered.connect(lambda:SettingsDialog.show(self))
+
+        contacts_action = QtGui.QAction(QtGui.QIcon("images/contacts.png"), "&Contacts", self)
+        contacts_action.triggered.connect(lambda:ContactsDialog.show(self))
+        contacts_action.setStatusTip("Edit your contacts")
+
+        edit_menu = menubar.addMenu('&Edit')
+        edit_menu.addAction(contacts_action)
+        edit_menu.addSeparator()
+        edit_menu.addAction(settings_action)
+
         ### view ###
 
         self.view_menu = view_menu = menubar.addMenu('&View')
@@ -81,23 +95,8 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         view_action_group.addAction(show_text_action)
         view_action_group.triggered.connect(self.panel_tab_widget.on_change_view_menu)
 
-        settings_action = QtGui.QAction(QtGui.QIcon("images/settings.png"), "&Settings", self)
-        settings_action.setStatusTip('Edit settings')
-        settings_action.triggered.connect(lambda:SettingsDialog.show(self))
-
-        contacts_action = QtGui.QAction(QtGui.QIcon("images/contacts.png"), "&Contacts", self)
-        contacts_action.triggered.connect(lambda:ContactsDialog.show(self))
-        contacts_action.setStatusTip("Edit your contacts")
-        #contacts_action.triggered.connect(AddressBook.show)
-
-        edit_menu = menubar.addMenu('&Edit')
-        #edit_menu.addAction(accountAction)
-        edit_menu.addAction(contacts_action)
-        edit_menu.addSeparator()
-        edit_menu.addAction(settings_action)
-
         ### window ###
-        #http://stackoverflow.com/questions/23429663/qt-mutually-exclusive-checkable-menu-items
+        # http://stackoverflow.com/questions/23429663/qt-mutually-exclusive-checkable-menu-items
         window_menu = menubar.addMenu("&Window")
         transparency_action = QtGui.QAction(AppIcon("settings"), "&Transparency", self)
         transparency_sub_menu = QtGui.QMenu()
@@ -147,7 +146,6 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         else:
             opacity_percent = float(opacity_percent_string)/100.0
         transparency_percent = 1.0 - opacity_percent
-        print transparency_percent
         self.setWindowOpacity(transparency_percent)
 
     def init_status_bar(self):

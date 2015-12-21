@@ -377,7 +377,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: Missing or corrupt container from server")
                 self.on_set_status_slot(("Decryption failed. Item data from server is missing or corrupt", "bad")) #ie. server returned a 404.html document
             else:
-                self.on_set_status_slot(("Decrypted new item", "good"))
+                self.on_set_status_slot(("Decrypted an item", "good"))
         return closure
 
 
