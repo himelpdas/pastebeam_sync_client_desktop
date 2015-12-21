@@ -129,6 +129,12 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         transparency_sub_menu.addAction(transparency_50pct)
         transparency_action_group.addAction(transparency_50pct)
         transparency_action_group.triggered.connect(self.on_transparency_action_group)
+
+        always_on_top_action = QtGui.QAction("Always on &top", self)
+        always_on_top_action.setCheckable(True)
+        always_on_top_action.triggered.connect(self.on_always_on_top_action)
+
+        window_menu.addAction(always_on_top_action)
         window_menu.addAction(transparency_action)
 
         #### help ###
@@ -137,6 +143,14 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         help_menu.addAction("&About")
 
         self.menu_lockables = [lockout_action, edit_menu, view_menu]
+
+    def on_always_on_top_action(self, checked):
+        if checked:  # http://stackoverflow.com/questions/1925015/pyqt-always-on-top
+            flag = self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint
+        else:
+            flag = self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint  # http://www.qtcentre.org/threads/5730-Changing-AlwaysOnTop-window-flag
+        self.setWindowFlags(flag)
+        self.tray_icon.restore()  # hides for no fucking reason, so restore
 
     def on_transparency_action_group(self, transparency_action):
         transparency_action_text = unicode(transparency_action.text())
