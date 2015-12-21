@@ -38,12 +38,14 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.rsa_private_key = ""
 
         self.init_ui()
-        self.init_clipboard()
-
         self.singleton.messageReceived.connect(lambda msg: self.tray_icon.restore())
 
+        self.init_clipboard()
+        #self.ensure_clipboard_timer()
+        self.previous_hash = ""
+
         self.ws_worker = WebsocketWorker(self)
-        self.initWorker()
+        self.init_worker()
 
         self.contacts_list = []
         self.update_contacts_list_signal.connect(self.set_contacts_list)
@@ -56,7 +58,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
     def on_contacts_list_incoming(self, contacts_list):
         self.set_contacts_list(contacts_list)
 
-    def initWorker(self):
+    def init_worker(self):
         self.ws_worker.incoming_clip_signal_for_main.connect(self.on_incoming_slot)
         self.ws_worker.set_clip_signal_for_main.connect(self.on_set_new_clip_slot)
         self.ws_worker.status_signal_for_main.connect(self.on_set_status_slot)
@@ -77,16 +79,21 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
 
     def init_clipboard(self):
-        self.previous_hash = {}
-
         self.clipboard = self.app.clipboard() #clipboard is in the QtGui.QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
         self.clipboard.dataChanged.connect(self.on_clip_change_slot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
+
+    def ensure_clipboard_timer(self):
+        # clipboard stops working if you use clipboard viewer  https://bugreports.qt.io/browse/QTBUG-27097  - THANK YOU
+        self.timer  = QtCore.QTimer(self)
+        self.timer.setInterval(10000)  # Throw event timeout with an interval of 1000 milliseconds
+        self.timer.timeout.connect(lambda: self.clipboard.dataChanged.emit())  # this ensures clipboard stays alive
+        self.timer.start()
 
 
     def on_clip_change_slot(self):
         #test if identical
 
-        self.on_set_status_slot(("Waiting for change", "scan"))
+        self.on_set_status_slot(("Waiting for clipboard to change", "scan"))
         
         mimeData = self.clipboard.mimeData()
         if "PyQt4" in QtGui.__name__:
@@ -463,10 +470,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 LOG.info("Main: on_set_new_clip_slot: files: mimeData.setUrls: %s" % urls)
                 mimeData.setUrls(urls)
 
-            if not self.clipboard.ownsClipboard():  # solves issue #14, a silent error QClipboard::setMimeData: Failed to set data on clipboard (). happens when another program takes clipboard, so we re-init here. doesn't seem to be needed when reading clipboard
-                self.init_clipboard()
-            self.clipboard.setMimeData(mimeData)
-
+            if self.clipboard.ownsClipboard():
+                self.clipboard.setMimeData(mimeData)
 
     @staticmethod
     def truncateTextLines(txt, max_lines=15):
