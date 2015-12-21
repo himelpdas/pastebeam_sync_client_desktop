@@ -6,144 +6,12 @@ from gevent import monkey; monkey.patch_all()
 
 from parallel import *
 
-from widgets import *
+from window import *
 
 import platform, distutils.dir_util, distutils.errors, distutils.file_util #distutil over shututil http://stackoverflow.com/questions/15034151/copy-directory-contents-into-a-directory-with-python #import error on linux http://stackoverflow.com/questions/19097235/backing-up-copying-an-entire-folder-tree-in-batch-or-python
 
 from QtSingleApplication import QtSingleApplication
 
-class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
-    #SLOT IS A QT TERM MEANING EVENT
-    def init_ui(self):
-        #self.setWindowOpacity(0.5) Todo - add "Window" menu and allow transparency and always on top
-        self.stacked_widget = LockoutStackedWidget(self)
-        
-        self.init_panel()
-        self.init_menu_bar()
-        self.init_status_bar()
-        
-        self.setCentralWidget(self.stacked_widget)
-        self.setGeometry(50, 50, 800, 600)
-        self.setWindowTitle('PasteBeam 1.0.0')
-
-        self.init_tray_icon()
-        
-        self.show()
-
-        self.lock_on_start()
-
-
-    def lock_on_start(self):
-        """Will show lock widget if settings.is_locked is True"""
-        try:
-            if settings.is_locked:
-                self.lockout_widget.on_show_lockout_slot()
-        except KeyError:
-            pass
-
-    def init_panel(self):
-        self.panel_tab_widget = PanelTabWidget(QtCore.QSize(self.px_to_dp(24) , self.px_to_dp(24) ), self)
-        self.lockout_widget = LockoutWidget(self)
-        #for each in self.panel_tab_widget.panels:
-        #    each.itemDoubleClicked.connect(each.on_item_double_click_slot) #textChanged() is emited whenever the contents of the widget changes (even if its from the app itself) whereas textEdited() is emited only when the user changes the text using mouse and keyboard (so it is not emitted when you call QtGui.QLineEdit::setText()).
-        self.stacked_widget.addWidget(self.panel_tab_widget)
-        self.stacked_widget.addWidget(self.lockout_widget)
-
-    def init_menu_bar(self):
-    
-        menubar = self.menuBar()
-        fileMenu = menubar.addMenu('&File')
-        
-        lockoutAction = QtGui.QAction(AppIcon("safe"), '&Lock', self)
-        lockoutAction.setStatusTip('Lock the application')
-        lockoutAction.triggered.connect(self.lockout_widget.on_show_lockout_slot )
-        
-        fileMenu.addAction(lockoutAction)
-        fileMenu.addSeparator()
-
-        exitAction = QtGui.QAction(QtGui.QIcon("images/exit.png"), '&Exit', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls
-        exitAction.setShortcut('Ctrl+Q')
-        exitAction.setStatusTip('Exit application')
-        exitAction.triggered.connect(self.closeReal) #exitAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
-        
-        fileMenu.addAction(exitAction)
-        
-        """
-        accountAction = QtGui.QAction(QtGui.QIcon("images/account.png"), '&Account', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls
-        #accountAction.setShortcut('Ctrl+Q')
-        accountAction.setStatusTip('Edit login info')
-        accountAction.triggered.connect(self.showAccountDialogs) #accountAction.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
-        """
-
-        self.view_menu = view_menu = menubar.addMenu('&View')
-        view_action_group = QtGui.QActionGroup(self)
-        view_action_group.setExclusive(False)
-        show_files_action = QtGui.QAction(AppIcon("files"),"Files", self)
-        show_files_action.setCheckable(True)
-        show_files_action.setChecked(True)
-        view_menu.addAction(show_files_action)
-        view_action_group.addAction(show_files_action)
-        show_screenshots_action = QtGui.QAction(AppIcon("image"),"Screenshots", self)
-        show_screenshots_action.setCheckable(True)
-        show_screenshots_action.setChecked(True)
-        view_menu.addAction(show_screenshots_action)
-        view_action_group.addAction(show_screenshots_action)
-        show_text_action = QtGui.QAction(AppIcon("text"),"Text/Html", self)
-        show_text_action.setCheckable(True)
-        show_text_action.setChecked(True)
-        view_menu.addAction(show_text_action)
-        view_action_group.addAction(show_text_action)
-        view_action_group.triggered.connect(self.panel_tab_widget.on_change_view_menu)
-
-        settingsAction = QtGui.QAction(QtGui.QIcon("images/settings.png"), "&Settings", self)
-        settingsAction.setStatusTip('Edit settings')
-        settingsAction.triggered.connect(lambda:SettingsDialog.show(self))
-        
-        contactsAction = QtGui.QAction(QtGui.QIcon("images/contacts.png"), "&Contacts", self)
-        contactsAction.triggered.connect(lambda:ContactsDialog.show(self))
-        contactsAction.setStatusTip("Edit your contacts")
-        #contactsAction.triggered.connect(AddressBook.show)
-
-        editMenu = menubar.addMenu('&Edit')
-        #editMenu.addAction(accountAction)
-        editMenu.addAction(contactsAction)    
-        editMenu.addSeparator()
-        editMenu.addAction(settingsAction)
-
-        helpMenu = menubar.addMenu("&Help")
-        helpMenu.addAction("&Check for updates")
-        helpMenu.addAction("&About")
-
-        self.menu_lockables = [lockoutAction, editMenu, view_menu]
-        
-    def init_status_bar(self):
-        
-        self.sbar = sb = self.statusBar()
-        
-        self.status_lbl = lbl = QtGui.QLabel("")
-        
-        sb.addPermanentWidget(lbl)
-        
-        self.status_icn = icn = QtGui.QLabel("")
-        
-        sb.addPermanentWidget(icn)
-        
-        self.on_set_status_slot(("Connecting", "connect"))
-                
-    def on_set_status_slot(self, msg_icn):
-        msg,icn = msg_icn
-        self.status_lbl.setText("<h3>%s...</h3>"%msg)
-        
-        pmap = QtGui.QPixmap("images/{icn}".format(icn=icn))
-        pmap = pmap.scaledToWidth(self.px_to_dp(16), QtCore.Qt.SmoothTransformation) #antialiasing http://stackoverflow.com/questions/7623631/qt-antialiasing-png-resize
-        self.status_icn.setPixmap(pmap)
-        
-        #events process once every x milliseconds, this forces them to process... or we can use repaint isntead
-        QtGui.qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
-
-    def init_tray_icon(self):
-        self.tray_icon = TrayIcon(self)
-        self.tray_icon.show()
 
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
@@ -179,11 +47,6 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.update_contacts_list_signal.connect(self.set_contacts_list)
         self.show_settings_dialog_signal.connect(lambda:SettingsDialog.show(self))
 
-    def px_to_dp(self, px):
-        #LOG.info(self.dpi)
-        dp = px*self.dpi/72.0
-        #LOG.info(dp)
-        return dp
 
     def set_contacts_list(self, contacts_list):
         self.contacts_list = contacts_list
@@ -257,7 +120,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             except AttributeError:
                 return
 
-            LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
+            LOG.info("Main: on_clip_change_slot: mimeData.hasImage: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.on_set_status_slot(("image copied","good"))
                 return
@@ -286,6 +149,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 clip_display = clip_display,
                 clip_type = "screenshot",
             )
+
         elif mimeData.hasHtml():
             if "PyQt4" in QtGui.__name__:
                 qstring = mimeData.html()  # QString
@@ -298,7 +162,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
             hash = format(hash128(html.encode("utf8")), "x")  # UTF-8 is standardized and OS independant. Must encode before storing to disk # http://stackoverflow.com/questions/22149/unicode-vs-utf-8-confusion-in-python-django
             
-            LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
+            LOG.info("Main: on_clip_change_slot: mimeData.hasImage: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.on_set_status_slot(("data copied","good"))
                 return
@@ -332,7 +196,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
             hash = format(hash128(original.encode("utf8")), "x")
             
-            LOG.info("on_clip_change_slot: hash:%s, prev:%s"%(hash, prev))
+            LOG.info("Main: on_clip_change_slot: mimeData.hasText: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.on_set_status_slot(("text copied","good"))
                 return
@@ -359,8 +223,6 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 is_files.append(each.isLocalFile())
             if not (is_files and all(is_files) ):
                 return
-                
-            PRINT("is files", True)
 
             os_file_paths_new = []
             
@@ -378,13 +240,13 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             try:
                 os_file_sizes_new = map(lambda each_os_path: getFolderSize(each_os_path, max=self.max_file_size) if os.path.isdir(each_os_path) else os.path.getsize(each_os_path), os_file_paths_new)
             except ZeroDivisionError:
-                PRINT("failure",213)
+                LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: os_file_sizes_new")
                 return
             
             if sum(os_file_sizes_new) > self.max_file_size:
                 #self.sb.toggleStatusIcon(msg='Files not uploaded. Maximum files size is 50 megabytes.', icon="bad")
-                self.on_set_status_slot(("Files bigger than 50MB","warn"))
-                PRINT("failure",218)
+                self.on_set_status_slot(("Files bigger than 50MB", "warn"))
+                LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: sum(os_file_sizes_new) > self.max_file_size")
                 return #upload error clip
                             
             os_file_hashes_new = set([])
@@ -436,7 +298,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
             checksum = format(sum(os_file_hashes_new), "x")
             if prev == checksum:  #checks to make sure if name and file are the same
-                PRINT("failure",262)
+                LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: prev == checksum")
                 #self.on_set_status_slot(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
                 return
             else:
@@ -451,7 +313,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                         distutils.file_util.copy_file(each_new_path, CONTAINER_DIR )
                 except distutils.errors.DistutilsFileError:
                     #show error
-                    LOG.info("File %s already exists"%each_new_path)
+                    LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: File %s already exists" % each_new_path)
                     pass #MUST PASS since file may already be there.
 
             prepare = dict(
@@ -461,7 +323,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             )
 
         else:
-            self.on_set_status_slot(("The item in your clipboard is incompatible and can't be synced","warn"))
+            self.on_set_status_slot(("The item in your clipboard is incompatible and can't be synced", "warn"))
             return
 
         prepare["hash"]= hash

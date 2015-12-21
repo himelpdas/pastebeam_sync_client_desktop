@@ -1,4 +1,5 @@
-#adapted from http://stackoverflow.com/questions/12712360/qtsingleapplication-for-pyside-or-pyqt
+# adapted from http://stackoverflow.com/questions/12712360/qtsingleapplication-for-pyside-or-pyqt
+# docs https://doc.qt.io/archives/qtextended4.4/qtopiadesktop/qtsingleapplication.html
 
 #import PySide.QtCore as QtCore
 #import PySide.QtGui as QtGui

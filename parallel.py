@@ -34,7 +34,6 @@ class WebsocketWorkerMixinForMain(object):
         new_list_widget_item.set_data(new_clip)
 
         list_widget.insertItem(0,new_list_widget_item) #add to top #http://www.qtcentre.org/threads/44672-How-to-add-a-item-to-the-top-in-QListWidget
-        #list_widget.takeItem(5) #TODO replace 5 with user settings #removes last item
 
         new_widget = FancyListItemWidget(new_clip, new_list_widget_item)
 
@@ -198,6 +197,7 @@ class WebsocketWorker(QtCore.QThread):
 
         try:
             received = json.loads(str(dump)) #blocks
+            LOG.debug("WebsocketWorker: incoming_greenlet received: %s" % received)
         except ValueError: #ValueError, occurs when socket closes unexpectedly
             raise socket.error
     

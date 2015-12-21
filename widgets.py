@@ -662,7 +662,7 @@ class PanelTabWidget(QtGui.QTabWidget):
         activate_clip_types = []
         for each_action in actions:
             if each_action.isChecked():
-                action_label = each_action.text()
+                action_label = unicode(each_action.text())
                 activate_clip_types.append(label_to_clip_type[action_label])
         for list_widget in self.panels[:-1]:
             for item in list_widget.get_items():
