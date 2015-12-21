@@ -1312,9 +1312,9 @@ class TrayIcon(QtGui.QSystemTrayIcon):
             self.restore()
 
     def restore(self):
-            self.main.setVisible(True)  # needed to unhide http://goo.gl/RKHlMZ
-            self.main.setWindowState(QtCore.Qt.WindowActive)  # needed to un-minimize
-            self.main.activateWindow()  # needed to bring to top
+        self.main.setVisible(True)  # needed to unhide http://goo.gl/RKHlMZ
+        self.main.setWindowState(QtCore.Qt.WindowActive)  # needed to un-minimize
+        self.main.activateWindow()  # needed to bring to top
 
     def setContextMenu(self, *args, **kwargs):
         context_menu = QtGui.QMenu()

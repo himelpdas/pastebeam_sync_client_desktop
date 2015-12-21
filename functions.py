@@ -44,8 +44,11 @@ DEFAULT_DOMAIN = "192.168.0.191"
 # DEFAULT_DOMAIN = "127.0.0.1"
 DEFAULT_PORT = 8084
 
-CONTAINER_DIR = os.path.join(tempfile.gettempdir(),
-                             u".pastebeam")  # tempfile.mkdtemp() #TODO- use tempfile.mkdtemp() when extracting container, as it guarantees other programs will not be able to intercept extracted file, see tempfile docs for more info
+CONTAINER_DIR = os.path.join(tempfile.gettempdir(), u".pastebeam")  # tempfile.mkdtemp() #TODO- use tempfile.mkdtemp() when extracting container, as it guarantees other programs will not be able to intercept extracted file, see tempfile docs for more info
+try:
+    os.mkdir(CONTAINER_DIR)
+except OSError:
+    pass
 
 
 def string_is_url(url):
@@ -117,7 +120,7 @@ def download_container_if_not_exist(data, progress_callback=None):
         return
     container_name = data["container_name"]
     container_path = os.path.join(CONTAINER_DIR, container_name)
-    LOG.info(container_path)
+    LOG.info("global: download_container_if_not_exist: %s" % container_path)
 
     if os.path.isfile(container_path):
         return container_path

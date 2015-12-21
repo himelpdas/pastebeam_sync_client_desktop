@@ -10,6 +10,8 @@ from widgets import *
 
 import platform, distutils.dir_util, distutils.errors, distutils.file_util #distutil over shututil http://stackoverflow.com/questions/15034151/copy-directory-contents-into-a-directory-with-python #import error on linux http://stackoverflow.com/questions/19097235/backing-up-copying-an-entire-folder-tree-in-batch-or-python
 
+from QtSingleApplication import QtSingleApplication
+
 class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar, which qwidget did not do
     #SLOT IS A QT TERM MEANING EVENT
     def init_ui(self):
@@ -140,8 +142,8 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         QtGui.qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
 
     def init_tray_icon(self):
-        tray_icon = TrayIcon(self)
-        tray_icon.show()
+        self.tray_icon = TrayIcon(self)
+        self.tray_icon.show()
 
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
@@ -155,21 +157,20 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
     outgoing_signal_for_worker = QtCore.Signal(dict)
     
-    def __init__(self, app):
-        super(Main, self).__init__()
-        
-        try:
-            os.mkdir(CONTAINER_DIR)
-        except OSError:
-            pass
+    def __init__(self, app, singleton, *args, **kwargs):
+        super(Main, self).__init__(*args, **kwargs)
+
+        self.app = app
+        self.singleton = singleton
 
         self.dpi = app.desktop().logicalDpiX()
 
         self.rsa_private_key = ""
 
-        self.app = app
         self.init_ui()
         self.init_clipboard()
+
+        self.singleton.messageReceived.connect(lambda msg: self.tray_icon.restore())
 
         self.ws_worker = WebsocketWorker(self)
         self.initWorker()
@@ -487,6 +488,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         """When incoming, this will invoke dataChanged, which will in turn invoke a push, therefore a race condition
         will occur with multiple devices. This decorator will block redundant reupload from clipboard.dataChanged"""
         def closure(self, clip_dict):
+            LOG.info("on_set_new_clip_slot: block_clip_change_detection: clip_dict: %s" % clip_dict)
+
             new_clip, block_detection = clip_dict["new_clip"], clip_dict["block_clip_change_detection"]
 
             #http://stackoverflow.com/questions/5339062/python-pyside-internal-c-object-already-deleted
@@ -501,15 +504,16 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 func(self, new_clip, mimeData)
                 # self.previous_hash = new_clip["hash"]  # so that we don't get a redundant on_clip_change_slot, and a hit to the server. needed since an incoming will not set self.previous_hash
             except RuntimeError, e:  # sometimes mimeData can be garbage collected despite passing it to the parent object to prevent GC
-                LOG.error(e)
+                LOG.error(e) # todo - error report
             except tarfile.ReadError as e:
                 # when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
-                LOG.error("tarfile: "+e[0])
-                self.on_set_status_slot(("Decryption failed. Current password is not compatible with this item","bad"))
+                LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: tarfile: " + e[0])
+                self.on_set_status_slot(("Decryption failed. Current password is not compatible with this item", "bad"))
             except IOError:
-                LOG.error("Possibly in the middle of downloading a container of a clip, while another client double-clicks the same clip, so extracted tarfile fails with (from tarfile.py): IOError: CRC check failed 0x9e952259 != 0x3b63bdc0L")
+                LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: Possibly in the middle of downloading a container of a clip, while another client double-clicks the same clip, so extracted tarfile fails with (from tarfile.py): IOError: CRC check failed 0x9e952259 != 0x3b63bdc0L")
             except ValueError:
-                self.on_set_status_slot(("Decryption failed. Item data from server is missing or corrupt","bad")) #ie. server returned a 404.html document
+                LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: Missing or corrupt container from server")
+                self.on_set_status_slot(("Decryption failed. Item data from server is missing or corrupt", "bad")) #ie. server returned a 404.html document
             else:
                 self.on_set_status_slot(("Decrypted new item", "good"))
         return closure
@@ -546,6 +550,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                     clip_text = clip_json["html_and_text"]["text"]
                     clip_html = clip_json["html_and_text"]["html"]
 
+                    LOG.info("Main: on_set_new_clip_slot: files: mimeData.setHtml: %s" % clip_html)
                     mimeData.setText(clip_text)  # set text cannot automatically truncate html (or rich text tags) like with mimeData.text(). This is probably due to the operating system providing both text and html, and it's not Qt's concern. So I decided to store getText on json file and setText here.
                     mimeData.setHtml(clip_html)
 
@@ -558,6 +563,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                     clip_text = clip_file.read().decode("utf8")  # http://stackoverflow.com/questions/6048085/python-write-unicode-text-to-a-text-file #needed to keep conistant hash, or else inifnite upload/update loop will occur
 
+                    LOG.info("Main: on_set_new_clip_slot: files: mimeData.setText: %s" % clip_text)
                     mimeData.setText(clip_text)
 
 
@@ -567,9 +573,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                 image = QtGui.QImage(clip_file_path)
 
+                LOG.info("Main: on_set_new_clip_slot: files: mimeData.setImageData: %s" % image)
                 mimeData.setImageData(image)
-
-            self.clipboard.setMimeData(mimeData)
 
 
             if clip_type == "files":
@@ -581,13 +586,15 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                     QUrl = QtCore.QUrl()
                     #QUrl.setUrl(each_path)
                     #QUrl.setPath(each_path)
-                    QUrl = QUrl.fromLocalFile(each_path) #Returns a QUrl representation of localFile #http://stackoverflow.com/questions/6062382/pyqt-copy-file-to-clipboard
+                    QUrl = QUrl.fromLocalFile(each_path)  # Returns a QUrl representation of localFile #http://stackoverflow.com/questions/6062382/pyqt-copy-file-to-clipboard
                     #QUrl.toEncoded()
                     urls.append(QUrl)
 
-                PRINT("SETTING URLS", urls)
+                LOG.info("Main: on_set_new_clip_slot: files: mimeData.setUrls: %s" % urls)
                 mimeData.setUrls(urls)
 
+            if not self.clipboard.ownsClipboard():  # solves issue #14, a silent error QClipboard::setMimeData: Failed to set data on clipboard (). happens when another program takes clipboard, so we re-init here. doesn't seem to be needed when reading clipboard
+                self.init_clipboard()
             self.clipboard.setMimeData(mimeData)
 
 
@@ -628,7 +635,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.app.exit() #directly close the app
 
 if __name__ == '__main__':
-    
+    app_id = '3B9D38D3-AAA6-476D-97CB-E547F623B96E'
+    singleton = QtSingleApplication(app_id, sys.argv)
+    if singleton.isRunning():
+        singleton.sendMessage("restore")
+        sys.exit(0)  # http://stackoverflow.com/questions/12712360/qtsingleapplication-for-pyside-or-pyqt
+
     app = QtGui.QApplication(sys.argv) #create mainloop
-    ex = Main(app) #run widgets
+    ex = Main(app, singleton) #run widgets
     sys.exit(app.exec_())

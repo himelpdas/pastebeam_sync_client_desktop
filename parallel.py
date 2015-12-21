@@ -266,7 +266,7 @@ class WebsocketWorker(QtCore.QThread):
             self.initialize_contacts_list_signal_for_main.emit(contacts_list)
 
         elif answer == "@delete_local":
-            LOG.info(data["location"])
+            LOG.info("WebsocketWorker: incoming_greenlet: @delete_local: data['location']: %s" % data["location"])
             self.delete_clip_signal_for_main.emit(data["location"])
 
         # REQUEST/RESPONSE STYLE (Handle data in outgoing_greenlet since it was the one that is expecting a response in order to yield control)
@@ -354,7 +354,7 @@ class WebsocketWorker(QtCore.QThread):
             data_out = send.get("data")
             question = send["question"]
 
-        LOG.debug(data_out)
+        LOG.debug("WebsocketWorker: outgoing_greenlet: %s" % data_out)
 
         if question == "Share?":
 
