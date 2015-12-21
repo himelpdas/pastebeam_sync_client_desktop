@@ -98,7 +98,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         ### window ###
         # http://stackoverflow.com/questions/23429663/qt-mutually-exclusive-checkable-menu-items
         window_menu = menubar.addMenu("&Window")
-        transparency_action = QtGui.QAction(AppIcon("settings"), "&Transparency", self)
+        transparency_action = QtGui.QAction(AppIcon("sun"), "&Transparency", self)
         transparency_sub_menu = QtGui.QMenu()
         transparency_action.setMenu(transparency_sub_menu)
         transparency_action_group = QtGui.QActionGroup(self)
@@ -130,7 +130,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         transparency_action_group.addAction(transparency_50pct)
         transparency_action_group.triggered.connect(self.on_transparency_action_group)
 
-        always_on_top_action = QtGui.QAction("Always on &top", self)
+        always_on_top_action = QtGui.QAction(AppIcon("paperclip"),"&Always on top", self)
         always_on_top_action.setCheckable(True)
         always_on_top_action.triggered.connect(self.on_always_on_top_action)
 

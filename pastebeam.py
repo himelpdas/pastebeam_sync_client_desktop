@@ -12,6 +12,8 @@ import platform, distutils.dir_util, distutils.errors, distutils.file_util #dist
 
 from QtSingleApplication import QtSingleApplication
 
+import pygments, pygments.lexers, pygments.formatters
+
 
 class Main(WebsocketWorkerMixinForMain, UIMixin):
 
@@ -162,14 +164,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
             hash = format(hash128(html.encode("utf8")), "x")  # UTF-8 is standardized and OS independant. Must encode before storing to disk # http://stackoverflow.com/questions/22149/unicode-vs-utf-8-confusion-in-python-django
             
-            LOG.info("Main: on_clip_change_slot: mimeData.hasImage: hash:%s, prev:%s"%(hash, prev))
+            LOG.info("Main: on_clip_change_slot: mimeData.hasHtml: hash:%s, prev:%s"%(hash, prev))
             if hash == prev:
                 #self.on_set_status_slot(("data copied","good"))
                 return
-            
-            preview = cgi.escape(text) #crashes with big data
-            #preview = self.truncateTextLines(preview)
-            preview = self.anchor_urls(preview)
+
+            preview = self.prepare_text_preview(text)
                         
             html_file_name = "%s.json"%hash
             html_file_path = os.path.join(CONTAINER_DIR,html_file_name)
@@ -201,9 +201,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 #self.on_set_status_slot(("text copied","good"))
                 return
             
-            preview = cgi.escape(original) #prevent html from styling in qlabel
-            preview = self.truncateTextLines(preview)
-            preview = self.anchor_urls(preview)
+            preview = self.prepare_text_preview(original)
                         
             text_file_name = "%s.txt"%hash
             text_file_path = os.path.join(CONTAINER_DIR,text_file_name)
@@ -340,6 +338,16 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
         self.previous_hash = hash
         #image.destroy()
+
+    def prepare_text_preview(self, text):
+        preview = cgi.escape(text) #crashes with big data
+        #preview = self.truncateTextLines(preview)
+        preview = self.anchor_urls(preview)
+        try:
+            preview = pygments.highlight(preview, pygments.lexers.guess_lexer(preview), pygments.formatters.HtmlFormatter(noclasses=True))
+        except pygments.util.ClassNotFound:
+            pass
+        return preview
 
 
     def streaming_download_callback(self, progress):
