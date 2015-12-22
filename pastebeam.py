@@ -41,7 +41,6 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.singleton.messageReceived.connect(lambda msg: self.tray_icon.restore())
 
         self.init_clipboard()
-        #self.ensure_clipboard_timer()
         self.previous_hash = ""
 
         self.ws_worker = WebsocketWorker(self)
@@ -82,11 +81,15 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.clipboard = self.app.clipboard() #clipboard is in the QtGui.QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
         self.clipboard.dataChanged.connect(self.on_clip_change_slot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
 
-    def ensure_clipboard_timer(self):
-        # clipboard stops working if you use clipboard viewer  https://bugreports.qt.io/browse/QTBUG-27097  - THANK YOU
+
+    def generic_timer(self, second, *chores):
+        second*=1000
         self.timer  = QtCore.QTimer(self)
-        self.timer.setInterval(10000)  # Throw event timeout with an interval of 1000 milliseconds
-        self.timer.timeout.connect(lambda: self.clipboard.dataChanged.emit())  # this ensures clipboard stays alive
+        self.timer.setInterval(second)  # Throw event timeout with an interval of 1000 milliseconds
+        def do_chores():
+            for each in chores:
+                each()
+        self.timer.timeout.connect(do_chores)  # this ensures clipboard stays alive
         self.timer.start()
 
 
