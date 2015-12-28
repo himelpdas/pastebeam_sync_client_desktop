@@ -185,7 +185,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         self.status_icn.setPixmap(pmap)
 
         #events process once every x milliseconds, this forces them to process... or we can use repaint isntead
-        QtGui.qApp.processEvents() #http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
+        QtGui.qApp.processEvents()  # YIELDS TO MAINLOOP # SIMILAR TO WX.YIELD # http://stackoverflow.com/questions/12410433/forcing-the-qt-gui-to-update-before-entering-a-separate-function  # http://stackoverflow.com/questions/4510712/qlabel-settext-not-displaying-text-immediately-before-running-other-method #the gui gets blocked, especially with file operations. DOCS: Processes all pending events for the calling thread according to the specified flags until there are no more events to process. You can call this function occasionally when your program is busy performing a long operation (e.g. copying a file).
 
     def init_tray_icon(self):
         self.tray_icon = TrayIcon(self)

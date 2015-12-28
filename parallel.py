@@ -179,8 +179,8 @@ class WebsocketWorker(QtCore.QThread):
                     self.WSOCK = self.reconnect()
                     self.clear_list_signal_for_main.emit() #clear list on reconnect or else a new list will be sent on top of previous
                 except: #previous try will handle later
-                    LOG.info("Couldn't connect!")
-                    LOG.info("Closing modal dialogs")
+                    #LOG.info("Couldn't connect!")
+                    #LOG.info("Closing modal dialogs")
                     self.closeWaitDialogSignalForMain.emit(dict(
                             success=False,
                             reason = views.disconnected_msg)

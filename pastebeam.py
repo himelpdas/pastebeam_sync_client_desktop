@@ -1,116 +1,202 @@
-#--coding: utf-8 --
+from gevent import monkey; monkey.patch_all(thread=False)  # thread MUST equal False or else unexpected behavior will occur with multiprocess
 
-from gevent import monkey; monkey.patch_all()
+from pastebeam_application import *
 
-#from PySide import QtGui, QtCore
-
-from parallel import *
-
-from window import *
-
-import platform, distutils.dir_util, distutils.errors, distutils.file_util #distutil over shututil http://stackoverflow.com/questions/15034151/copy-directory-contents-into-a-directory-with-python #import error on linux http://stackoverflow.com/questions/19097235/backing-up-copying-an-entire-folder-tree-in-batch-or-python
-
-from QtSingleApplication import QtSingleApplication
-
-import pygments, pygments.lexers, pygments.formatters
+import sys, multiprocessing
+from multiprocessing.queues import SimpleQueue
+import itertools
 
 
-class Main(WebsocketWorkerMixinForMain, UIMixin):
+class ConsumerClipboardChangedQueueListenerThread(QtCore.QThread):
 
-    file_ignore_list = map(lambda each: each.upper(), ["desktop.ini","thumbs.db",".ds_store","icon\r",".dropbox",".dropbox.attr"])
+    clipboard_changed_signal = QtCore.pyqtSignal(dict)
 
-    max_file_size = 1024*1024*50
+    def __init__(self, kill_event, clip_change_queue, *args, **kwargs):
+        LOG.info("Pastebeam: Consumer: ConsumerClipboardChangedQueueListenerThread " + multiprocessing.current_process().name)
 
-    update_contacts_list_signal = QtCore.Signal(list)
+        self.clip_change_queue = clip_change_queue
+        self.kill_event = kill_event
 
-    show_settings_dialog_signal = QtCore.Signal()
+        super(self.__class__, self).__init__(*args, **kwargs)
 
-    outgoing_signal_for_worker = QtCore.Signal(dict)
-    
-    def __init__(self, app, singleton, *args, **kwargs):
-        super(Main, self).__init__(*args, **kwargs)
+    def run(self):
+        while 1:
+            clip_prepare = self.clip_change_queue.get()
+            if clip_prepare is False or self.kill_event.is_set():  # poison pill technique
+                break
+            self.clipboard_changed_signal.emit(clip_prepare)
+
+
+class ConsumerStatusQueueListenerThread(QtCore.QThread):
+
+    status_signal = QtCore.pyqtSignal(tuple)
+
+    def __init__(self, kill_event, status_queue, *args, **kwargs):
+        LOG.info("Pastebeam: Consumer: ConsumerStatusQueueListenerThread " + multiprocessing.current_process().name)
+
+        self.status_queue = status_queue
+        self.kill_event = kill_event
+
+        super(self.__class__, self).__init__(*args, **kwargs)
+
+    def run(self):
+        while 1:
+            print "NEW STATUS LISTEN"
+            status = self.status_queue.get()
+            if status is False or self.kill_event.is_set():  # poison pill technique
+                break
+            self.status_signal.emit(status)
+
+
+class Consumer(Main):
+
+    def __init__(self, app, clip_change_queue, set_clip_queue, status_queue, kill_event, previous_hash, *args, **kwargs):
+        LOG.info("Pastebeam: Consumer: __init__: " + multiprocessing.current_process().name)
+
+        app_id = '3B9D38D3-AAA6-476D-97CB-E547F623B96E'
+        singleton = QtSingleApplication(app_id, sys.argv)
+        if singleton.isRunning():
+            singleton.sendMessage("restore")
+            #sys.exit(0)  # http://stackoverflow.com/questions/12712360/qtsingleapplication-for-pyside-or-pyqt
+
+        super(self.__class__, self).__init__(app, singleton, *args, **kwargs)
+
+        self.clip_change_queue = clip_change_queue
+        self.set_clip_queue = set_clip_queue
+        self.status_queue = status_queue
+        self.kill_event=  kill_event
+        self.previous_hash = previous_hash
+
+        #self.main_widget = QtGui.QTextEdit()
+        #self.setCentralWidget(self.main_widget)
+
+        self.clipboard_event_thread = ConsumerClipboardChangedQueueListenerThread(self.kill_event, self.clip_change_queue)
+        self.clipboard_event_thread.clipboard_changed_signal.connect(self.on_clipboard_changed)
+        self.clipboard_event_thread.start()
+
+        self.status_event_thread = ConsumerStatusQueueListenerThread(self.kill_event, self.status_queue)
+        self.status_event_thread.status_signal.connect(self.on_set_status_slot)
+        self.status_event_thread.start()
+
+
+    def on_clipboard_changed(self, clip_prepare):
+        
+        hash_hex = clip_prepare["data"]["hash"]
+        
+        try:
+            container_name = self.panel_tab_widget.get_matching_containers_for_hash(hash_hex).next()
+            clip_prepare["container_name"] = container_name  # only need first
+        except StopIteration:
+            pass
+
+        self.outgoing_signal_for_worker.emit(clip_prepare)
+
+    def closeEvent(self, close_event):
+        self.kill_event.set()
+        self.clip_change_queue.put(False)
+        self.status_queue.put(False)
+        #self.app.exit()
+        close_event.accept()
+
+class ProducerSetClipboardQueueListenerThread(QtCore.QThread):
+
+    clipboard_set_signal = QtCore.pyqtSignal(dict)
+
+    def __init__(self, kill_event, set_clip_queue, *args, **kwargs):
+        LOG.info("Pastebeam: Consumer: ProducerSetClipboardQueueListenerThread " + multiprocessing.current_process().name)
+
+        self.set_clip_queue = set_clip_queue
+        self.kill_event = kill_event
+
+        super(self.__class__, self).__init__(*args, **kwargs)
+
+    def run(self):
+        while 1:
+            set_clip = self.set_clip_queue.get()  # blocks
+            print "d-clicked!!!"
+            if set_clip is False or self.kill_event.is_set():  # poison pill technique  # there slight chance there is a positive set_clip and a kill_event.is_set at the same time, so check for kill to prevent wasted time
+                break
+            self.clipboard_set_signal.emit(set_clip)
+
+class ProducerKillQueueListenerThread(QtCore.QThread):
+
+    kill_producer_signal = QtCore.pyqtSignal()
+
+    def __init__(self, kill_event, *args, **kwargs):
+        LOG.info("Pastebeam: Consumer: ProducerKillQueueListenerThread " + multiprocessing.current_process().name)
+
+        self.kill_event = kill_event
+
+        super(self.__class__, self).__init__(*args, **kwargs)
+
+    def run(self):
+        self.kill_event.wait()
+        self.kill_producer_signal.emit()
+
+
+
+class Producer(QtGui.QMainWindow):
+    kill_ms = 1000 * 5
+    timeout = kill_ms * 1.5
+    def __init__(self, app, clip_change_queue, set_clip_queue, status_queue, kill_event, previous_hash, *args, **kwargs):
+        LOG.info("Pastebeam: Producer: __init__: " + multiprocessing.current_process().name)
+
+        self.next_producer = kwargs.pop("next_producer")  # get rid of next_producer or else super init will raise TypeError for unknown kwarg
+
+        super(self.__class__, self).__init__(*args, **kwargs)
 
         self.app = app
-        self.singleton = singleton
+        self.clip_change_queue = clip_change_queue
+        self.set_clip_queue = set_clip_queue
+        self.kill_event = kill_event
+        self.status_queue = status_queue
+        self.previous_hash = previous_hash
 
-        self.dpi = app.desktop().logicalDpiX()
+        self.clipboard = app.clipboard()
+        self.clipboard.dataChanged.connect(self.on_clipboard_data_changed)
 
-        self.rsa_private_key = ""
+        self.kill_event_thread = ProducerKillQueueListenerThread(self.kill_event)
+        self.kill_event_thread.kill_producer_signal.connect(self.terminate)
+        self.kill_event_thread.start()
 
-        self.init_ui()
-        self.singleton.messageReceived.connect(lambda msg: self.tray_icon.restore())
+        self.set_clip_thread  = ProducerSetClipboardQueueListenerThread(self.kill_event, self.set_clip_queue)
+        self.set_clip_thread.clipboard_set_signal.connect(self.on_set_new_clip_slot)
+        self.set_clip_thread.start()
 
-        self.init_clipboard()
-        self.previous_hash = ""
+        self.kill_after(self.kill_ms)
+        print multiprocessing.current_process().name
 
-        self.ws_worker = WebsocketWorker(self)
-        self.init_worker()
+    def terminate(self):
+        self.next_producer.set()
+        LOG.info("Pastebeam: Producer: terminate")
+        self.set_clip_queue.put(False)
+        #self.app.exit()  # http://stackoverflow.com/questions/8026101/correct-way-to-quit-a-qt-program
+        self.close()
 
-        self.contacts_list = []
-        self.update_contacts_list_signal.connect(self.set_contacts_list)
-        self.show_settings_dialog_signal.connect(lambda:SettingsDialog.show(self))
-
-
-    def set_contacts_list(self, contacts_list):
-        self.contacts_list = contacts_list
-
-    def on_contacts_list_incoming(self, contacts_list):
-        self.set_contacts_list(contacts_list)
-
-    def init_worker(self):
-        self.ws_worker.incoming_clip_signal_for_main.connect(self.on_incoming_slot)
-        self.ws_worker.set_clip_signal_for_main.connect(self.on_set_new_clip_slot)
-        self.ws_worker.status_signal_for_main.connect(self.on_set_status_slot)
-        self.ws_worker.delete_clip_signal_for_main.connect(self.panel_tab_widget.on_incoming_delete)
-        self.ws_worker.clear_list_signal_for_main.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
-        self.ws_worker.initialize_contacts_list_signal_for_main.connect(self.on_contacts_list_incoming)
-        self.ws_worker.change_tab_icon_signal_for_main.connect(self.panel_tab_widget.onChangeTabIconSlot)
-        self.ws_worker.set_rsa_key_signal_for_main.connect(self.on_set_rsa_keys)
-        self.ws_worker.start()
-
-    def on_set_rsa_keys(self, private_key_and_salt):
-        des_rsa_private_key = private_key_and_salt["rsa_private_key"]
-        rsa_pbkdf2_salt = private_key_and_salt["rsa_pbkdf2_salt"]
-        password = settings.account.get("password")
-        passphrase = PBKDF2(password, rsa_pbkdf2_salt, dkLen=24, count=1000, prf=lambda p, s: HMAC.new(p, s, SHA512).digest()).encode("hex")
-
-        self.rsa_private_key = RSA.importKey(des_rsa_private_key, passphrase)
-
-
-    def init_clipboard(self):
-        self.clipboard = self.app.clipboard() #clipboard is in the QtGui.QApplication class as a static (class) attribute. Therefore it is available to all instances as well, ie. the app instance.#http://doc.qt.io/qt-5/qclipboard.html#changed http://codeprogress.com/python/libraries/pyqt/showPyQTExample.php?index=374&key=PyQTQClipBoardDetectTextCopy https://www.youtube.com/watch?v=nixHrjsezac
-        self.clipboard.dataChanged.connect(self.on_clip_change_slot) #datachanged is signal, doclip is slot, so we are connecting slot to handle signal
-
-
-    def generic_timer(self, second, *chores):
-        second*=1000
+    def kill_after(self, ms):
         self.timer  = QtCore.QTimer(self)
-        self.timer.setInterval(second)  # Throw event timeout with an interval of 1000 milliseconds
-        def do_chores():
-            for each in chores:
-                each()
-        self.timer.timeout.connect(do_chores)  # this ensures clipboard stays alive
+        self.timer.setInterval(ms)  # Throw event timeout with an interval of 1000 milliseconds
+        self.timer.timeout.connect(self.terminate)  # this ensures clipboard stays alive
         self.timer.start()
 
-
-    def on_clip_change_slot(self):
+    def on_clipboard_data_changed(self):
         #test if identical
 
-        self.on_set_status_slot(("Waiting for clipboard to change", "scan"))
-        
+        self.status_queue.put(("Waiting for clipboard to change", "scan"))
+
         mimeData = self.clipboard.mimeData()
         if "PyQt4" in QtGui.__name__:
             variant = QtCore.QVariant.ByteArray
-            retrieved = str(mimeData.retrieveData("__pastebeam__", variant).toByteArray())
+            retrieved = unicode(mimeData.retrieveData("__pastebeam__", variant).toByteArray())
             pastebeam_mime = json.loads(retrieved or "{}")  #unicode is preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
         else:
-            pastebeam_mime = json.loads(str(mimeData.retrieveData("__pastebeam__", unicode) or "{}"))  #unicode is preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
+            pastebeam_mime = json.loads(unicode(mimeData.retrieveData("__pastebeam__", unicode) or "{}"))  #unicode is preferred type to return... #USE PYTHON TYPES INSTEAD OF QVARIANT #http://stackoverflow.com/questions/24566940/no-qvariant-attributes
         block_detection = pastebeam_mime.get("block_detection")
         if block_detection:
             # prevents redundant updating when clip is incomming from another device, no need to update to server what was just received
             return
 
-        prev = self.previous_hash #image.bits() crashes with OneNote large image copy
+        prev = self.previous_hash.value #image.bits() crashes with OneNote large image copy
 
         if mimeData.hasImage():
             #image = pmap.toImage() #just like wxpython do not allow this to del, or else .bits() will crash
@@ -128,34 +214,35 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 bits = image.bits()
 
             try: #None.bits attribute error here can cause a freeze
-                hash = format(hash128(bits), "x") ##http://stackoverflow.com/questions/16414559/trying-to-use-hex-without-0x #we want the large image out of memory asap, so just take a hash and gc collect the image
+                hash_long = hash128(bits)
+                hash_hex = format(hash_long, "x") ##http://stackoverflow.com/questions/16414559/trying-to-use-hex-without-0x #we want the large image out of memory asap, so just take a hash and gc collect the image
             except AttributeError:
                 return
 
-            LOG.info("Main: on_clip_change_slot: mimeData.hasImage: hash:%s, prev:%s"%(hash, prev))
-            if hash == prev:
-                #self.on_set_status_slot(("image copied","good"))
+            LOG.info("Main: on_clip_change_slot: mimeData.hasImage: hash:%s, prev:%s"%(hash_hex, prev))
+            if hash_long == prev:
+                #self.status_queue.put(("image copied","good"))
                 return
-                
+
             #secure_hash = hashlib.new("ripemd160", hash + "ACCOUNT_SALT").hexdigest() #use pdkbf2 #to prevent rainbow table attacks of known files and their hashes, will also cause decryption to fail if file name is changed
-            img_file_name = "%s.bmp"%hash
+            img_file_name = "%s.bmp"%hash_hex
             img_file_path = os.path.join(CONTAINER_DIR, img_file_name)
             image.save(img_file_path) #change to or compliment upload
-                
+
             pmap = QtGui.QPixmap(image) #change to pixmap for easier image editing than Qimage
             pmap = PixmapThumbnail(pmap, 240)
-            
+
             device= QtCore.QBuffer() #is an instance of QtGui.QIODevice, which is accepted by image.save()
             pmap.thumbnail.save(device, "PNG") # writes image into the in-memory container, rather than a file name
             _bytearray = device.data() #get the buffer itself
             bytestring = _bytearray.data() #copy the full string
-            
+
             info = dict(w=pmap.original_w, h=pmap.original_h, mp="%d.02"%(pmap.original_w*pmap.original_h/1000000.0), mb="%d.1"%(pmap.original_w*pmap.original_h*3/1024**2) )
             clip_display = dict(
                 info=info,
                 thumb = Binary(bytestring)  #Use BSON Binary to prevent UnicodeDecodeError: 'utf8' codec can't decode byte 0xeb in position 0: invalid continuation byte
             )
-            
+
             prepare = dict(
                 file_names = [img_file_name],
                 clip_display = clip_display,
@@ -171,32 +258,33 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             else:
                 html = mimeData.html()  # already Unicode (Python representation, different on each OS)
                 text = (mimeData.text() or "<Rich Text Data>")
-
-            hash = format(hash128(html.encode("utf8")), "x")  # UTF-8 is standardized and OS independant. Must encode before storing to disk # http://stackoverflow.com/questions/22149/unicode-vs-utf-8-confusion-in-python-django
             
-            LOG.info("Main: on_clip_change_slot: mimeData.hasHtml: hash:%s, prev:%s"%(hash, prev))
-            if hash == prev:
-                #self.on_set_status_slot(("data copied","good"))
+            hash_long = hash128(html.encode("utf8"))
+            hash_hex = format(hash_long, "x")  # UTF-8 is standardized and OS independant. Must encode before storing to disk # http://stackoverflow.com/questions/22149/unicode-vs-utf-8-confusion-in-python-django
+
+            LOG.info("Main: on_clip_change_slot: mimeData.hasHtml: hash:%s, prev:%s"%(hash_hex, prev))
+            if hash_long == prev:
+                #self.status_queue.put(("data copied","good"))
                 return
 
             preview = self.prepare_text_preview(text)
-                        
-            html_file_name = "%s.json"%hash
+
+            html_file_name = "%s.json" % hash_hex
             html_file_path = os.path.join(CONTAINER_DIR,html_file_name)
-            
+
             with open(html_file_path, 'w') as html_file:
                 html_and_text = json.dumps({"html_and_text":{
                     "html":html,
                     "text":text
                 }})
                 html_file.write(html_and_text.encode("utf8"))
-            
+
             prepare = dict(
                 file_names = [html_file_name],
                 clip_display = preview,
                 clip_type = "html",
             )
-            
+
         elif mimeData.hasText() and not mimeData.hasUrls(): #linux appears to provide text for files, so make sure it is not a file or else this will overrie it
             if "PyQt4" in QtGui.__name__:
                 qstring = mimeData.text()
@@ -204,21 +292,22 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             else:
                 original = mimeData.text()
 
-            hash = format(hash128(original.encode("utf8")), "x")
-            
-            LOG.info("Main: on_clip_change_slot: mimeData.hasText: hash:%s, prev:%s"%(hash, prev))
-            if hash == prev:
-                #self.on_set_status_slot(("text copied","good"))
+            hash_long = hash128(original.encode("utf8"))
+            hash_hex = format(hash_long, "x")  # UTF-8 is standardized and OS independant. Must encode before storing to disk # http://stackoverflow.com/questions/22149/unicode-vs-utf-8-confusion-in-python-django
+
+            LOG.info("Main: on_clip_change_slot: mimeData.hasText: hash:%s, prev:%s"%(hash_hex, prev))
+            if hash_hex == prev:
+                #self.status_queue.put(("text copied","good"))
                 return
-            
+
             preview = self.prepare_text_preview(original)
-                        
-            text_file_name = "%s.txt"%hash
+
+            text_file_name = "%s.txt"%hash_hex
             text_file_path = os.path.join(CONTAINER_DIR,text_file_name)
-            
+
             with open(text_file_path, 'w') as text_file:
                 text_file.write(original.encode("utf8"))
-            
+
             prepare = dict(
                 file_names = [text_file_name],
                 clip_display = preview,
@@ -233,42 +322,35 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 return
 
             os_file_paths_new = []
-            
+
             for each in self.clipboard.mimeData().urls():
-                if "PyQt4" in QtGui.__name__:
-                    each_path = unicode(each.path())
+                each_path = unicode(each.path())
                 each_path = each_path[(1 if SYSTEM == "Windows" else 0):] #urls() returns /c://...// in windows, [1:] removes the starting /, not sure how this will affect *NIXs
                 #if os.name=="nt":
                 #    each_path = each_path.encode(sys.getfilesystemencoding()) #windows uses mbcs encoding, not utf8 like *nix, so something like a chinese character will result in file operations raising WindowsErrors #http://stackoverflow.com/questions/10180765/open-file-with-a-unicode-filename
                 standardized_path = os.path.abspath(each_path) #abspath is needed to bypass symlinks in *NIX systems, also guarantees slashes are correct (C:\\...) for windows
                 os_file_paths_new.append(standardized_path)
-            
+
             os_file_paths_new.sort()
-            
+
             try:
                 os_file_sizes_new = map(lambda each_os_path: getFolderSize(each_os_path, max=self.max_file_size) if os.path.isdir(each_os_path) else os.path.getsize(each_os_path), os_file_paths_new)
             except ZeroDivisionError:
                 LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: os_file_sizes_new")
                 return
-            
+
             if sum(os_file_sizes_new) > self.max_file_size:
                 #self.sb.toggleStatusIcon(msg='Files not uploaded. Maximum files size is 50 megabytes.', icon="bad")
-                self.on_set_status_slot(("Files bigger than 50MB", "warn"))
+                self.status_queue.put(("Files bigger than 50MB", "warn"))
                 LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: sum(os_file_sizes_new) > self.max_file_size")
                 return #upload error clip
-                            
+
             os_file_hashes_new = set([])
-            
+
             os_file_names_new = []
             display_file_names =[]
 
-            def _keep_ui_alive():
-                """calling this at the rate that os.walk would will crash QT, this prevents that."""
-                if once_every_second.check():
-                    self.app.processEvents()  # YIELDS TO MAINLOOP # SIMILAR TO WX.YIELD # http://stackoverflow.com/questions/12410433/forcing-the-qt-gui-to-update-before-entering-a-separate-function
-            
             for each_path in os_file_paths_new:
-                _keep_ui_alive()
                 each_file_name = os.path.basename(each_path) #instead of os.path.split(each_path)[1]
 
                 os_file_names_new.append(each_file_name)
@@ -279,10 +361,8 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                     os_folder_hashes = []
                     for dirName, subdirList, fileList in os.walk(each_path, topdown=False):
-                        _keep_ui_alive()
                         #subdirList = filter(...) #filer out any temp or hidden folders
                         for fname in fileList:
-                            _keep_ui_alive()
                             if fname.upper() not in self.file_ignore_list: #DO NOT calculate hash for system files as they are always changing, and if a folder is in clipboard, a new upload may be initiated each time a system file is changed
                                 each_sub_path = os.path.join(dirName, fname)
                                 with open(each_sub_path, 'rb') as each_sub_file:
@@ -300,17 +380,17 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
                     with open(each_path, 'rb') as each_file:
                         each_file_name = os.path.basename(each_path)
-                        each_data = each_file.read() #update status
+                        each_data = each_file.read() #update status_queue
 
                 os_file_hashes_new.add(hash128(each_file_name.encode("utf8")) + hash128(each_data) ) #http://stackoverflow.com/questions/497233/pythons-os-path-choking-on-hebrew-filenames #append the hash for this file #use filename and hash so that set does not ignore copies of two idenitcal files (but different names) in different directories #also hash filename as this can be a security issue when stored serverside
 
-            checksum = format(sum(os_file_hashes_new), "x")
-            if prev == checksum:  #checks to make sure if name and file are the same
+            hash_long = sum(os_file_hashes_new)
+            if prev == hash_long:  #checks to make sure if name and file are the same
                 LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: prev == checksum")
-                #self.on_set_status_slot(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
+                #self.status_queue.put(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
                 return
             else:
-                hash = checksum
+                hash_hex = format(hash_long, "x")
 
             #copy files to temp. this is needed
             for each_new_path in os_file_paths_new:
@@ -331,22 +411,17 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             )
 
         else:
-            self.on_set_status_slot(("The item in your clipboard is incompatible and can't be synced", "warn"))
+            self.status_queue.put(("The item in your clipboard is incompatible and can't be synced", "warn"))
             return
 
-        prepare["hash"]= hash
-
-        try:
-            container_name = self.panel_tab_widget.get_matching_containers_for_hash(hash).next()
-            prepare["container_name"] = container_name  # only need first
-        except StopIteration:
-            pass
+        prepare["hash"] = hash_hex
 
         async_process = dict(question="Update?", data=prepare)
 
-        self.outgoing_signal_for_worker.emit(async_process)
+        #self.outgoing_signal_for_worker.emit(async_process)
+        self.clip_change_queue.put(async_process)
 
-        self.previous_hash = hash
+        self.previous_hash.value = hash_long
         #image.destroy()
 
     def prepare_text_preview(self, text):
@@ -359,10 +434,12 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             pass
         return preview
 
-
-    def streaming_download_callback(self, progress):
-        self.on_set_status_slot(("Downloading %s" % progress["percent_done"], "download"))
-
+    @staticmethod
+    def anchor_urls(txt):
+        found_urls = map(lambda each: each[0], GRUBER_URLINTEXT_PAT.findall(txt))
+        for each_url in found_urls:
+            txt = txt.replace(each_url, "<a href='{url}'>{url}</a>".format(url=each_url.replace("&amp;", "&") ) )  # unescape &
+        return txt
 
     def block_clip_change_detection(func):
         """When incoming, this will invoke dataChanged, which will in turn invoke a push, therefore a race condition
@@ -388,15 +465,19 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
             except tarfile.ReadError as e:
                 # when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
                 LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: tarfile: " + e[0])
-                self.on_set_status_slot(("Decryption failed. Current password is not compatible with this item", "bad"))
+                self.status_queue.put(("Decryption failed. Current password is not compatible with this item", "bad"))
             except IOError:
                 LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: Possibly in the middle of downloading a container of a clip, while another client double-clicks the same clip, so extracted tarfile fails with (from tarfile.py): IOError: CRC check failed 0x9e952259 != 0x3b63bdc0L")
             except ValueError:
                 LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: Missing or corrupt container from server")
-                self.on_set_status_slot(("Decryption failed. Item data from server is missing or corrupt", "bad")) #ie. server returned a 404.html document
+                self.status_queue.put(("Decryption failed. Item data from server is missing or corrupt", "bad")) #ie. server returned a 404.html document
             else:
-                self.on_set_status_slot(("Decrypted an item", "good"))
+                self.status_queue.put(("Decrypted an item", "good"))
         return closure
+
+
+    def streaming_download_callback(self, progress):
+        self.status_queue.put(("Downloading %s" % progress["percent_done"], "download"))
 
 
     @block_clip_change_detection
@@ -405,11 +486,11 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         container_name = new_clip["container_name"]
         clip_type = new_clip["clip_type"]
         system = new_clip["system"]
-        
+
         #downloading modal
         download_container_if_not_exist(new_clip, self.streaming_download_callback)  # TODO - show error message if download not found on server
 
-        self.on_set_status_slot(("Decrypting", "unlock"))
+        self.status_queue.put(("Decrypting", "unlock"))
         if system == "share":
             ciphertext = new_clip["decryption_key"]
             password = self.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
@@ -473,52 +554,47 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
                 LOG.info("Main: on_set_new_clip_slot: files: mimeData.setUrls: %s" % urls)
                 mimeData.setUrls(urls)
 
-            if self.clipboard.ownsClipboard():
-                self.clipboard.setMimeData(mimeData)
+            #if self.clipboard.ownsClipboard():  # TODO - move to Multiproc
+            self.clipboard.setMimeData(mimeData)
 
-    @staticmethod
-    def truncateTextLines(txt, max_lines=15):
-        line_count = txt.count("\n")
-        if line_count <= max_lines:
-            return txt
-        txt_split = txt.split("\n")
-        line_diff = line_count-max_lines
-        txt_split = txt_split[:max_lines] + ["<span style='color:red'>...", "... %s line%s not shown"%(line_diff, "s" if line_diff > 1 else ""), "...</span>"] + txt_split[-1:] #equal to [txt_split[-1]]
-        txt = "\n".join(txt_split)
-        return txt
-    
-    @staticmethod
-    def anchor_urls(txt):
-        found_urls = map(lambda each: each[0], GRUBER_URLINTEXT_PAT.findall(txt))
-        for each_url in found_urls:
-            txt = txt.replace(each_url, "<a href='{url}'>{url}</a>".format(url=each_url.replace("&amp;", "&") ) )  # unescape &
-        return txt
-        
-    @staticmethod
-    def decodeClipDisplay(clip):
-        return (clip or '').decode("base64").decode("zlib").decode("utf-8", "replace")
-    
-    @staticmethod
-    def encodeClipDisplay(clip):
-        return (clip or '').encode("utf-8", "replace").encode("zlib").encode("base64") #MUST ENCODE in base64 before transmitting obsfucated data #null clip causes serious looping problems, put some text! Prevent setText's TypeError: String or Unicode type required
-        
-    def closeEvent(self, event): #http://stackoverflow.com/questions/9249500/pyside-pyqt-detect-if-user-trying-to-close-window
-        self.hide()
-        event.ignore() #event.accept() exits #event.ignore() #stops from exiting
-        #self.close() close the main wigdget, which then cuases app.exit()
 
-    def closeReal(self):
-        # if i don't terminate the worker thread, the app will crash (ex. windows will say python.exe stopped working)
-        self.ws_worker.terminate() #http://stackoverflow.com/questions/1898636/how-can-i-terminate-a-qthread
-        self.app.exit() #directly close the app
+def parallel_worker(role, clip_change_queue, set_clip_queue, status_queue, kill_event, previous_hash,
+                    **unshared):
+    #clip_change_queue, kill_event, role = args
+    app = QtGui.QApplication(sys.argv)
+    window = role(app, clip_change_queue, set_clip_queue, status_queue, kill_event, previous_hash,
+                  **unshared)
+    app.exec_()
 
-if __name__ == '__main__':
-    app_id = '3B9D38D3-AAA6-476D-97CB-E547F623B96E'
-    singleton = QtSingleApplication(app_id, sys.argv)
-    if singleton.isRunning():
-        singleton.sendMessage("restore")
-        sys.exit(0)  # http://stackoverflow.com/questions/12712360/qtsingleapplication-for-pyside-or-pyqt
 
-    app = QtGui.QApplication(sys.argv) #create mainloop
-    ex = Main(app, singleton) #run widgets
-    sys.exit(app.exec_())
+if __name__ == "__main__":
+    #manager = multiprocessing.Manager()  # Done via networking. GEVENT fucks this up. Can't use patch_all(socket=False) because we need requests and urllib patched
+    clip_change_queue = SimpleQueue()  # Gevent fucks this up!! USE patch_all(thread=False), Also use SimpleQueue as gevent patches multiprocessing.Queue()
+    set_clip_queue = SimpleQueue()  # This will cause set_clup_queue.get() to hang without a context switch
+    status_queue = SimpleQueue()
+    kill_event = multiprocessing.Event()
+    next_producer = multiprocessing.Event()
+    previous_hash = multiprocessing.Value("d",long(0))
+
+    #args = args_generator()
+    args = (clip_change_queue, set_clip_queue, status_queue, kill_event, previous_hash)
+    args = itertools.chain(itertools.repeat((Consumer,) + args, 1),  # 1 means repeat once
+                           itertools.repeat((Producer,) + args)  # repeat infinite
+                           )  # http://stackoverflow.com/questions/3211041/how-to-join-two-generators-in-python
+
+    p = multiprocessing.Process(name="Consumer", target=parallel_worker, args=args.next())
+    p.start()
+
+    for i, each in enumerate(args):
+        if kill_event.is_set():
+            break
+        next_producer.clear()
+        q = multiprocessing.Process(name="Producer_%s" % i, target=parallel_worker, args=each,
+                                    kwargs=dict(next_producer = next_producer))
+        #q.daemon = True
+        q.start()
+        qpid = q.pid
+        print "Starting " + unicode(qpid)
+        next_producer.wait(timeout = Producer.timeout)
+        print "Next was set terminating " + unicode(qpid)
+        #q.terminate()
