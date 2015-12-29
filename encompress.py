@@ -1,9 +1,8 @@
-from hashlib import sha512
 from Crypto.Cipher import AES
 from Crypto import Random
 from Crypto.Protocol.KDF import PBKDF2
 import tarfile
-import time, os, hashlib, uuid
+import time, os, uuid
 
 """
 def derive_key_and_iv(password, salt, key_length, iv_length): #http://stackoverflow.com/questions/16761458/how-to-aes-encrypt-decrypt-files-using-python-pycrypto-in-an-openssl-compatible

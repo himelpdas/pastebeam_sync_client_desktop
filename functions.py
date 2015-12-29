@@ -1,18 +1,7 @@
 # --coding: utf-8 --
 
-# uncomment to use PyQt4
-
-import PyQt4.QtGui as QtGui
-import PyQt4.QtCore as QtCore
-QtCore.Signal = QtCore.pyqtSignal
-QtCore.Slot = QtCore.pyqtSlot
-"""
-import PySide.QtGui as QtGui
-import PySide.QtCore as QtCore
-"""
-
 import urlparse
-import os, platform, tarfile, random, requests
+import os, platform, requests
 
 import logging
 logging.basicConfig()
@@ -22,22 +11,10 @@ LOG.setLevel(logging.DEBUG)
 SYSTEM = platform.system()  # returns Windows, Darwin, Linux
 
 import bson.json_util as json
-from bson.binary import Binary
-from itertools import islice
 
+import uuid, tempfile, datetime
 
-import hashlib, uuid, time, sys, cgi, tempfile, itertools, datetime
-
-from Crypto.PublicKey import RSA
-from Crypto import Random
-from Crypto.Protocol.KDF import PBKDF2
-from Crypto.Hash import HMAC, SHA512
-
-import validators, keyring
-
-from spooky import hash128, hash32
-
-from collections import deque
+import keyring
 
 DEFAULT_DOMAIN = "192.168.0.191"
 # DEFAULT_DOMAIN = "192.168.0.12"
