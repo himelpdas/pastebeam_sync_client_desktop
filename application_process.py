@@ -133,6 +133,7 @@ class ConsumerStatusQueueListenerThread(QtCore.QThread):
             print "NEW STATUS LISTEN"
             status = self.status_queue.get()
             if status is False or self.kill_event.is_set():  # poison pill technique
+                LOG.info("Pastebeam: Consumer: ConsumerStatusQueueListenerThread " + "Breaking")
                 break
             self.status_signal.emit(status)
 
@@ -141,6 +142,8 @@ class Consumer(Main):
 
     def __init__(self, app, clip_change_queue, set_clip_queue, status_queue, kill_event, previous_hash, *args, **kwargs):
         LOG.info("Pastebeam: Consumer: __init__: " + multiprocessing.current_process().name)
+
+        self.next_producer = kwargs.pop("next_producer")  # get rid of next_producer or else super init will raise TypeError for unknown kwarg
 
         app_id = '3B9D38D3-AAA6-476D-97CB-E547F623B96E'
         singleton = QtSingleApplication(app_id, sys.argv)
@@ -182,9 +185,7 @@ class Consumer(Main):
         self.outgoing_signal_for_worker.emit(clip_prepare)
 
     def closeReal(self, close_event):
-        self.kill_event.set()
         self.clip_change_queue.put_nowait(False)
         self.status_queue.put_nowait(False)
-        # if i don't terminate the worker thread, the app will crash (ex. windows will say python.exe stopped working)
-        self.ws_worker.terminate() #http://stackoverflow.com/questions/1898636/how-can-i-terminate-a-qthread
-        self.app.exit() #directly close the app
+        self.next_producer.set()
+        self.kill_event.set()

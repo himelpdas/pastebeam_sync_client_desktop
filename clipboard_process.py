@@ -58,7 +58,7 @@ class ProducerKillQueueListenerThread(QtCore.QThread):
 
 
 class Producer(QtGui.QMainWindow):
-    kill_ms = 1000 * 5
+    kill_ms = 1000 * 15
     timeout = kill_ms * 1.5
     file_ignore_list = map(lambda each: each.upper(), ["desktop.ini","thumbs.db",".ds_store", r"icon\r",".dropbox",".dropbox.attr"])
     max_file_size = 1024*1024*50
@@ -82,7 +82,7 @@ class Producer(QtGui.QMainWindow):
 
         self.kill_event_thread = ProducerKillQueueListenerThread(self.kill_event)
         self.kill_event_thread.kill_producer_signal.connect(self.terminate)
-        self.kill_event_thread.start()
+        #self.kill_event_thread.start()
 
         self.set_clip_thread  = ProducerSetClipboardQueueListenerThread(self.kill_event, self.set_clip_queue)
         self.set_clip_thread.clipboard_set_signal.connect(self.on_set_new_clip_slot)
@@ -92,9 +92,9 @@ class Producer(QtGui.QMainWindow):
         print multiprocessing.current_process().name
 
     def terminate(self):
-        self.next_producer.set()
         LOG.info("Pastebeam: Producer: terminate")
         self.set_clip_queue.put_nowait(False)
+        self.next_producer.set()
         #self.app.exit()  # http://stackoverflow.com/questions/8026101/correct-way-to-quit-a-qt-program
         self.close()
 

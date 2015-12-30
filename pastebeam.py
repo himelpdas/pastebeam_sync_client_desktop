@@ -34,7 +34,8 @@ if __name__ == "__main__":
                            itertools.repeat((PySide_QtGui.QApplication, Producer,) + args)  # repeat infinite
                            )  # http://stackoverflow.com/questions/3211041/how-to-join-two-generators-in-python
 
-    p = multiprocessing.Process(name="Consumer", target=parallel_worker, args=args.next())
+    p = multiprocessing.Process(name="Consumer", target=parallel_worker, args=args.next(),
+                                kwargs=dict(next_producer = next_producer))
     p.start()
 
     for i, each in enumerate(args):
@@ -50,4 +51,6 @@ if __name__ == "__main__":
         next_producer.wait(timeout = Producer.timeout)
         print "Next was set terminating " + unicode(qpid)
         #q.terminate()
+    p.terminate()
+    q.terminate()
     sys.exit(1)
