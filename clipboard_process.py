@@ -58,7 +58,7 @@ class ProducerKillQueueListenerThread(QtCore.QThread):
 
 
 class Producer(QtGui.QMainWindow):
-    kill_ms = 1000 * 15
+    kill_ms = 1000 * 60 * 2
     timeout = kill_ms * 1.5
     file_ignore_list = map(lambda each: each.upper(), ["desktop.ini","thumbs.db",".ds_store", r"icon\r",".dropbox",".dropbox.attr"])
     max_file_size = 1024*1024*50
