@@ -123,8 +123,6 @@ class Producer(QtGui.QMainWindow):
 
         prev = self.previous_hash.value #image.bits() crashes with OneNote large image copy
 
-        print "NIGGER %s"%type(prev)
-
         if mimeData.hasImage():
             #image = pmap.toImage() #just like wxpython do not allow this to del, or else .bits() will crash
             if "PyQt4" in QtGui.__name__:
@@ -353,11 +351,10 @@ class Producer(QtGui.QMainWindow):
     def prepare_text_preview(self, text):
         preview = cgi.escape(text) #crashes with big data
         #preview = self.truncateTextLines(preview)
-        preview = self.anchor_urls(preview)
         try:
             preview = pygments.highlight(preview, pygments.lexers.guess_lexer(preview), pygments.formatters.HtmlFormatter(noclasses=True))
         except pygments.util.ClassNotFound:
-            pass
+            preview = self.anchor_urls(preview)
         return preview
 
     @staticmethod
