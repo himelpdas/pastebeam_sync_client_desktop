@@ -1210,9 +1210,10 @@ class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
             if self.clip["system"] == "notification":
                 content_widget = QtGui.QLabel(self.content)
             else:
-                content_widget = QTextBrowserForFancyListItemWidget(self.list_widget, self.item,
-                                                                    self.content)  # http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
+                content_widget = QTextBrowserForFancyListItemWidget(self.list_widget, self.item, self.content)
+                # http://stackoverflow.com/questions/1575884/how-to-make-links-clickable-in-a-qtextedit
 
+                content_widget.setMinimumHeight(self.main.px_to_dp(100))
             # content_widget.setWordWrapMode(QTextOption.NoWrap)
             item_content_hbox.addWidget(content_widget)
             item_layout.addLayout(item_content_hbox)
