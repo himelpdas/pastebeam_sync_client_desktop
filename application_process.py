@@ -31,7 +31,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.app = app
         self.singleton = singleton
 
-        self.dpi = app.desktop().logicalDpiX()
+        self.desktop = app.desktop()
 
         self.rsa_private_key = ""
 
@@ -145,20 +145,20 @@ class Consumer(Main):
 
         self.next_producer = kwargs.pop("next_producer")  # get rid of next_producer or else super init will raise TypeError for unknown kwarg
 
-        app_id = '3B9D38D3-AAA6-476D-97CB-E547F623B96E'
-        singleton = QtSingleApplication(app_id, sys.argv)
-        if singleton.isRunning():
-            singleton.sendMessage("restore")
-            #sys.exit(0)  # http://stackoverflow.com/questions/12712360/qtsingleapplication-for-pyside-or-pyqt
-            return
-
-        super(self.__class__, self).__init__(app, singleton=singleton, *args, **kwargs)
-
         self.clip_change_queue = clip_change_queue
         self.set_clip_queue = set_clip_queue
         self.status_queue = status_queue
         self.kill_event=  kill_event
         self.previous_hash = previous_hash
+
+        app_id = '3B9D38D3-AAA6-476D-97CB-E547F623B96E'
+        singleton = QtSingleApplication(app_id, sys.argv)
+        if singleton.isRunning():
+            singleton.sendMessage("restore")
+            #sys.exit(0)  # http://stackoverflow.com/questions/12712360/qtsingleapplication-for-pyside-or-pyqt
+            self.closeReal(None)
+
+        super(self.__class__, self).__init__(app, singleton=singleton, *args, **kwargs)
 
         #self.main_widget = QtGui.QTextEdit()
         #self.setCentralWidget(self.main_widget)

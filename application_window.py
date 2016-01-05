@@ -8,16 +8,27 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         self.init_panel()
         self.init_menu_bar()
         self.init_status_bar()
+        self.init_window_features()
 
         self.setCentralWidget(self.stacked_widget)
-        self.setGeometry(50, 50, 800, 600)
-        self.setWindowTitle('PasteBeam 1.0.0')
 
         self.init_tray_icon()
 
         self.show()
 
         self.lock_on_start()
+
+    def init_window_features(self):
+        desk = self.desktop.availableGeometry()
+        desk_w = desk.width()
+        desk_h = desk.height()
+        app_w = desk_w * 0.55
+        app_h = desk_h * 0.66
+        app_x = desk_w / 2.0 - app_w / 2.0
+        app_y = desk_h / 2.0 - app_h / 2.0
+        self.setGeometry(app_x, app_y, app_w, app_h)
+        self.setWindowTitle('PasteBeam 1.0.0')
+
 
 
     def lock_on_start(self):
@@ -192,7 +203,8 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         self.tray_icon.show()
 
     def px_to_dp(self, px):
-        #LOG.info(self.dpi)
-        dp = px*self.dpi/72.0
+        #LOG.info(dpi)
+        dpi = self.desktop.logicalDpiX()
+        dp = px*dpi/72.0
         #LOG.info(dp)
         return dp
