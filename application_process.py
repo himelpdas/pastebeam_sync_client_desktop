@@ -185,7 +185,7 @@ class Consumer(Main):
         self.outgoing_signal_for_worker.emit(clip_prepare)
 
     def closeReal(self, close_event):
-        self.clip_change_queue.put_nowait(False)
-        self.status_queue.put_nowait(False)
+        self.clip_change_queue.put(False)
+        self.status_queue.put(False)
         self.next_producer.set()
         self.kill_event.set()

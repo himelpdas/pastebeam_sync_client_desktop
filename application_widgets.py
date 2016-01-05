@@ -561,7 +561,7 @@ class CommonListWidget(QtGui.QListWidget, WaitForSignalDialogMixin):
 
         # _id is in data, but not on_clip_change since that's created from scratch
 
-        self.main.set_clip_queue.put_nowait(dict(new_clip = double_clicked_data, block_clip_change_detection = False))
+        self.main.set_clip_queue.put(dict(new_clip = double_clicked_data, block_clip_change_detection = False))
         self.main.panel_tab_widget.toggle_is_in_clipboard_label("clear all labels")  # since the clipboard will change after a double-click, just remove all the "In your clipboard!" labels. Note, if decryption fails, then labels will stay erased.
 
         # self.previous_hash = hash #or else on_clip_change_slot will react and a duplicate new list item will occur.

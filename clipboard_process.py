@@ -35,7 +35,7 @@ class ProducerSetClipboardQueueListenerThread(QtCore.QThread):
 
     def run(self):
         while 1:
-            set_clip = self.set_clip_queue.get()  # blocks
+            set_clip = self.set_clip_queue.get()  # blocks  # is not writing, so should be thread safe
             if set_clip is False or self.kill_event.is_set():  # poison pill technique  # there slight chance there is a positive set_clip and a kill_event.is_set at the same time, so check for kill to prevent wasted time
                 break
             self.clipboard_set_signal.emit(set_clip)
@@ -52,7 +52,7 @@ class ProducerKillQueueListenerThread(QtCore.QThread):
         super(self.__class__, self).__init__(*args, **kwargs)
 
     def run(self):
-        self.kill_event.wait()
+        self.kill_event.wait()  # is not writing, so should be thread safe
         self.kill_producer_signal.emit()
 
 
@@ -93,10 +93,10 @@ class Producer(QtGui.QMainWindow):
 
     def terminate(self):
         LOG.info("Pastebeam: Producer: terminate")
-        self.set_clip_queue.put_nowait(False)
+        self.set_clip_queue.put(False)
         self.next_producer.set()
         #self.app.exit()  # http://stackoverflow.com/questions/8026101/correct-way-to-quit-a-qt-program
-        self.close()
+        self.close()  # i don't think it'll close the thread until the worker thread completes, hence why the processes don't lock up from corruption
 
     def kill_after(self, ms):
         self.timer  = QtCore.QTimer(self)
@@ -107,7 +107,7 @@ class Producer(QtGui.QMainWindow):
     def on_clipboard_data_changed(self):
         #test if identical
 
-        self.status_queue.put_nowait(("Waiting for clipboard to change", "scan"))
+        self.status_queue.put(("Waiting for clipboard to change", "scan"))
 
         mimeData = self.clipboard.mimeData()
         if "PyQt4" in QtGui.__name__:
@@ -148,7 +148,7 @@ class Producer(QtGui.QMainWindow):
 
             LOG.info("Main: on_clip_change_slot: mimeData.hasImage: hash:%s, prev:%s"%(hash_hex, prev))
             if hash_long == prev:
-                #self.status_queue.put_nowait(("image copied","good"))
+                #self.status_queue.put(("image copied","good"))
                 return
 
             #secure_hash = hashlib.new("ripemd160", hash + "ACCOUNT_SALT").hexdigest() #use pdkbf2 #to prevent rainbow table attacks of known files and their hashes, will also cause decryption to fail if file name is changed
@@ -191,7 +191,7 @@ class Producer(QtGui.QMainWindow):
 
             LOG.info("Main: on_clip_change_slot: mimeData.hasHtml: hash:%s, prev:%s"%(hash_hex, prev))
             if hash_long == prev:
-                #self.status_queue.put_nowait(("data copied","good"))
+                #self.status_queue.put(("data copied","good"))
                 return
 
             preview = self.prepare_text_preview(text)
@@ -224,7 +224,7 @@ class Producer(QtGui.QMainWindow):
 
             LOG.info("Main: on_clip_change_slot: mimeData.hasText: hash:%s, prev:%s"%(hash_long, prev))
             if prev == hash_long:
-                #self.status_queue.put_nowait(("text copied","good"))
+                #self.status_queue.put(("text copied","good"))
                 return
 
             preview = self.prepare_text_preview(original)
@@ -268,7 +268,7 @@ class Producer(QtGui.QMainWindow):
 
             if sum(os_file_sizes_new) > self.max_file_size:
                 #self.sb.toggleStatusIcon(msg='Files not uploaded. Maximum files size is 50 megabytes.', icon="bad")
-                self.status_queue.put_nowait(("Files bigger than 50MB", "warn"))
+                self.status_queue.put(("Files bigger than 50MB", "warn"))
                 LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: sum(os_file_sizes_new) > self.max_file_size")
                 return #upload error clip
 
@@ -314,7 +314,7 @@ class Producer(QtGui.QMainWindow):
             hash_long = hash32("".join(os_file_hashes_new))
             if prev == hash_long:  #checks to make sure if name and file are the same
                 LOG.error("Main: on_clip_change_slot: mimeData.hasUrls: prev == checksum")
-                #self.status_queue.put_nowait(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
+                #self.status_queue.put(("File%s copied" % ("s" if len(os_file_names_new) > 1 else "") , "good"))
                 return
             else:
                 hash_hex = format(hash_long, "x")
@@ -338,14 +338,14 @@ class Producer(QtGui.QMainWindow):
             )
 
         else:
-            self.status_queue.put_nowait(("The item in your clipboard is incompatible and can't be synced", "warn"))
+            self.status_queue.put(("The item in your clipboard is incompatible and can't be synced", "warn"))
             return
 
         prepare["hash"] = hash_hex
 
         async_process = dict(question="Update?", data=prepare)
 
-        self.clip_change_queue.put_nowait(async_process)
+        self.clip_change_queue.put(async_process)
 
         LOG.info("Pastebeam: Producer: on_clipboard_data_changed: hash_long = %s, prev = %s" % (hash_long, prev))
         self.previous_hash.value = hash_long
@@ -391,19 +391,19 @@ class Producer(QtGui.QMainWindow):
             except tarfile.ReadError as e:
                 # when decryption fails, tarfile is corrupt and raises: tarfile.ReadError: file could not be opened successfully
                 LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: tarfile: " + e[0])
-                self.status_queue.put_nowait(("Decryption failed. Current password is not compatible with this item", "bad"))
+                self.status_queue.put(("Decryption failed. Current password is not compatible with this item", "bad"))
             except IOError:
                 LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: Possibly in the middle of downloading a container of a clip, while another client double-clicks the same clip, so extracted tarfile fails with (from tarfile.py): IOError: CRC check failed 0x9e952259 != 0x3b63bdc0L")
             except ValueError:
                 LOG.error("Main: on_set_new_clip_slot: block_clip_change_detection: Missing or corrupt container from server")
-                self.status_queue.put_nowait(("Decryption failed. Item data from server is missing or corrupt", "bad")) #ie. server returned a 404.html document
+                self.status_queue.put(("Decryption failed. Item data from server is missing or corrupt", "bad")) #ie. server returned a 404.html document
             else:
-                self.status_queue.put_nowait(("Decrypted an item", "good"))
+                self.status_queue.put(("Decrypted an item", "good"))
         return closure
 
 
     def streaming_download_callback(self, progress):
-        self.status_queue.put_nowait(("Downloading %s" % progress["percent_done"], "download"))
+        self.status_queue.put(("Downloading %s" % progress["percent_done"], "download"))
 
 
     @block_clip_change_detection
@@ -416,7 +416,7 @@ class Producer(QtGui.QMainWindow):
         #downloading modal
         download_container_if_not_exist(new_clip, self.streaming_download_callback)  # TODO - show error message if download not found on server
 
-        self.status_queue.put_nowait(("Decrypting", "unlock"))
+        self.status_queue.put(("Decrypting", "unlock"))
         if system == "share":
             ciphertext = new_clip["decryption_key"]
             password = self.rsa_private_key.decrypt(ciphertext) #this is set on logon guaranteed!
