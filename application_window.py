@@ -63,7 +63,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         file_menu.addAction(lockout_action)
         file_menu.addSeparator()
 
-        exit_action = QtGui.QAction(QtGui.QIcon("images/exit.png"), '&Exit', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls
+        exit_action = QtGui.QAction(AppIcon("exit"), '&Exit', self)    #http://ubuntuforums.org/archive/index.php/t-724672.htmls
         exit_action.setShortcut('Ctrl+Q')
         exit_action.setStatusTip('Exit application')
         exit_action.triggered.connect(self.closeReal) #exit_action.triggered.connect(QtGui.qApp.quit) #does not trigger closeEvent()
@@ -71,11 +71,11 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         file_menu.addAction(exit_action)
 
         ### edit ###
-        settings_action = QtGui.QAction(QtGui.QIcon("images/settings.png"), "&Settings", self)
+        settings_action = QtGui.QAction(AppIcon("settings"), "&Settings", self)
         settings_action.setStatusTip('Edit settings')
         settings_action.triggered.connect(lambda:SettingsDialog.show(self))
 
-        contacts_action = QtGui.QAction(QtGui.QIcon("images/contacts.png"), "&Contacts", self)
+        contacts_action = QtGui.QAction(AppIcon("contacts"), "&Contacts", self)
         contacts_action.triggered.connect(lambda:ContactsDialog.show(self))
         contacts_action.setStatusTip("Edit your contacts")
 
@@ -146,12 +146,17 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         always_on_top_action.triggered.connect(self.on_always_on_top_action)
 
         window_menu.addAction(always_on_top_action)
+        window_menu.addSeparator()
         window_menu.addAction(transparency_action)
 
         #### help ###
         help_menu = menubar.addMenu("&Help")
-        help_menu.addAction("&Check for updates")
-        help_menu.addAction("&About")
+        help_action = QtGui.QAction(AppIcon("help"), '&Help...', self)
+        help_action.triggered.connect(lambda: QtGui.QDesktopServices.openUrl(QtCore.QUrl(u"http://pastebeam.com/help/desktop")))
+        help_menu.addAction(help_action)
+        help_menu.addSeparator()
+        about_action = QtGui.QAction(AppIcon("about"), '&About', self)
+        help_menu.addAction(about_action)
 
         self.menu_lockables = [lockout_action, edit_menu, view_menu]
 
@@ -189,7 +194,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
 
     def on_set_status_slot(self, msg_icn):
         msg,icn = msg_icn
-        self.status_lbl.setText("<h3>%s...</h3>"%msg)
+        self.status_lbl.setText(views.status_label.format(msg=msg))
 
         pmap = QtGui.QPixmap("images/{icn}".format(icn=icn))
         pmap = pmap.scaledToWidth(self.px_to_dp(16), QtCore.Qt.SmoothTransformation) #antialiasing http://stackoverflow.com/questions/7623631/qt-antialiasing-png-resize

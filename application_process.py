@@ -23,7 +23,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
 
     show_settings_dialog_signal = QtCore.Signal()
 
-    outgoing_signal_for_worker = QtCore.Signal(dict)
+    outgoing_signal_for_websocket_thread = QtCore.Signal(dict)
     
     def __init__(self, app, singleton, *args, **kwargs):
         super(Main, self).__init__(*args, **kwargs)
@@ -182,7 +182,7 @@ class Consumer(Main):
         except StopIteration:
             pass
 
-        self.outgoing_signal_for_worker.emit(clip_prepare)
+        self.outgoing_signal_for_websocket_thread.emit(clip_prepare)
 
     def closeReal(self, close_event):
         self.clip_change_queue.put(False)

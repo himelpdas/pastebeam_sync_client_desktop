@@ -80,7 +80,7 @@ class WebsocketWorker(QtCore.QThread):
         self.refilling_list = True
         self.OUTGOING_QUEUE = deque() # must use alternative Queue for non standard library thread and greenlets
 
-        self.main.outgoing_signal_for_worker.connect(self.on_outgoing_slot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
+        self.main.outgoing_signal_for_websocket_thread.connect(self.on_outgoing_slot) #we have to use slots as gevent cannot talk to separate threads that weren't monkey_patched (QThreads are not monkey_patched since they are not pure python)
 
     #A QThread is run by calling it's start() function, which calls this run()
     #function in it's own "thread".

@@ -278,7 +278,7 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
 class WaitForSignalDialogMixin(object):
     def show_wait_for_signal_dialog(self, question, data_dict, error_msg, success_msg=False):
         "shows an unclosable dialog until closeWaitDialogSignalForMain"
-        self.main.outgoing_signal_for_worker.emit(
+        self.main.outgoing_signal_for_websocket_thread.emit(
             dict(
                 question=question,
                 data=data_dict
@@ -483,8 +483,8 @@ class CommonListWidget(QtGui.QListWidget, WaitForSignalDialogMixin):
         super(CommonListWidget, self).__init__(parent)
         self.parent = parent
         self.main = parent.main
-        self.setVerticalScrollMode(
-            QtGui.QAbstractItemView.ScrollPerPixel)  # http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
+        #self.setVerticalScrollMode(
+        #    QtGui.QAbstractItemView.ScrollPerPixel)  # http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
 
         self.itemPressed.connect(self.on_item_pressed_slot)  # ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 
@@ -1020,7 +1020,7 @@ class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
             question="Star?",
             data=current_item_data
         )
-        self.main.outgoing_signal_for_worker.emit(async_process)
+        self.main.outgoing_signal_for_websocket_thread.emit(async_process)
 
     def set_accept_invite_action(self):
         self.accept_invite_action = QtGui.QAction(QtGui.QIcon("images/ok.png"), "&Accept invite", self)
@@ -1061,7 +1061,7 @@ class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
 
         share_item_data["recipient"] = email
         share_item_data["decryption_key"] = decryption_key  # raw, will be replaced by new decryption key before actual share
-        self.main.outgoing_signal_for_worker.emit(
+        self.main.outgoing_signal_for_websocket_thread.emit(
             {
                 "question": "Share?",
                 "data": share_item_data
@@ -1112,7 +1112,7 @@ class FancyListItemWidget(QtGui.QWidget, WaitForSignalDialogMixin):
             question="Delete?",
             data={"remove_id": remove_id}  # user wanted to explicitly delete clip so delete associated files
         )
-        self.main.outgoing_signal_for_worker.emit(async_process)
+        self.main.outgoing_signal_for_websocket_thread.emit(async_process)
 
     def set_header_from_clip(self):
         seed = hash32(self.clip["host_name"])
