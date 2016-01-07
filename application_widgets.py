@@ -495,8 +495,8 @@ class CommonListWidget(QtGui.QListWidget, WaitForSignalDialogMixin):
         super(CommonListWidget, self).__init__(parent)
         self.parent = parent
         self.main = parent.main
-        #self.setVerticalScrollMode(
-        #    QtGui.QAbstractItemView.ScrollPerPixel)  # http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
+        self.setVerticalScrollMode(
+            QtGui.QAbstractItemView.ScrollPerPixel)  # http://stackoverflow.com/questions/2016323/qt4-is-it-possible-to-make-a-qlistview-scroll-smoothly
 
         self.itemPressed.connect(self.on_item_pressed_slot)  # ITEM CLICK DOES NOT WORK USE PRESSED FUCK!!
 
