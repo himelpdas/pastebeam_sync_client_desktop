@@ -656,6 +656,12 @@ class PanelTabWidget(QtGui.QTabWidget):
         if index == 3:
             self.setTabIcon(3, QtGui.QIcon("images/bulb.png"))
 
+    def get_all_sender_or_device_names(self):
+        for list_widget in self.panels:  # [:-1]: # if you don't want notification senders
+            for each_item in list_widget.get_items():
+                each_item_data = each_item.get_data()
+                yield each_item_data["host_name"]
+
     def onChangeTabIconSlot(self, tabs_affected):
         if "starred" in tabs_affected:
             new_icon_tab = 1

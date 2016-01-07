@@ -87,7 +87,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         ### view ###
 
         self.view_menu = view_menu = menubar.addMenu('&View')
-        self.view_menu.aboutToShow.connect(lambda: LOG.info("FUCKKK")) #todo implement device filter #http://stackoverflow.com/questions/22197496/how-to-perform-action-on-clicking-a-qmenu-object-only
+        self.view_menu.aboutToShow.connect(self.on_view_menu_about_to_show) #todo implement device filter #http://stackoverflow.com/questions/22197496/how-to-perform-action-on-clicking-a-qmenu-object-only
         view_action_group = QtGui.QActionGroup(self)
         view_action_group.setExclusive(False)
         show_files_action = QtGui.QAction(AppIcon("files"),"Files", self)
@@ -105,6 +105,9 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         show_text_action.setChecked(True)
         view_menu.addAction(show_text_action)
         view_action_group.addAction(show_text_action)
+
+        view_menu.addSeparator()
+
         view_action_group.triggered.connect(self.panel_tab_widget.on_change_view_menu)
 
         ### window ###
@@ -161,6 +164,18 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         help_menu.addAction(about_action)
 
         self.menu_lockables = [lockout_action, edit_menu, view_menu]
+
+    def on_view_menu_about_to_show(self):
+        view_menu_actions = self.view_menu.actions()
+        print len(view_menu_actions)  # 4th is the separator
+        clear_filter_by_name_actions = view_menu_actions[4:]
+        for filter_by_name_action in clear_filter_by_name_actions:
+            self.view_menu.removeAction(filter_by_name_action)
+        new_filter_by_names = sorted(set(self.panel_tab_widget.get_all_sender_or_device_names()))
+
+
+        for each_new_filter_by_name in new_filter_by_names:
+            self.view_menu.addAction(each_new_filter_by_name)
 
     def on_always_on_top_action(self, checked):
         if checked:  # http://stackoverflow.com/questions/1925015/pyqt-always-on-top
