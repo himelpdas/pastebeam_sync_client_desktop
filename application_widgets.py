@@ -9,7 +9,7 @@ from functions import *
 
 from spooky import hash32
 
-import validators, random
+import validators, random, sys
 
 class LockoutWidget(QtGui.QWidget):
 
@@ -199,7 +199,10 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
         sync_widget.setLayout(sync_hbox)
 
         run_label = QtGui.QLabel("Run PasteBeam on system startup")
-        run_check = QtGui.QCheckBox()
+        run_check = self.run_check = QtGui.QCheckBox()
+        if os.name == "nt":
+            run_on_boot = QtCore.QSettings(NT_RUN_PATH, QtCore.QSettings.NativeFormat)
+            run_check.setChecked(run_on_boot.contains("PasteBeam"))
         run_hbox = QtGui.QHBoxLayout()
         run_hbox.addWidget(run_label)
         run_hbox.addWidget(run_check)
@@ -246,7 +249,16 @@ class SettingsDialog(QtGui.QDialog, OkCancelWidgetMixin):  # http://www.qtcentre
         self.set_account_to_keyring()
         self.set_device_name_to_keyring()
         self.set_checkables_to_keyring()
+        self.set_run_on_boot()
         super(self.__class__, self).on_ok_button_clicked_slot()
+
+    def set_run_on_boot(self):
+        if os.name == "nt":
+            run_on_boot = QtCore.QSettings(NT_RUN_PATH, QtCore.QSettings.NativeFormat)
+            if self.run_check.isChecked():
+                run_on_boot.setValue("PasteBeam",sys.argv[0])
+            else:
+                run_on_boot.remove("PasteBeam")
 
     def on_cancel_button_clicked_slot(self):
         if not self.main.ws_worker.KEEP_RUNNING:

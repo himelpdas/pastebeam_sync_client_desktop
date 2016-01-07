@@ -9,6 +9,7 @@ LOG = logging.getLogger("pastebeam")
 LOG.setLevel(logging.DEBUG)
 
 SYSTEM = platform.system()  # returns Windows, Darwin, Linux
+NT_RUN_PATH = "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 
 import bson.json_util as json
 
