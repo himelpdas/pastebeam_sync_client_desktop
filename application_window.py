@@ -156,6 +156,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         help_menu.addAction(help_action)
         help_menu.addSeparator()
         about_action = QtGui.QAction(AppIcon("about"), '&About', self)
+        about_action.triggered.connect(lambda: AboutDialog.show_(self))
         help_menu.addAction(about_action)
 
         self.menu_lockables = [lockout_action, edit_menu, view_menu]

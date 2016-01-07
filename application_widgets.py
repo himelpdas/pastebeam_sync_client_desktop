@@ -9,7 +9,7 @@ from functions import *
 
 from spooky import hash32
 
-import validators, random, sys
+import validators, random, collections, sys
 
 class LockoutWidget(QtGui.QWidget):
 
@@ -1322,3 +1322,45 @@ class TrayIcon(QtGui.QSystemTrayIcon):
     def show_lockout(self):
         self.restore()  # MUST RESTORE as without it app seems to crash without warning
         self.main.lockout_widget.on_show_lockout_slot()
+
+class AboutDialog(QtGui.QDialog):
+    @classmethod
+    def show_(cls, main):
+        cls(main)
+    def __init__(self, main, *args, **kwargs):
+        super(self.__class__, self).__init__()
+        self.main = main
+        self.layout = None
+        self.do_layout()
+        self.setLayout(self.layout)
+        self.setWindowTitle("About")
+        self.exec_()
+    def do_layout(self):
+        vbox_main = QtGui.QVBoxLayout()
+        hbox_top = QtGui.QHBoxLayout()
+        logo = QtGui.QLabel(views.icon_html.format(name="good", side=128))
+        info = QtGui.QLabel(views.about_info)
+        hbox_top.addWidget(logo)
+        hbox_top.addWidget(info)
+
+        vbox_main.addLayout(hbox_top)
+
+        hbox_middle = QtGui.QHBoxLayout()
+        hbox_middle.setMargin(self.main.px_to_dp(10))
+        hbox_middle.addWidget(QtGui.QLabel(views.about_url.format(title="Licensing", url="http://pastebeam.com")))
+        hbox_middle.addStretch(1)
+        hbox_middle.addWidget(QtGui.QLabel(views.about_url.format(title="End-User Rights", url="http://pastebeam.com")))
+        hbox_middle.addStretch(1)
+        hbox_middle.addWidget(QtGui.QLabel(views.about_url.format(title="Privacy Policy", url="http://pastebeam.com")))
+
+        vbox_main.addLayout(hbox_middle)
+
+        hbox_bottom = QtGui.QHBoxLayout()
+        c = QtGui.QLabel(views.about_copy_right.format(org = "2015 Himel Das"))
+        hbox_bottom.addWidget(c)
+        device_id = QtGui.QLabel(views.about_device_id.format(id = device_uuid))
+        hbox_bottom.addWidget(device_id)
+
+        vbox_main.addLayout(hbox_bottom)
+
+        self.layout = vbox_main

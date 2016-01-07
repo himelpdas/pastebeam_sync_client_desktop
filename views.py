@@ -43,3 +43,13 @@ not_connected_msg = u"You are not connected! Check your account info."
 disconnected_msg = u"Got disconnected! Check your internet connection."
 
 is_in_clipboard_label = u"<h5 style='color:DarkOrchid'>In your clipboard!</h5>"
+
+about_info = """
+<h1>PasteBeam</h1>
+<h5 style='color:grey'>1.0.0</h5>
+<p>Designed in New York City with love.</p>
+"""
+
+about_copy_right = "<b>&copy; {org}</b>"
+about_device_id = "<span style='color:grey'>Device ID: {id}</span>"
+about_url = "<a href='{url}'>{title}</a>"
