@@ -87,6 +87,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         ### view ###
 
         self.view_menu = view_menu = menubar.addMenu('&View')
+        self.view_menu.aboutToShow.connect(lambda: LOG.info("FUCKKK")) #todo implement device filter #http://stackoverflow.com/questions/22197496/how-to-perform-action-on-clicking-a-qmenu-object-only
         view_action_group = QtGui.QActionGroup(self)
         view_action_group.setExclusive(False)
         show_files_action = QtGui.QAction(AppIcon("files"),"Files", self)
