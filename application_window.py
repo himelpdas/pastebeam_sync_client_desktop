@@ -88,7 +88,7 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
 
         self.view_menu = view_menu = menubar.addMenu('&View')
         self.view_menu.aboutToShow.connect(self.on_view_menu_about_to_show) #todo implement device filter #http://stackoverflow.com/questions/22197496/how-to-perform-action-on-clicking-a-qmenu-object-only
-        view_action_group = QtGui.QActionGroup(self)
+        self.view_action_group = view_action_group = QtGui.QActionGroup(self)
         view_action_group.setExclusive(False)
         show_files_action = QtGui.QAction(AppIcon("files"),"Files", self)
         show_files_action.setCheckable(True)
@@ -166,16 +166,32 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         self.menu_lockables = [lockout_action, edit_menu, view_menu]
 
     def on_view_menu_about_to_show(self):
-        view_menu_actions = self.view_menu.actions()
-        print len(view_menu_actions)  # 4th is the separator
-        clear_filter_by_name_actions = view_menu_actions[4:]
-        for filter_by_name_action in clear_filter_by_name_actions:
-            self.view_menu.removeAction(filter_by_name_action)
-        new_filter_by_names = sorted(set(self.panel_tab_widget.get_all_sender_or_device_names()))
+        view_menu_actions = filter(lambda a: a.text(), self.view_menu.actions())  # get rid of separators
+        old_filter_by_name_actions = view_menu_actions[3:]
+        old_filter_by_name_texts = set(map(lambda each: each.text(), old_filter_by_name_actions))
+        new_filter_by_name_texts = set(self.panel_tab_widget.get_all_sender_or_device_names())
+        old_action_texts_to_remove = old_filter_by_name_texts.difference(new_filter_by_name_texts)  # old_filter_by_name_texts difference with new_filter_by_name_texts
+        new_action_texts_to_add = sorted(new_filter_by_name_texts.difference(old_filter_by_name_texts))
+        for action in old_filter_by_name_actions:
+            if action.text() in old_action_texts_to_remove:
+                self.view_menu.removeAction(action)
+                self.view_action_group.removeAction(action)
 
+        for each_new_text in new_action_texts_to_add:
+            make_new_action = True
+            for each_action in old_filter_by_name_actions:
+                if each_action.text() == each_new_text:
+                    make_new_action = False
+                    break
+            if make_new_action:
+                new_filter_action = QtGui.QAction(each_new_text, self)
+                new_filter_action.setCheckable(True)
+                new_filter_action.setChecked(True)
+            else:
+                new_filter_action = each_action
 
-        for each_new_filter_by_name in new_filter_by_names:
-            self.view_menu.addAction(each_new_filter_by_name)
+            self.view_menu.addAction(new_filter_action)
+            self.view_action_group.addAction(new_filter_action)
 
     def on_always_on_top_action(self, checked):
         if checked:  # http://stackoverflow.com/questions/1925015/pyqt-always-on-top
