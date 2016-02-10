@@ -58,7 +58,7 @@ class Main(WebsocketWorkerMixinForMain, UIMixin):
         self.ws_worker.delete_clip_signal_for_main.connect(self.panel_tab_widget.on_incoming_delete)
         self.ws_worker.clear_list_signal_for_main.connect(self.panel_tab_widget.clearAllLists) #clear everything on disconnect, since a new connection will append the the list
         self.ws_worker.initialize_contacts_list_signal_for_main.connect(self.on_contacts_list_incoming)
-        self.ws_worker.change_tab_icon_signal_for_main.connect(self.panel_tab_widget.onChangeTabIconSlot)
+        self.ws_worker.change_tab_icon_signal_for_main.connect(self.panel_tab_widget.on_change_tab_icon)
         self.ws_worker.set_rsa_key_signal_for_main.connect(self.on_set_rsa_keys)
         self.ws_worker.start()
 

@@ -662,7 +662,7 @@ class PanelTabWidget(QtGui.QTabWidget):
                 each_item_data = each_item.get_data()
                 yield each_item_data["host_name"]
 
-    def onChangeTabIconSlot(self, tabs_affected):
+    def on_change_tab_icon(self, tabs_affected):
         if "starred" in tabs_affected:
             new_icon_tab = 1
         elif "notification" in tabs_affected:
@@ -682,14 +682,16 @@ class PanelTabWidget(QtGui.QTabWidget):
         self.search.setPlaceholderText("Filter...")
 
     def on_change_view_menu(self, action):
-        actions = self.main.view_menu.actions()
+        actions = filter(lambda a: a.text(), self.main.view_menu.actions())  # get rid of separators as they don't have text
+        print len(actions)
         label_to_clip_type = {
-            "Text/Html":["text", "html"],
+            "Text/Html": ["text", "html"],
             "Screenshots": "screenshot",
-            "Files":"files",
+            "Files": "files",
         }
         activate_clip_types = []
         for each_action in actions:
+            print each_action, each_action.text()
             if each_action.isChecked():
                 action_label = unicode(each_action.text())
                 activate_clip_types.append(label_to_clip_type[action_label])
