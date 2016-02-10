@@ -170,9 +170,8 @@ class UIMixin(QtGui.QMainWindow): #AccountMixin): #handles menubar and statusbar
         print len(view_menu_actions)  # 4th is the separator
         clear_filter_by_name_actions = view_menu_actions[4:]
         for filter_by_name_action in clear_filter_by_name_actions:
-            self.view_menu.removeAction(filter_by_name_action)
+            self.view_menu.removeAction(filter_by_name_action)  # have to recreate list as senders can vanish
         new_filter_by_names = sorted(set(self.panel_tab_widget.get_all_sender_or_device_names()))
-
 
         for each_new_filter_by_name in new_filter_by_names:
             self.view_menu.addAction(each_new_filter_by_name)

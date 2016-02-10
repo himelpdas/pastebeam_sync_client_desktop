@@ -1329,10 +1329,11 @@ class TrayIcon(QtGui.QSystemTrayIcon):
         self.restore()  # MUST RESTORE as without it app seems to crash without warning
         self.main.lockout_widget.on_show_lockout_slot()
 
-class AboutDialog(QtGui.QDialog):
+class AboutDialog(QtGui.QDialog, OkCancelWidgetMixin):  # will not use any Ok / Cancel features, but needed to center
     @classmethod
     def show_(cls, main):
         cls(main)
+
     def __init__(self, main, *args, **kwargs):
         super(self.__class__, self).__init__()
         self.main = main
@@ -1340,7 +1341,10 @@ class AboutDialog(QtGui.QDialog):
         self.do_layout()
         self.setLayout(self.layout)
         self.setWindowTitle("About")
+
+        QtCore.QTimer.singleShot(10, self.center_to_parent)  # not truly centered without the timer, let the dialog load up first
         self.exec_()
+
     def do_layout(self):
         vbox_main = QtGui.QVBoxLayout()
         hbox_top = QtGui.QHBoxLayout()
